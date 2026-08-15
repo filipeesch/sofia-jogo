@@ -1,8 +1,10 @@
 # ---- Build stage ----
 FROM node:20-alpine AS build
 WORKDIR /app
+# Force the public npm registry (the device's internal Nexus mirror returns
+# 403 for some packages like vite). Command-line flag has highest precedence.
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --registry=https://registry.npmjs.org/
 COPY . .
 RUN npm run build
 
