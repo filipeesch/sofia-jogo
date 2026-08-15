@@ -11,6 +11,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { UI } from '../ui/UI';
 import type { LevelConfig } from '../levels';
 import { clamp } from '../utils';
+import type { WorldModels } from '../assets';
 
 export class Game {
   onExit?: () => void;
@@ -39,7 +40,7 @@ export class Game {
   private startX = 0;
   private startY = 0;
 
-  constructor(container: HTMLElement, level: LevelConfig, airplane: Airplane = new Airplane()) {
+  constructor(container: HTMLElement, level: LevelConfig, airplane: Airplane = new Airplane(), models: WorldModels = {}) {
     this.airplane = airplane;
     this.flight = new FlightController(airplane);
 
@@ -77,7 +78,7 @@ export class Game {
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
-    this.world = new World(level);
+    this.world = new World(level, models);
     this.dayNight = new DayNightCycle({
       cycleSeconds: level.cycleSeconds,
       startNight: level.startNight,

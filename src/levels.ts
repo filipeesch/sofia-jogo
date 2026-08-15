@@ -1,4 +1,4 @@
-export type WorldType = 'island' | 'mountains';
+export type WorldType = 'island' | 'mountains' | 'snow' | 'desert';
 
 export interface LevelConfig {
   id: string;
@@ -52,6 +52,40 @@ export const LEVELS: LevelConfig[] = [
     starCount: 16,
     cloudCount: 8,
     houseColors: [0xc98a5e, 0xa8d8b9, 0xffd88a]
+  },
+  {
+    id: 'neve',
+    name: 'Mundo da Neve',
+    emoji: '❄️',
+    description: 'Brinque com bonecos de neve',
+    worldType: 'snow',
+    skyDayTop: 0xb5e4f7,
+    skyDayHorizon: 0xf2faff,
+    groundColor: 0xf0f6fc,
+    oceanDeep: 0x0e5fa8,
+    oceanShallow: 0xbfe6f7,
+    cycleSeconds: 150,
+    startNight: false,
+    starCount: 16,
+    cloudCount: 6,
+    houseColors: [0xc9644a, 0x9fd0f0, 0xe0b060]
+  },
+  {
+    id: 'deserto',
+    name: 'Deserto',
+    emoji: '🏜️',
+    description: 'Descubra a pirâmide e os cactos',
+    worldType: 'desert',
+    skyDayTop: 0x8ecdf0,
+    skyDayHorizon: 0xffe3b8,
+    groundColor: 0xe8c98a,
+    oceanDeep: 0x1a7bb0,
+    oceanShallow: 0x4fb8e8,
+    cycleSeconds: 150,
+    startNight: false,
+    starCount: 16,
+    cloudCount: 4,
+    houseColors: [0xd9a066, 0xcf9a5a, 0xe0b080]
   },
   {
     id: 'noite',

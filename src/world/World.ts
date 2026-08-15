@@ -2,13 +2,16 @@ import * as THREE from 'three';
 import { Ocean } from './Ocean';
 import { Island } from './Island';
 import { Mountains } from './Mountains';
+import { Snow } from './Snow';
+import { Desert } from './Desert';
 import { Sky } from './Sky';
 import { House, Whale, Bird, Cloud, Rainbow, Balloon } from './landmarks';
 import type { LevelConfig } from '../levels';
+import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand } from '../utils';
 
-type Terrain = Island | Mountains;
+type Terrain = Island | Mountains | Snow | Desert;
 
 export class World {
   readonly ocean?: Ocean;
@@ -25,13 +28,21 @@ export class World {
 
   private tGlobal = 0;
 
-  constructor(config: LevelConfig) {
+  constructor(config: LevelConfig, models: WorldModels = {}) {
     if (config.worldType === 'mountains') {
-      this.terrain = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors });
+      this.terrain = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+    } else if (config.worldType === 'snow') {
+      const snow = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors });
+      snow.addModels(models);
+      this.terrain = snow;
+    } else if (config.worldType === 'desert') {
+      const desert = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors });
+      desert.addModels(models);
+      this.terrain = desert;
     } else {
-      this.terrain = new Island({ grass: config.groundColor, houseColors: config.houseColors });
+      this.terrain = new Island({ grass: config.groundColor, houseColors: config.houseColors }, models);
       this.ocean = new Ocean({ deep: config.oceanDeep, shallow: config.oceanShallow });
-      this.whale = new Whale();
+      this.whale = new Whale(models.whale);
       this.whale.position.set(-32, -1.2, 22);
     }
 
@@ -44,7 +55,7 @@ export class World {
       [12, 11, 22]
     ];
     birdSpots.forEach((p, i) => {
-      const b = new Bird(birdColors[i % birdColors.length]);
+      const b = new Bird(birdColors[i % birdColors.length], models.bird ? models.bird.clone() : undefined);
       b.place(p[0], p[1], p[2]);
       this.birds.push(b);
     });
@@ -62,7 +73,7 @@ export class World {
       [2, 17, -32]
     ];
     balloonSpots.forEach((p, i) => {
-      const bl = new Balloon(balloonColors[i]);
+      const bl = new Balloon(balloonColors[i], models.balloon ? models.balloon.clone() : undefined);
       bl.position.set(p[0], p[1], p[2]);
       this.balloons.push(bl);
     });

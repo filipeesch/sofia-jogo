@@ -73,9 +73,14 @@ export class Whale extends THREE.Group {
   private t = 0;
   private baseY: number;
 
-  constructor() {
+  constructor(model?: THREE.Group) {
     super();
     this.baseY = -1.2;
+
+    if (model) {
+      this.add(model);
+      return;
+    }
 
     const mat = new THREE.MeshStandardMaterial({ color: 0x5c8bd6, roughness: 0.6, flatShading: true });
     const body = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), mat);
@@ -137,8 +142,16 @@ export class Bird extends THREE.Group {
   private phase = rand(0, TAU);
   private wings: THREE.Mesh[] = [];
 
-  constructor(color: number) {
+  constructor(color: number, model?: THREE.Group) {
     super();
+    if (model) {
+      this.add(model);
+      model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && (m.name === 'WingL' || m.name === 'WingR')) this.wings.push(m);
+      });
+      return;
+    }
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7, flatShading: true });
 
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), mat);
@@ -264,8 +277,12 @@ export class Balloon extends THREE.Group {
   private phase = rand(0, TAU);
   private speed = rand(0.5, 1.2);
 
-  constructor(color: number) {
+  constructor(color: number, model?: THREE.Group) {
     super();
+    if (model) {
+      this.add(model);
+      return;
+    }
     const env = new THREE.Mesh(
       new THREE.SphereGeometry(1.1, 12, 10),
       new THREE.MeshStandardMaterial({ color, roughness: 0.5 })

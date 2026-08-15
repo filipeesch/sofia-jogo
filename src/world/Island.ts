@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { House } from './landmarks';
+import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand, TAU } from '../utils';
 
@@ -21,7 +22,7 @@ export class Island extends THREE.Group {
     { x: -14, z: 10, r: 5.5, h: 2.0 }
   ];
 
-  constructor(config: { grass?: number; houseColors?: number[] } = {}) {
+  constructor(config: { grass?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
     super();
 
     const grass = config.grass ?? 0x6fc45c;
@@ -88,15 +89,16 @@ export class Island extends THREE.Group {
       h: this.mountainHeight
     });
 
-    // Trees.
+    // Trees (detailed GLB when available, procedural fallback otherwise).
     const treeSpots: [number, number][] = [
       [-3, 3], [8, 6], [-18, 6], [4, -12], [-6, -18], [14, -4],
       [-20, -8], [12, 16], [-2, 16], [22, 8], [-14, -16], [18, -18]
     ];
-    for (const [x, z] of treeSpots) {
-      if (Math.hypot(x, z) > this.radius - 3) continue;
-      this.addTree(x, z);
-    }
+    treeSpots.forEach(([x, z], i) => {
+      if (Math.hypot(x, z) > this.radius - 3) return;
+      if (models.tree || models.palm) this.addGLBTree(models, x, z, i);
+      else this.addTree(x, z);
+    });
 
     // Houses.
     const houseSpots: [number, number][] = [
@@ -112,6 +114,20 @@ export class Island extends THREE.Group {
       this.houses.push(house);
       this.solids.push({ x, y: gy + 1.6, z, r: 1.9, h: 3.2 });
     });
+  }
+
+  private addGLBTree(models: WorldModels, x: number, z: number, i: number): void {
+    const src = i % 3 === 0 && models.palm ? models.palm : models.tree ?? models.palm;
+    if (!src) return;
+    const g = src.clone();
+    const s = rand(0.9, 1.4);
+    g.scale.setScalar(s);
+    const y = this.terrainHeight(x, z);
+    g.position.set(x, y, z);
+    g.rotation.y = rand(0, TAU);
+    this.add(g);
+    this.foliage.push({ g, phase: rand(0, TAU), speed: rand(0.6, 1.1) });
+    this.solids.push({ x, y: y + 1.7 * s, z, r: 1.2 * s, h: 4 * s });
   }
 
   private baseHeight(x: number, z: number): number {

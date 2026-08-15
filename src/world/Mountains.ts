@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { House } from './landmarks';
+import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand, TAU } from '../utils';
 
@@ -12,7 +13,7 @@ export class Mountains extends THREE.Group {
   private peaks: { x: number; z: number; r: number; h: number }[] = [];
   private hills: { x: number; z: number; r: number; h: number }[] = [];
 
-  constructor(config: { grass?: number; lake?: number; houseColors?: number[] } = {}) {
+  constructor(config: { grass?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
     super();
 
     const grass = config.grass ?? 0x6fc45c;
@@ -38,7 +39,7 @@ export class Mountains extends THREE.Group {
     lake.receiveShadow = true;
     this.add(lake);
 
-    // Ring of snowy peaks.
+    // Ring of snowy peaks (detailed GLB when available).
     const peakDefs: { a: number; r: number; rad: number; h: number }[] = [
       { a: 0, r: 46, rad: 12, h: 15 },
       { a: 60, r: 44, rad: 11, h: 18 },
@@ -51,7 +52,16 @@ export class Mountains extends THREE.Group {
       const rad = (p.a * Math.PI) / 180;
       const x = Math.cos(rad) * p.r;
       const z = Math.sin(rad) * p.r;
-      this.addPeak(x, z, p.rad, p.h);
+      if (models.peak) {
+        const g = models.peak.clone();
+        g.position.set(x, 0, z);
+        g.scale.setScalar(p.h / 7);
+        g.rotation.y = rand(0, TAU);
+        this.add(g);
+        this.solids.push({ x, y: 0, z, r: p.rad, h: p.h });
+      } else {
+        this.addPeak(x, z, p.rad, p.h);
+      }
       this.peaks.push({ x, z, r: p.rad, h: p.h });
     }
 
@@ -80,10 +90,11 @@ export class Mountains extends THREE.Group {
       [3, -4], [8, -14], [6, 12], [-8, -18], [18, 0],
       [-20, 12], [0, 18], [-24, -4], [22, -10]
     ];
-    for (const [x, z] of treeSpots) {
-      if (Math.hypot(x, z) > 28) continue;
-      this.addTree(x, z);
-    }
+    treeSpots.forEach(([x, z], i) => {
+      if (Math.hypot(x, z) > 28) return;
+      if (models.pine || models.tree) this.addGLBTree(models, x, z, i);
+      else this.addTree(x, z);
+    });
 
     // Cabin.
     const cabin = new House(houseColors[0], 0x8d4a2f);
@@ -91,6 +102,20 @@ export class Mountains extends THREE.Group {
     this.add(cabin);
     this.houses.push(cabin);
     this.solids.push({ x: 12, y: 1.6, z: 10, r: 1.9, h: 3.2 });
+  }
+
+  private addGLBTree(models: WorldModels, x: number, z: number, i: number): void {
+    const src = i % 2 === 0 && models.pine ? models.pine : models.tree ?? models.pine;
+    if (!src) return;
+    const g = src.clone();
+    const s = rand(0.8, 1.3);
+    g.scale.setScalar(s);
+    const y = this.terrainHeight(x, z);
+    g.position.set(x, y, z);
+    g.rotation.y = rand(0, TAU);
+    this.add(g);
+    this.foliage.push({ g, phase: rand(0, TAU), speed: rand(0.6, 1.1) });
+    this.solids.push({ x, y: y + 1.5 * s, z, r: 1.1 * s, h: 4 * s });
   }
 
   private addPeak(x: number, z: number, r: number, h: number): void {

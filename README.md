@@ -10,9 +10,9 @@ Sem game over, sem vidas, sem dano — não existe jeito de jogar errado.
 
 - TypeScript + Three.js + Vite
 - Sem backend, sem login, sem assets externos obrigatórios
-- Áudio 100% procedural (Web Audio API)
-- Avião: modelo cartoon feito no Blender (`public/models/aviao.glb`), com fallback
-  procedural automático se o GLB não carregar
+- Áudio 100% procedural (Web Audio API): sons + música de fundo
+- Avião e objetos dos mundos modelados no Blender (`public/models/*.glb`), com
+  fallback procedural automático se o GLB não carregar
 
 ## Como executar
 
@@ -38,14 +38,16 @@ Produção:
 ## Estrutura
 
     src/
-      main.ts                 entrada
+      main.ts                 entrada (carrega GLBs e abre o jogo)
       core/Game.ts            orquestra tudo (loop, luz, câmera, input)
+      assets.ts               carregador GLTF + modelos de cada mundo
       entities/Airplane.ts    avião: GLB do Blender + fallback procedural
-    public/models/aviao.glb   avião cartoon exportado do Blender
       controllers/            FlightController + CameraController
-      world/                  World, Island, Ocean, Sky, DayNightCycle, landmarks
+      world/                  World, Island, Mountains, Snow, Desert, Ocean, Sky, DayNightCycle, landmarks
       systems/                Collectibles, ProximityEvents, ParticleEffects, AudioManager
-      ui/UI.ts                contador + botões
+      ui/                     HomeScreen + UI (contador + botões)
+    public/models/            aviao, palm, tree, whale, bird, balloon, peak,
+                               snowman, pine, cactus, pyramid (.glb)
 
 ## Funcionalidades
 
@@ -53,7 +55,10 @@ Produção:
 - Estrelas colecionáveis que reaparecem; recompensa a cada 5 estrelas
 - Eventos de proximidade: baleia pula, nuvem mágica, pássaros, luzes das casas, arco-íris
 - Ação especial com pirueta + partículas + som
-- Áudio 100% procedural (Web Audio API), com botão de ligar/desligar
+- 5 mundos, com objetos 3D detalhados feitos no Blender (palmeira, árvore frondosa, baleia,
+  pássaro, balão, montanha rochosa, boneco de neve, pinheiro, cacto, pirâmide) — com fallback
+  procedural automático se algum GLB não carregar
+- Música de fundo procedural suave + sons (Web Audio API), com botão de ligar/desligar
 
 ## Home screen e fases
 
@@ -61,7 +66,9 @@ Ao abrir, o jogo mostra uma home screen com seleção de fases:
 
 1. 🌴 Ilha Feliz — ilha cercada pelo mar (com baleia e praia)
 2. ⛰️ Vale das Montanhas — cordilheira com picos nevados, vale e lago
-3. 🌙 Noite Estrelada — as montanhas sob a lua, começando à noite
+3. ❄️ Mundo da Neve — bonecos de neve, pinheiros e lago congelado
+4. 🏜️ Deserto — pirâmide, cactos e oásis
+5. 🌙 Noite Estrelada — as montanhas sob a lua, começando à noite
 
 Dentro do jogo há um botão 🏠 (canto superior direito) para voltar à home
 e escolher outra fase.
