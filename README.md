@@ -10,7 +10,9 @@ Sem game over, sem vidas, sem dano — não existe jeito de jogar errado.
 
 - TypeScript + Three.js + Vite
 - Sem backend, sem login, sem assets externos obrigatórios
-- Tudo procedural (geometrias básicas + Web Audio)
+- Áudio 100% procedural (Web Audio API)
+- Avião: modelo cartoon feito no Blender (`public/models/aviao.glb`), com fallback
+  procedural automático se o GLB não carregar
 
 ## Como executar
 
@@ -38,7 +40,8 @@ Produção:
     src/
       main.ts                 entrada
       core/Game.ts            orquestra tudo (loop, luz, câmera, input)
-      entities/Airplane.ts    avião feito de primitivas
+      entities/Airplane.ts    avião: GLB do Blender + fallback procedural
+    public/models/aviao.glb   avião cartoon exportado do Blender
       controllers/            FlightController + CameraController
       world/                  World, Island, Ocean, Sky, DayNightCycle, landmarks
       systems/                Collectibles, ProximityEvents, ParticleEffects, AudioManager

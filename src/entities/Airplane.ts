@@ -1,15 +1,64 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 
-// Friendly low-poly toy airplane built only from primitives.
-// The nose points toward +Z.
+// Friendly low-poly toy airplane. The nose points toward +Z.
+// Two ways to build it:
+//  - new Airplane()          -> fully procedural (primitives, zero external assets)
+//  - Airplane.fromGLB(url)   -> cartoon model authored in Blender (public/models/aviao.glb)
 export class Airplane extends THREE.Group {
-  readonly propeller: THREE.Group;
-  private navMat: THREE.MeshStandardMaterial;
+  private _propeller = new THREE.Object3D();
+  private _navMat: THREE.MeshStandardMaterial | null = null;
   private bounceT = 0;
 
-  constructor() {
-    super();
+  get propeller(): THREE.Object3D {
+    return this._propeller;
+  }
 
+  constructor(procedural = true) {
+    super();
+    if (procedural) this.buildProcedural();
+  }
+
+  // Loads the Blender-authored GLB model. The node named "Propeller" spins in
+  // update() and the material named "NavLights" glows at night.
+  static async fromGLB(url: string): Promise<Airplane> {
+    const gltf: GLTF = await new Promise((resolve, reject) => {
+      new GLTFLoader().load(url, resolve, undefined, reject);
+    });
+    const plane = new Airplane(false);
+    plane.add(gltf.scene);
+    gltf.scene.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+      if (mat && mat.name === 'NavLights') plane._navMat = mat as THREE.MeshStandardMaterial;
+    });
+    plane._propeller = gltf.scene.getObjectByName('Propeller') ?? new THREE.Object3D();
+    return plane;
+  }
+
+  setNightLights(on: boolean): void {
+    if (this._navMat) this._navMat.emissiveIntensity = on ? 2.5 : 0;
+  }
+
+  playBounce(): void {
+    this.bounceT = 0.28;
+  }
+
+  update(dt: number): void {
+    this._propeller.rotation.z += 28 * dt;
+    if (this.bounceT > 0) {
+      this.bounceT -= dt;
+      const k = Math.max(0, this.bounceT) / 0.28;
+      this.scale.setScalar(1 + Math.sin((1 - k) * Math.PI) * 0.18);
+    } else {
+      this.scale.setScalar(1);
+    }
+  }
+
+  private buildProcedural(): void {
     const body = new THREE.Group();
     this.add(body);
 
@@ -82,7 +131,7 @@ export class Airplane extends THREE.Group {
     const propeller = new THREE.Group();
     propeller.position.z = 1.5;
     body.add(propeller);
-    this.propeller = propeller;
+    this._propeller = propeller;
 
     const spinner = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), matWhite);
     propeller.add(spinner);
@@ -95,7 +144,7 @@ export class Airplane extends THREE.Group {
     }
 
     // Navigation lights (visible at night)
-    this.navMat = new THREE.MeshStandardMaterial({
+    this._navMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: 0xfff59d,
       emissiveIntensity: 0,
@@ -107,28 +156,9 @@ export class Airplane extends THREE.Group {
       [0, 0.75, -1.0]
     ];
     for (const [x, y, z] of navSpots) {
-      const l = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), this.navMat);
+      const l = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), this._navMat);
       l.position.set(x, y, z);
       body.add(l);
-    }
-  }
-
-  setNightLights(on: boolean): void {
-    this.navMat.emissiveIntensity = on ? 2.5 : 0;
-  }
-
-  playBounce(): void {
-    this.bounceT = 0.28;
-  }
-
-  update(dt: number): void {
-    this.propeller.rotation.z += 28 * dt;
-    if (this.bounceT > 0) {
-      this.bounceT -= dt;
-      const k = Math.max(0, this.bounceT) / 0.28;
-      this.scale.setScalar(1 + Math.sin((1 - k) * Math.PI) * 0.18);
-    } else {
-      this.scale.setScalar(1);
     }
   }
 }

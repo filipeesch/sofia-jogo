@@ -22,8 +22,8 @@ export class Game {
   private sun: THREE.DirectionalLight;
   private clock = new THREE.Clock();
 
-  readonly airplane = new Airplane();
-  readonly flight = new FlightController(this.airplane);
+  readonly airplane: Airplane;
+  readonly flight: FlightController;
   private cam: CameraController;
   readonly world: World;
   readonly dayNight: DayNightCycle;
@@ -39,7 +39,10 @@ export class Game {
   private startX = 0;
   private startY = 0;
 
-  constructor(container: HTMLElement, level: LevelConfig) {
+  constructor(container: HTMLElement, level: LevelConfig, airplane: Airplane = new Airplane()) {
+    this.airplane = airplane;
+    this.flight = new FlightController(airplane);
+
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
