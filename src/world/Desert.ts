@@ -42,7 +42,9 @@ export class Desert extends THREE.Group {
       [8, -6, 7, 2.2],
       [-14, 6, 8, 2.6],
       [16, 12, 6, 2.0],
-      [-6, -16, 7, 2.4]
+      [-6, -16, 7, 2.4],
+      [-18, -14, 6, 2.0],
+      [18, -16, 7, 2.4]
     ];
     for (const [x, z, r, h] of duneDefs) {
       const geo = new THREE.SphereGeometry(1, 16, 12);
@@ -78,7 +80,8 @@ export class Desert extends THREE.Group {
     // Cacti.
     if (models.cactus) {
       const spots: [number, number][] = [
-        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [4, 16], [18, 8], [-18, 14]
+        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [4, 16], [18, 8], [-18, 14],
+        [2, 8], [-12, -8], [14, -20], [-18, 20], [20, 14]
       ];
       for (const [x, z] of spots) {
         const y = this.terrainHeight(x, z);

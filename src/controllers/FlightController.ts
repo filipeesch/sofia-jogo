@@ -15,7 +15,7 @@ export class FlightController {
   readonly speed = 11;
   readonly minAltitude = 3.2;
   readonly maxAltitude = 26;
-  readonly maxRadius = 68;
+  readonly maxRadius = 88;
 
   yaw = 0;
   pitch = 0;

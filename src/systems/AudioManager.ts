@@ -139,24 +139,64 @@ export class AudioManager {
     [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.22, 'triangle', 0.2, i * 0.09));
   }
 
-  // --- Música de fundo procedural (suave, para crianças pequenas) ---
-  // Progressão I–vi–IV–V em Dó maior; baixo em registro grave.
-  private static readonly MUSIC_CHORDS = [
-    { bass: 130.81, tones: [261.63, 329.63, 392.0, 523.25] }, // C
-    { bass: 110.0, tones: [220.0, 261.63, 329.63, 440.0] }, // Am
-    { bass: 87.31, tones: [174.61, 220.0, 261.63, 349.23] }, // F
-    { bass: 98.0, tones: [196.0, 246.94, 293.66, 392.0] }, // G
+  // --- Música de fundo procedural (uma trilha por mundo) ---
+  private static readonly MUSIC_TRACKS: { beat: number; bass: number[]; tones: number[][]; melody: number[] }[] = [
+    {
+      // 0 — Alegre (Dó maior)
+      beat: 0.75,
+      bass: [130.81, 110.0, 87.31, 98.0],
+      tones: [
+        [261.63, 329.63, 392.0, 523.25],
+        [220.0, 261.63, 329.63, 440.0],
+        [174.61, 220.0, 261.63, 349.23],
+        [196.0, 246.94, 293.66, 392.0]
+      ],
+      melody: [523.25, 0, 659.25, 783.99, 880.0, 0, 783.99, 659.25, 587.33, 0, 659.25, 523.25, 0, 0, 783.99, 0]
+    },
+    {
+      // 1 — Calma (Fá maior)
+      beat: 0.85,
+      bass: [87.31, 130.81, 73.42, 58.27],
+      tones: [
+        [174.61, 220.0, 261.63, 349.23],
+        [261.63, 329.63, 392.0, 523.25],
+        [146.83, 174.61, 220.0, 293.66],
+        [116.54, 146.83, 174.61, 233.08]
+      ],
+      melody: [698.46, 587.33, 523.25, 440.0, 0, 523.25, 587.33, 0, 698.46, 783.99, 698.46, 587.33, 523.25, 0, 440.0, 0]
+    },
+    {
+      // 2 — Brincalhona (Sol maior)
+      beat: 0.68,
+      bass: [98.0, 82.41, 130.81, 73.42],
+      tones: [
+        [196.0, 246.94, 293.66, 392.0],
+        [164.81, 196.0, 246.94, 329.63],
+        [261.63, 329.63, 392.0, 523.25],
+        [146.83, 185.0, 220.0, 293.66]
+      ],
+      melody: [783.99, 0, 880.0, 0, 783.99, 659.25, 587.33, 0, 659.25, 0, 587.33, 523.25, 0, 783.99, 880.0, 0]
+    },
+    {
+      // 3 — Sonhadora (Lá menor)
+      beat: 0.9,
+      bass: [110.0, 87.31, 130.81, 98.0],
+      tones: [
+        [220.0, 261.63, 329.63, 440.0],
+        [174.61, 220.0, 261.63, 349.23],
+        [261.63, 329.63, 392.0, 523.25],
+        [196.0, 246.94, 293.66, 392.0]
+      ],
+      melody: [880.0, 0, 783.99, 659.25, 0, 587.33, 659.25, 0, 523.25, 0, 587.33, 659.25, 783.99, 0, 880.0, 0]
+    }
   ];
 
-  // Melodia pentatônica de Dó (uma nota por batida; 0 = pausa).
-  private static readonly MUSIC_MELODY = [
-    523.25, 0, 659.25, 783.99, 880.0, 0, 783.99, 659.25,
-    587.33, 0, 659.25, 523.25, 0, 0, 783.99, 0,
-  ];
+  private musicTrack = 0;
 
-  startMusic(): void {
+  startMusic(track = 0): void {
     const ctx = this.ensure();
     if (!ctx || this.musicTimer !== null) return;
+    this.musicTrack = track % AudioManager.MUSIC_TRACKS.length;
     this.musicStep = 0;
     this.musicNextTime = ctx.currentTime + 0.2;
     this.musicTimer = window.setInterval(() => this.scheduleMusic(), 200);
@@ -172,7 +212,8 @@ export class AudioManager {
   private scheduleMusic(): void {
     const ctx = this.ensure();
     if (!ctx || !this.master || ctx.state !== 'running') return;
-    const beat = 0.75; // ~80 BPM
+    const track = AudioManager.MUSIC_TRACKS[this.musicTrack];
+    const beat = track.beat;
     const horizon = ctx.currentTime + 1.2;
     // Re-ancora após uma suspensão/desbloqueio de gesto para não disparar notas atrasadas.
     if (this.musicNextTime < ctx.currentTime - 0.25) {
@@ -181,10 +222,10 @@ export class AudioManager {
     while (this.musicNextTime < horizon) {
       const when = this.musicNextTime - ctx.currentTime;
       const step = this.musicStep % 16;
-      const chord = AudioManager.MUSIC_CHORDS[Math.floor(step / 4)];
-      if (step % 4 === 0) this.tone(chord.bass, beat * 3.6, 'sine', 0.1, when);
-      this.tone(chord.tones[step % 4], beat * 0.85, 'triangle', 0.045, when);
-      const m = AudioManager.MUSIC_MELODY[step];
+      const bar = Math.floor(step / 4);
+      if (step % 4 === 0) this.tone(track.bass[bar], beat * 3.6, 'sine', 0.1, when);
+      this.tone(track.tones[bar][step % 4], beat * 0.85, 'triangle', 0.045, when);
+      const m = track.melody[step];
       if (m > 0) this.tone(m, beat * 1.4, 'sine', 0.05, when);
       this.musicNextTime += beat;
       this.musicStep = (this.musicStep + 1) % 16;

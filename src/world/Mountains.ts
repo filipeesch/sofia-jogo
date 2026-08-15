@@ -69,7 +69,9 @@ export class Mountains extends THREE.Group {
     const hillDefs: [number, number, number, number][] = [
       [10, -6, 5, 1.6],
       [-16, -12, 6, 2.0],
-      [14, 16, 5, 1.8]
+      [14, 16, 5, 1.8],
+      [-8, 14, 5, 1.6],
+      [16, -14, 6, 2.0]
     ];
     for (const [x, z, r, h] of hillDefs) {
       const hillGeo = new THREE.SphereGeometry(1, 12, 10);
@@ -88,7 +90,8 @@ export class Mountains extends THREE.Group {
     // Trees scattered in the valley (avoiding the lake).
     const treeSpots: [number, number][] = [
       [3, -4], [8, -14], [6, 12], [-8, -18], [18, 0],
-      [-20, 12], [0, 18], [-24, -4], [22, -10]
+      [-20, 12], [0, 18], [-24, -4], [22, -10],
+      [12, -2], [-12, -20], [16, 18], [-16, 18], [24, -12]
     ];
     treeSpots.forEach(([x, z], i) => {
       if (Math.hypot(x, z) > 28) return;

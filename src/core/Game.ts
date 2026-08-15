@@ -9,6 +9,7 @@ import { ProximityEvents } from '../systems/ProximityEvents';
 import { ParticleEffects } from '../systems/ParticleEffects';
 import { AudioManager } from '../systems/AudioManager';
 import { UI } from '../ui/UI';
+import { AmbientPlanes } from '../world/AmbientPlanes';
 import type { LevelConfig } from '../levels';
 import { clamp } from '../utils';
 import type { WorldModels } from '../assets';
@@ -35,12 +36,14 @@ export class Game {
   private ui: UI;
 
   private trailTimer = 0;
+  private ambientPlanes: AmbientPlanes;
+  private musicTrack: number;
 
   private activePointer: number | null = null;
   private startX = 0;
   private startY = 0;
 
-  constructor(container: HTMLElement, level: LevelConfig, airplane: Airplane = new Airplane(), models: WorldModels = {}) {
+  constructor(container: HTMLElement, level: LevelConfig, airplane: Airplane = new Airplane(), models: WorldModels = {}, ambientModel?: THREE.Group) {
     this.airplane = airplane;
     this.flight = new FlightController(airplane);
 
@@ -95,6 +98,10 @@ export class Game {
     this.airplane.rotation.order = 'YXZ';
     this.flight.yaw = Math.PI; // face the island center
     this.scene.add(this.airplane);
+
+    this.musicTrack = level.music;
+    this.ambientPlanes = new AmbientPlanes(ambientModel);
+    this.ambientPlanes.addToScene(this.scene);
 
     this.proximity = new ProximityEvents(this.world, this.particles, this.audio, this.airplane);
 
@@ -242,6 +249,7 @@ export class Game {
     this.cam.update(dt, this.airplane, this.flight.forward);
 
     this.world.update(dt, state.nightAmount);
+    this.ambientPlanes.update(dt);
     this.collectibles.update(dt, this.airplane.position, this.particles, this.audio);
     this.proximity.update(dt, state.nightAmount);
     this.particles.update(dt);
@@ -263,7 +271,7 @@ export class Game {
   start(): void {
     this.clock.start();
     this.renderer.setAnimationLoop(this.tick);
-    this.audio.startMusic();
+    this.audio.startMusic(this.musicTrack);
   }
 
   dispose(): void {

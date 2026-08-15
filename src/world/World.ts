@@ -48,7 +48,9 @@ export class World {
     const birdSpots: [number, number, number][] = [
       [22, 9, 6],
       [-26, 10, -8],
-      [12, 11, 22]
+      [12, 11, 22],
+      [0, 12, -20],
+      [-12, 13, 14]
     ];
     birdSpots.forEach((p, i) => {
       const b = new Bird(birdColors[i % birdColors.length], models.bird ? models.bird.clone() : undefined);
@@ -66,7 +68,9 @@ export class World {
     const balloonSpots: [number, number, number][] = [
       [20, 12, 14],
       [-22, 15, 20],
-      [2, 17, -32]
+      [2, 17, -32],
+      [-4, 18, 8],
+      [16, 14, -24]
     ];
     balloonSpots.forEach((p, i) => {
       const bl = new Balloon(balloonColors[i], models.balloon ? models.balloon.clone() : undefined);

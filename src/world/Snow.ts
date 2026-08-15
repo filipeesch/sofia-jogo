@@ -43,7 +43,9 @@ export class Snow extends THREE.Group {
       [10, 6, 6, 2.0],
       [-16, 8, 7, 2.4],
       [4, -18, 5, 1.6],
-      [18, -8, 6, 2.0]
+      [18, -8, 6, 2.0],
+      [-10, -12, 5, 1.7],
+      [22, 6, 5, 1.8]
     ];
     for (const [x, z, r, h] of hillDefs) {
       const geo = new THREE.SphereGeometry(1, 16, 12);
@@ -66,7 +68,7 @@ export class Snow extends THREE.Group {
 
     // Snowmen.
     if (models.snowman) {
-      const spots: [number, number][] = [[6, 8], [-14, -4], [0, 14]];
+      const spots: [number, number][] = [[6, 8], [-14, -4], [0, 14], [-4, 12], [10, -10]];
       for (const [x, z] of spots) {
         const y = this.terrainHeight(x, z);
         const c = models.snowman.clone();
@@ -80,7 +82,8 @@ export class Snow extends THREE.Group {
     // Pine trees.
     if (models.pine) {
       const spots: [number, number][] = [
-        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [-18, 16], [4, 16], [18, -18]
+        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [-18, 16], [4, 16], [18, -18],
+        [10, 0], [-12, 12], [20, -12], [-24, 10], [12, 18]
       ];
       for (const [x, z] of spots) {
         const y = this.terrainHeight(x, z);

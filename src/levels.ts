@@ -16,6 +16,7 @@ export interface LevelConfig {
   starCount: number;
   cloudCount: number;
   houseColors: number[];
+  music: number;
 }
 
 export const LEVELS: LevelConfig[] = [
@@ -33,8 +34,9 @@ export const LEVELS: LevelConfig[] = [
     cycleSeconds: 150,
     startNight: false,
     starCount: 16,
-    cloudCount: 6,
-    houseColors: [0xff8a80, 0x80d8ff, 0xfff176]
+    cloudCount: 10,
+    houseColors: [0xff8a80, 0x80d8ff, 0xfff176],
+    music: 0
   },
   {
     id: 'montanhas',
@@ -50,8 +52,9 @@ export const LEVELS: LevelConfig[] = [
     cycleSeconds: 150,
     startNight: false,
     starCount: 16,
-    cloudCount: 8,
-    houseColors: [0xc98a5e, 0xa8d8b9, 0xffd88a]
+    cloudCount: 12,
+    houseColors: [0xc98a5e, 0xa8d8b9, 0xffd88a],
+    music: 1
   },
   {
     id: 'neve',
@@ -67,8 +70,9 @@ export const LEVELS: LevelConfig[] = [
     cycleSeconds: 150,
     startNight: false,
     starCount: 16,
-    cloudCount: 6,
-    houseColors: [0xc9644a, 0x9fd0f0, 0xe0b060]
+    cloudCount: 10,
+    houseColors: [0xc9644a, 0x9fd0f0, 0xe0b060],
+    music: 3
   },
   {
     id: 'deserto',
@@ -84,8 +88,9 @@ export const LEVELS: LevelConfig[] = [
     cycleSeconds: 150,
     startNight: false,
     starCount: 16,
-    cloudCount: 4,
-    houseColors: [0xd9a066, 0xcf9a5a, 0xe0b080]
+    cloudCount: 8,
+    houseColors: [0xd9a066, 0xcf9a5a, 0xe0b080],
+    music: 2
   },
   {
     id: 'noite',
@@ -101,7 +106,8 @@ export const LEVELS: LevelConfig[] = [
     cycleSeconds: 180,
     startNight: true,
     starCount: 22,
-    cloudCount: 5,
-    houseColors: [0xffe08a, 0x9ad0ff, 0xffb3d9]
+    cloudCount: 9,
+    houseColors: [0xffe08a, 0x9ad0ff, 0xffb3d9],
+    music: 3
   }
 ];

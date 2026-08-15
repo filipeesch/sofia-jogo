@@ -19,7 +19,9 @@ export class Island extends THREE.Group {
   private hills = [
     { x: -8, z: -12, r: 6, h: 2.2 },
     { x: 10, z: 14, r: 5, h: 1.8 },
-    { x: -14, z: 10, r: 5.5, h: 2.0 }
+    { x: -14, z: 10, r: 5.5, h: 2.0 },
+    { x: 18, z: 14, r: 5, h: 1.8 },
+    { x: -22, z: -4, r: 5.5, h: 2.0 }
   ];
 
   constructor(config: { grass?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
@@ -99,7 +101,8 @@ export class Island extends THREE.Group {
     // Trees (detailed GLB when available, procedural fallback otherwise).
     const treeSpots: [number, number][] = [
       [-3, 3], [8, 6], [-18, 6], [4, -12], [-6, -18], [14, -4],
-      [-20, -8], [12, 16], [-2, 16], [22, 8], [-14, -16], [18, -18]
+      [-20, -8], [12, 16], [-2, 16], [22, 8], [-14, -16], [18, -18],
+      [6, -8], [16, 12], [-24, 14], [0, -24], [26, -6], [-10, -22]
     ];
     treeSpots.forEach(([x, z], i) => {
       if (Math.hypot(x, z) > this.radius - 3) return;

@@ -2,8 +2,9 @@ import './style.css';
 import { Game } from './core/Game';
 import { HomeScreen } from './ui/HomeScreen';
 import { Airplane } from './entities/Airplane';
-import { loadWorldModels } from './assets';
+import { loadGLB, loadWorldModels } from './assets';
 import { LEVELS } from './levels';
+import type { Group } from 'three';
 
 const app = document.getElementById('app')!;
 let game: Game | null = null;
@@ -22,8 +23,17 @@ async function startLevel(id: string): Promise<void> {
 
   const models = await loadWorldModels(level.worldType);
 
+  // Other airplanes flying in the background (reuse the same model).
+  let ambientModel: Group | undefined;
+  try {
+    ambientModel = await loadGLB('models/aviao.glb');
+  } catch (err) {
+    console.warn('Nao carregou aviao de fundo.', err);
+    ambientModel = undefined;
+  }
+
   home.hide();
-  game = new Game(app, level, airplane, models);
+  game = new Game(app, level, airplane, models, ambientModel);
   game.onExit = () => backHome();
   game.start();
 }
