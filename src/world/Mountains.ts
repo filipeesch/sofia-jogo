@@ -80,7 +80,7 @@ export class Mountains extends THREE.Group {
         hillGeo,
         new THREE.MeshStandardMaterial({ color: new THREE.Color(grass).offsetHSL(0, 0, 0.06).getHex(), roughness: 0.85, flatShading: true })
       );
-      hill.position.set(x, h * 0.5, z);
+      hill.position.set(x, 0, z);
       hill.castShadow = true;
       hill.receiveShadow = true;
       this.add(hill);
@@ -91,7 +91,7 @@ export class Mountains extends THREE.Group {
     const treeSpots: [number, number][] = [
       [3, -4], [8, -14], [6, 12], [-8, -18], [18, 0],
       [-20, 12], [0, 18], [-24, -4], [22, -10],
-      [12, -2], [-12, -20], [16, 18], [-16, 18], [24, -12]
+      [12, 4], [-12, -20], [14, 22], [-16, 18], [24, -12]
     ];
     treeSpots.forEach(([x, z], i) => {
       if (Math.hypot(x, z) > 28) return;
@@ -184,7 +184,7 @@ export class Mountains extends THREE.Group {
     for (const hill of this.hills) {
       const d = Math.hypot(x - hill.x, z - hill.z);
       const n = d / hill.r;
-      if (n < 1) h += hill.h * (1 - n * n);
+      if (n < 1) h += hill.h * Math.sqrt(Math.max(0, 1 - n * n));
     }
     return h;
   }

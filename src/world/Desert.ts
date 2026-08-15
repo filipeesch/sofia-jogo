@@ -44,13 +44,13 @@ export class Desert extends THREE.Group {
       [16, 12, 6, 2.0],
       [-6, -16, 7, 2.4],
       [-18, -14, 6, 2.0],
-      [18, -16, 7, 2.4]
+      [28, -20, 7, 2.4]
     ];
     for (const [x, z, r, h] of duneDefs) {
       const geo = new THREE.SphereGeometry(1, 16, 12);
       geo.scale(r, h, r);
       const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xecc98f, roughness: 0.95 }));
-      m.position.set(x, h * 0.5, z);
+      m.position.set(x, 0, z);
       m.receiveShadow = true;
       this.add(m);
       this.dunes.push({ x, z, r, h });
@@ -80,8 +80,8 @@ export class Desert extends THREE.Group {
     // Cacti.
     if (models.cactus) {
       const spots: [number, number][] = [
-        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [4, 16], [18, 8], [-18, 14],
-        [2, 8], [-12, -8], [14, -20], [-18, 20], [20, 14]
+        [-4, -2], [8, -14], [24, 16], [-22, 0], [-6, -18], [22, -4], [4, 16], [22, 6], [-18, 14],
+        [2, 8], [-12, -8], [10, -22], [-18, 20], [24, 12]
       ];
       for (const [x, z] of spots) {
         const y = this.terrainHeight(x, z);
@@ -100,7 +100,7 @@ export class Desert extends THREE.Group {
     let h = 0;
     for (const d of this.dunes) {
       const n = Math.hypot(x - d.x, z - d.z) / d.r;
-      if (n < 1) h += d.h * (1 - n * n);
+      if (n < 1) h += d.h * Math.sqrt(Math.max(0, 1 - n * n));
     }
     return h;
   }

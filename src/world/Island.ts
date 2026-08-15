@@ -59,7 +59,7 @@ export class Island extends THREE.Group {
         hillGeo,
         new THREE.MeshStandardMaterial({ color: hillColor, roughness: 0.85, flatShading: true })
       );
-      mesh.position.set(hill.x, this.baseHeight(hill.x, hill.z) + hill.h * 0.5, hill.z);
+      mesh.position.set(hill.x, this.baseHeight(hill.x, hill.z), hill.z);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.add(mesh);
@@ -69,7 +69,7 @@ export class Island extends THREE.Group {
     const mountainBaseY = this.baseHeight(this.mountainPos.x, this.mountainPos.z);
     if (models.mountain) {
       const m = models.mountain.clone();
-      m.position.set(this.mountainPos.x, mountainBaseY, this.mountainPos.z);
+      m.position.set(this.mountainPos.x, mountainBaseY - 0.3, this.mountainPos.z);
       m.rotation.y = rand(0, TAU);
       this.add(m);
     } else {
@@ -101,8 +101,8 @@ export class Island extends THREE.Group {
     // Trees (detailed GLB when available, procedural fallback otherwise).
     const treeSpots: [number, number][] = [
       [-3, 3], [8, 6], [-18, 6], [4, -12], [-6, -18], [14, -4],
-      [-20, -8], [12, 16], [-2, 16], [22, 8], [-14, -16], [18, -18],
-      [6, -8], [16, 12], [-24, 14], [0, -24], [26, -6], [-10, -22]
+      [-26, -8], [12, 20], [-2, 16], [22, 8], [-14, -16], [18, -18],
+      [6, -8], [16, 6], [-24, 14], [0, -24], [26, -6], [-10, -22]
     ];
     treeSpots.forEach(([x, z], i) => {
       if (Math.hypot(x, z) > this.radius - 3) return;
@@ -157,7 +157,7 @@ export class Island extends THREE.Group {
     for (const hill of this.hills) {
       const hd = Math.hypot(x - hill.x, z - hill.z);
       const hn = hd / hill.r;
-      if (hn < 1) h += hill.h * (1 - hn * hn);
+      if (hn < 1) h += hill.h * Math.sqrt(Math.max(0, 1 - hn * hn));
     }
     return h;
   }
