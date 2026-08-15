@@ -97,7 +97,7 @@ export class Mountains extends THREE.Group {
     });
 
     // Cabin.
-    const cabin = new House(houseColors[0], 0x8d4a2f);
+    const cabin = new House(houseColors[0], 0x8d4a2f, models.house ? models.house.clone() : undefined);
     cabin.position.set(12, 0, 10);
     this.add(cabin);
     this.houses.push(cabin);

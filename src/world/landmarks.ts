@@ -3,13 +3,32 @@ import { rand, TAU } from '../utils';
 
 // A cozy little house with windows that light up (and can blink) at night.
 export class House extends THREE.Group {
-  private windowMat: THREE.MeshStandardMaterial;
+  private windowMats: THREE.MeshStandardMaterial[] = [];
   private blinkTimer = 0;
   private lightsOn = false;
 
-  constructor(color: number, roofColor: number) {
+  constructor(color: number, roofColor: number, model?: THREE.Group) {
     super();
 
+    if (model) {
+      this.add(model);
+      model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        // Clone materials per instance so each house can have its own tint.
+        if (Array.isArray(m.material)) m.material = m.material.map((mm) => mm.clone());
+        else m.material = m.material.clone();
+        const mats = (Array.isArray(m.material) ? m.material : [m.material]) as THREE.MeshStandardMaterial[];
+        for (const mm of mats) {
+          if (mm.name === 'Windows') this.windowMats.push(mm);
+          else if (mm.name === 'Body') mm.color.set(color);
+          else if (mm.name === 'Roof') mm.color.set(roofColor);
+        }
+      });
+      return;
+    }
+
+    // Procedural fallback.
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(2.2, 1.6, 2.2),
       new THREE.MeshStandardMaterial({ color, roughness: 0.7, flatShading: true })
@@ -28,14 +47,15 @@ export class House extends THREE.Group {
     roof.castShadow = true;
     this.add(roof);
 
-    this.windowMat = new THREE.MeshStandardMaterial({
+    const windowMat = new THREE.MeshStandardMaterial({
       color: 0x2b3a4a,
       emissive: 0xffd76b,
       emissiveIntensity: 0,
       roughness: 0.3
     });
+    this.windowMats.push(windowMat);
     for (let i = 0; i < 2; i++) {
-      const w = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.1), this.windowMat);
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.1), windowMat);
       w.position.set(-0.6 + i * 1.2, 0.95, 1.11);
       this.add(w);
     }
@@ -50,19 +70,26 @@ export class House extends THREE.Group {
 
   setLights(on: boolean): void {
     this.lightsOn = on;
-    if (this.blinkTimer <= 0) this.windowMat.emissiveIntensity = on ? 1.4 : 0;
+    if (this.blinkTimer <= 0) this.applyLights(on);
   }
 
   blink(): void {
     this.blinkTimer = 2.2;
   }
 
+  private applyLights(on: boolean): void {
+    for (const m of this.windowMats) {
+      m.emissive.set(on ? 0xffd76b : 0x000000);
+      m.emissiveIntensity = on ? 1.4 : 0;
+    }
+  }
+
   update(dt: number): void {
     if (this.blinkTimer > 0) {
       this.blinkTimer -= dt;
       const on = this.lightsOn && Math.floor(this.blinkTimer * 8) % 2 === 0;
-      this.windowMat.emissiveIntensity = on ? 1.4 : 0;
-      if (this.blinkTimer <= 0) this.windowMat.emissiveIntensity = this.lightsOn ? 1.4 : 0;
+      this.applyLights(on);
+      if (this.blinkTimer <= 0) this.applyLights(this.lightsOn);
     }
   }
 }

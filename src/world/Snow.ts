@@ -12,7 +12,7 @@ export class Snow extends THREE.Group {
   private pines: { g: THREE.Group; phase: number; speed: number }[] = [];
   private hills: { x: number; z: number; r: number; h: number }[] = [];
 
-  constructor(config: { ground?: number; lake?: number; houseColors?: number[] } = {}) {
+  constructor(config: { ground?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
     super();
 
     const ground = config.ground ?? 0xf0f6fc;
@@ -58,42 +58,41 @@ export class Snow extends THREE.Group {
     // Cozy cabin.
     const cx = 0;
     const cz = -14;
-    const cabin = new House(houseColors[0], 0x8a4a2f);
+    const cabin = new House(houseColors[0], 0x8a4a2f, models.house ? models.house.clone() : undefined);
     cabin.position.set(cx, this.terrainHeight(cx, cz), cz);
     this.add(cabin);
     this.houses.push(cabin);
     this.solids.push({ x: cx, y: this.terrainHeight(cx, cz) + 1.6, z: cz, r: 1.9, h: 3.2 });
-  }
 
-  addModels(models: WorldModels): void {
-    const snowman = models.snowman;
-    const pine = models.pine;
-
-    const snowmanSpots: [number, number][] = [[6, 8], [-14, -4], [0, 14]];
-    for (const [x, z] of snowmanSpots) {
-      if (!snowman) break;
-      const y = this.terrainHeight(x, z);
-      const c = snowman.clone();
-      c.position.set(x, y, z);
-      c.rotation.y = rand(0, TAU);
-      this.add(c);
-      this.solids.push({ x, y: y + 1.8, z, r: 1.6, h: 3.8 });
+    // Snowmen.
+    if (models.snowman) {
+      const spots: [number, number][] = [[6, 8], [-14, -4], [0, 14]];
+      for (const [x, z] of spots) {
+        const y = this.terrainHeight(x, z);
+        const c = models.snowman.clone();
+        c.position.set(x, y, z);
+        c.rotation.y = rand(0, TAU);
+        this.add(c);
+        this.solids.push({ x, y: y + 1.8, z, r: 1.6, h: 3.8 });
+      }
     }
 
-    const pineSpots: [number, number][] = [
-      [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [-18, 16], [4, 16], [18, -18]
-    ];
-    for (const [x, z] of pineSpots) {
-      if (!pine) break;
-      const y = this.terrainHeight(x, z);
-      const s = rand(0.8, 1.3);
-      const c = pine.clone();
-      c.scale.setScalar(s);
-      c.position.set(x, y, z);
-      c.rotation.y = rand(0, TAU);
-      this.add(c);
-      this.pines.push({ g: c, phase: rand(0, TAU), speed: rand(0.6, 1.1) });
-      this.solids.push({ x, y: y + 1.5 * s, z, r: 1.2 * s, h: 4 * s });
+    // Pine trees.
+    if (models.pine) {
+      const spots: [number, number][] = [
+        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [-18, 16], [4, 16], [18, -18]
+      ];
+      for (const [x, z] of spots) {
+        const y = this.terrainHeight(x, z);
+        const s = rand(0.8, 1.3);
+        const c = models.pine.clone();
+        c.scale.setScalar(s);
+        c.position.set(x, y, z);
+        c.rotation.y = rand(0, TAU);
+        this.add(c);
+        this.pines.push({ g: c, phase: rand(0, TAU), speed: rand(0.6, 1.1) });
+        this.solids.push({ x, y: y + 1.5 * s, z, r: 1.2 * s, h: 4 * s });
+      }
     }
   }
 

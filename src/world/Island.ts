@@ -63,23 +63,30 @@ export class Island extends THREE.Group {
       this.add(mesh);
     }
 
-    // Mountain with a snow cap.
+    // Mountain (detailed GLB when available, procedural fallback otherwise).
     const mountainBaseY = this.baseHeight(this.mountainPos.x, this.mountainPos.z);
-    const mountain = new THREE.Mesh(
-      new THREE.ConeGeometry(this.mountainRadius, this.mountainHeight, 12),
-      new THREE.MeshStandardMaterial({ color: 0x9aa7b8, roughness: 0.9, flatShading: true })
-    );
-    mountain.position.set(this.mountainPos.x, mountainBaseY + this.mountainHeight / 2, this.mountainPos.z);
-    mountain.castShadow = true;
-    mountain.receiveShadow = true;
-    this.add(mountain);
+    if (models.mountain) {
+      const m = models.mountain.clone();
+      m.position.set(this.mountainPos.x, mountainBaseY, this.mountainPos.z);
+      m.rotation.y = rand(0, TAU);
+      this.add(m);
+    } else {
+      const mountain = new THREE.Mesh(
+        new THREE.ConeGeometry(this.mountainRadius, this.mountainHeight, 12),
+        new THREE.MeshStandardMaterial({ color: 0x9aa7b8, roughness: 0.9, flatShading: true })
+      );
+      mountain.position.set(this.mountainPos.x, mountainBaseY + this.mountainHeight / 2, this.mountainPos.z);
+      mountain.castShadow = true;
+      mountain.receiveShadow = true;
+      this.add(mountain);
 
-    const snow = new THREE.Mesh(
-      new THREE.ConeGeometry(this.mountainRadius * 0.32, this.mountainHeight * 0.35, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
-    );
-    snow.position.set(this.mountainPos.x, mountainBaseY + this.mountainHeight - this.mountainHeight * 0.17, this.mountainPos.z);
-    this.add(snow);
+      const snow = new THREE.Mesh(
+        new THREE.ConeGeometry(this.mountainRadius * 0.32, this.mountainHeight * 0.35, 12),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+      );
+      snow.position.set(this.mountainPos.x, mountainBaseY + this.mountainHeight - this.mountainHeight * 0.17, this.mountainPos.z);
+      this.add(snow);
+    }
 
     this.solids.push({
       x: this.mountainPos.x,
@@ -108,7 +115,7 @@ export class Island extends THREE.Group {
     ];
     houseSpots.forEach(([x, z], i) => {
       const gy = this.terrainHeight(x, z);
-      const house = new House(houseColors[i % houseColors.length], 0xd84315);
+      const house = new House(houseColors[i % houseColors.length], 0xd84315, models.house ? models.house.clone() : undefined);
       house.position.set(x, gy, z);
       this.add(house);
       this.houses.push(house);

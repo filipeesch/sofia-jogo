@@ -32,13 +32,9 @@ export class World {
     if (config.worldType === 'mountains') {
       this.terrain = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
     } else if (config.worldType === 'snow') {
-      const snow = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors });
-      snow.addModels(models);
-      this.terrain = snow;
+      this.terrain = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
     } else if (config.worldType === 'desert') {
-      const desert = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors });
-      desert.addModels(models);
-      this.terrain = desert;
+      this.terrain = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors }, models);
     } else {
       this.terrain = new Island({ grass: config.groundColor, houseColors: config.houseColors }, models);
       this.ocean = new Ocean({ deep: config.oceanDeep, shallow: config.oceanShallow });

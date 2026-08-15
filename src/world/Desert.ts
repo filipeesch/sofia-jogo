@@ -11,7 +11,7 @@ export class Desert extends THREE.Group {
 
   private dunes: { x: number; z: number; r: number; h: number }[] = [];
 
-  constructor(config: { ground?: number; oasis?: number; houseColors?: number[] } = {}) {
+  constructor(config: { ground?: number; oasis?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
     super();
 
     const ground = config.ground ?? 0xe8c98a;
@@ -57,41 +57,39 @@ export class Desert extends THREE.Group {
     // Adobe house.
     const hx = 8;
     const hz = 6;
-    const house = new House(houseColors[0], 0xa0522d);
+    const house = new House(houseColors[0], 0xa0522d, models.house ? models.house.clone() : undefined);
     house.position.set(hx, this.terrainHeight(hx, hz), hz);
     this.add(house);
     this.houses.push(house);
     this.solids.push({ x: hx, y: this.terrainHeight(hx, hz) + 1.6, z: hz, r: 1.9, h: 3.2 });
-  }
 
-  addModels(models: WorldModels): void {
-    const cactus = models.cactus;
-    const pyramid = models.pyramid;
-
-    if (pyramid) {
+    // Pyramid.
+    if (models.pyramid) {
       const px = 16;
       const pz = -12;
       const py = this.terrainHeight(px, pz);
-      const p = pyramid.clone();
+      const p = models.pyramid.clone();
       p.position.set(px, py, pz);
       p.rotation.y = rand(0, TAU);
       this.add(p);
       this.solids.push({ x: px, y: py + 3.5, z: pz, r: 4.5, h: 7 });
     }
 
-    const cactusSpots: [number, number][] = [
-      [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [4, 16], [18, 8], [-18, 14]
-    ];
-    for (const [x, z] of cactusSpots) {
-      if (!cactus) break;
-      const y = this.terrainHeight(x, z);
-      const s = rand(0.8, 1.4);
-      const c = cactus.clone();
-      c.scale.setScalar(s);
-      c.position.set(x, y, z);
-      c.rotation.y = rand(0, TAU);
-      this.add(c);
-      this.solids.push({ x, y: y + 1.0 * s, z, r: 0.9 * s, h: 2.0 * s });
+    // Cacti.
+    if (models.cactus) {
+      const spots: [number, number][] = [
+        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [22, -4], [4, 16], [18, 8], [-18, 14]
+      ];
+      for (const [x, z] of spots) {
+        const y = this.terrainHeight(x, z);
+        const s = rand(0.8, 1.4);
+        const c = models.cactus.clone();
+        c.scale.setScalar(s);
+        c.position.set(x, y, z);
+        c.rotation.y = rand(0, TAU);
+        this.add(c);
+        this.solids.push({ x, y: y + 1.0 * s, z, r: 0.9 * s, h: 2.0 * s });
+      }
     }
   }
 
