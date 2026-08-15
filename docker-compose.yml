@@ -1,0 +1,10 @@
+services:
+  sofia-jogo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sofia-jogo:latest
+    container_name: sofia-jogo
+    ports:
+      - "127.0.0.1:8180:80"
+    restart: unless-stopped
