@@ -1,0 +1,178 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  background: linear-gradient(180deg, #54b3f0 0%, #cfeffb 100%);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+#app,
+canvas {
+  position: fixed;
+  inset: 0;
+}
+
+canvas {
+  display: block;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- In-game HUD ---------- */
+
+.counter {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-size: clamp(28px, 6vw, 48px);
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  padding: 8px 20px;
+  line-height: 1;
+}
+
+.counter.pop {
+  animation: pop 0.25s ease;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.btn {
+  position: absolute;
+  pointer-events: auto;
+  border: none;
+  border-radius: 50%;
+  width: clamp(64px, 12vw, 88px);
+  height: clamp(64px, 12vw, 88px);
+  font-size: clamp(28px, 7vw, 44px);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  touch-action: none;
+  line-height: 1;
+}
+
+.btn:active {
+  transform: scale(0.92);
+}
+
+.btn.special {
+  right: 20px;
+  bottom: 20px;
+  background: linear-gradient(135deg, #ffe259, #ffa751);
+}
+
+.btn.sound {
+  left: 20px;
+  bottom: 20px;
+}
+
+.btn.home {
+  top: 14px;
+  right: 14px;
+}
+
+/* ---------- Home screen ---------- */
+
+.home {
+  pointer-events: auto;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: radial-gradient(120% 120% at 50% 0%, #7cc8f8 0%, #54b3f0 45%, #3d8fd6 100%);
+}
+
+.home-title {
+  margin: 0;
+  font-size: clamp(34px, 8vw, 64px);
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.home-subtitle {
+  margin: 0;
+  font-size: clamp(18px, 4vw, 26px);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+}
+
+.home-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  max-width: 980px;
+}
+
+.home-card {
+  pointer-events: auto;
+  border: none;
+  cursor: pointer;
+  border-radius: 26px;
+  padding: 22px 18px;
+  width: clamp(220px, 28vw, 270px);
+  min-height: 190px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.home-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+}
+
+.home-card:active {
+  transform: scale(0.96);
+}
+
+.home-card-emoji {
+  font-size: 64px;
+  line-height: 1;
+}
+
+.home-card-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: #22405c;
+}
+
+.home-card-desc {
+  font-size: 15px;
+  color: #66809a;
+  font-weight: 500;
+}

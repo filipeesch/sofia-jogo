@@ -1,0 +1,35 @@
+{
+  "name": "dev-cycle",
+  "description": "Ciclo completo de desenvolvimento: research -> implement -> tests -> review -> review-fix -> re-review -> last-fix",
+  "whenToUse": "Tarefas longas de desenvolvimento que precisam de pesquisa, implementação, testes e revisão iterativa com correções.",
+  "phases": [
+    {
+      "title": "research",
+      "detail": "Pesquisa e plano técnico"
+    },
+    {
+      "title": "implement",
+      "detail": "Implementação da tarefa"
+    },
+    {
+      "title": "tests",
+      "detail": "Escrita e execução de testes"
+    },
+    {
+      "title": "review",
+      "detail": "Revisão de código (bugs, segurança, qualidade)"
+    },
+    {
+      "title": "review-fix",
+      "detail": "Correção dos problemas pelo mesmo engenheiro"
+    },
+    {
+      "title": "re-review",
+      "detail": "Segunda revisão após as correções"
+    },
+    {
+      "title": "last-fix",
+      "detail": "Correções finais e fechamento"
+    }
+  ]
+}
