@@ -9,6 +9,12 @@ import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 export class Airplane extends THREE.Group {
   private _propeller = new THREE.Object3D();
   private _navMat: THREE.MeshStandardMaterial | null = null;
+  // Forward (+Z) expressed in the propeller's local frame. The Blender->glTF
+  // export bakes a 90-degree X rotation into the node, so its local axes do
+  // not match the model axes; computing the axis at load time keeps the spin
+  // correct for both the GLB model and the procedural one (local +Z).
+  private _spinAxis = new THREE.Vector3(0, 0, 1);
+  private _qSpin = new THREE.Quaternion();
   private bounceT = 0;
 
   get propeller(): THREE.Object3D {
@@ -36,6 +42,7 @@ export class Airplane extends THREE.Group {
       if (mat && mat.name === 'NavLights') plane._navMat = mat as THREE.MeshStandardMaterial;
     });
     plane._propeller = gltf.scene.getObjectByName('Propeller') ?? new THREE.Object3D();
+    plane._spinAxis.set(0, 0, 1).applyQuaternion(plane._propeller.quaternion.clone().invert()).normalize();
     return plane;
   }
 
@@ -48,7 +55,9 @@ export class Airplane extends THREE.Group {
   }
 
   update(dt: number): void {
-    this._propeller.rotation.z += 28 * dt;
+    // Gentle spin (~2 rev/s) so the blades are visible, not a blur.
+    this._qSpin.setFromAxisAngle(this._spinAxis, 12 * dt);
+    this._propeller.quaternion.multiply(this._qSpin);
     if (this.bounceT > 0) {
       this.bounceT -= dt;
       const k = Math.max(0, this.bounceT) / 0.28;
