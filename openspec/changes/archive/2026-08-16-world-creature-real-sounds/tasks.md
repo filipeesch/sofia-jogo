@@ -7,4 +7,4 @@
 
 - [x] 2.1 `tsc --noEmit` + `vite build` passando
 - [x] 2.2 Testar no browser (`?level=vale`): clique na vaca → buffer source (som real) e pulo; com MP3s bloqueados → fallback procedural (osciladores) e pulo
-- [ ] 2.3 Commit + push
+- [x] 2.3 Commit + push
