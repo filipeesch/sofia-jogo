@@ -238,12 +238,144 @@ canvas {
 
 /* ---------- Paint app ---------- */
 
-.paint { position: fixed; inset: 0; display: flex; flex-direction: column; background: #fff; }
-.paint canvas { flex: 1; width: 100%; touch-action: none; cursor: crosshair; }
-.paint-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px; flex-wrap: wrap; background: #f2f6fa; border-top: 2px solid #e3ebf2; }
-.paint-color { width: 46px; height: 46px; border-radius: 50%; border: 3px solid #d7e2ec; cursor: pointer; }
-.paint-color.active { border-color: #333; box-shadow: 0 0 0 3px #fff inset; }
-.paint-action { height: 46px; padding: 0 16px; border-radius: 999px; border: none; background: #fff; font-size: 20px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.paint {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  pointer-events: auto; /* override #ui pointer-events:none so everything is tappable */
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* undo the game's global canvas{position:fixed;inset:0} so this canvas stays in-flow */
+.paint canvas {
+  position: static;
+  inset: auto;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  touch-action: none;
+  cursor: crosshair;
+  background: #fff;
+}
+.paint-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f2f6fa;
+  border-bottom: 2px solid #e3ebf2;
+  flex-wrap: wrap;
+}
+.paint-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #34506b;
+  margin-right: auto;
+}
+.paint-action {
+  height: 42px;
+  min-width: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: none;
+  background: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  pointer-events: auto;
+}
+.paint-action:active { transform: scale(0.92); }
+.paint-papers { display: flex; gap: 6px; align-items: center; }
+.paint-paper {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #d7e2ec;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.paint-paper.active { border-color: #34506b; box-shadow: 0 0 0 2px #fff inset; }
+
+.paint-stamps {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: #fff;
+  border-top: 2px solid #eef3f8;
+  scrollbar-width: none;
+}
+.paint-stamps::-webkit-scrollbar { display: none; }
+.paint-stamp {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  font-size: 30px;
+  border-radius: 14px;
+  border: 2px solid #e3ebf2;
+  background: #f7fafc;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.paint-stamp.active { border-color: #42a5f5; background: #e3f2fd; box-shadow: 0 0 0 2px #42a5f5 inset; }
+.paint-stamp:active { transform: scale(0.9); }
+
+.paint-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #f2f6fa;
+  border-top: 2px solid #e3ebf2;
+  flex-wrap: wrap;
+}
+.paint-tool-btn {
+  height: 46px;
+  min-width: 46px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.paint-tool-btn.active { border-color: #34506b; background: #e3f2fd; }
+.paint-sizes { display: flex; gap: 6px; align-items: center; }
+.paint-size {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid #d7e2ec;
+  background: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.paint-size i { border-radius: 50%; background: #34506b; display: block; }
+.paint-size.active { border-color: #34506b; }
+.paint-colors { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.paint-color {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid #d7e2ec;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.paint-color.active { border-color: #34506b; box-shadow: 0 0 0 2px #fff inset; transform: scale(1.15); }
 
 /* ---------- Bubbles app ---------- */
 

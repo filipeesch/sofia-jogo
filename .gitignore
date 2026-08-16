@@ -6,3 +6,5 @@ dist
 .tmp_*
 .shots/
 _shots/
+.npm-cache-pw/
+.pw-browsers/
