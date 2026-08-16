@@ -153,5 +153,24 @@ export const LEVELS: LevelConfig[] = [
     houseColors: [0xffe08a, 0x9ad0ff, 0xffb3d9],
     music: 3,
     vehicle: 'both'
+  },
+  {
+    id: 'teste-e2e',
+    name: 'Vale do Teste',
+    emoji: '🟦',
+    description: 'Fase de teste e2e',
+    worldType: 'valley',
+    skyDayTop: 0x7fc8f8,
+    skyDayHorizon: 0xeaf6ff,
+    groundColor: 0x6fc45c,
+    oceanDeep: 0x1a7bb0,
+    oceanShallow: 0x38b0d8,
+    cycleSeconds: 150,
+    startNight: false,
+    starCount: 18,
+    cloudCount: 10,
+    houseColors: [0xff8a80, 0x80d8ff, 0xfff176],
+    music: 1,
+    vehicle: 'both'
   }
 ];

@@ -145,16 +145,66 @@ const DRAFTS = {
 O gerador coloca o primitivo + registra o `Solid`; o cenário fica visível no
 primeiro run com posicionamento/colisão já resolvidos.
 
-## 8. Verificação visual (modelo com visão + MCPs do jogo)
+## 8. Iniciar e testar o jogo (debug + Playwright)
+
+As tools `mcp__game__*` **só funcionam se o jogo estiver rodando em modo debug**.
+A flag é `?debug=1` na URL: ela liga o `DebugCapture` (`src/debug/DebugCapture.ts`),
+que instala `window.__debug` e passa a **consultar o capture server** (porta 4477)
+a cada 400ms. Sem essa flag, os comandos ficam na fila e nada acontece.
+
+### Stack (subir em background com `bash` + `run_in_background: true`)
+
+- `npm run shots` → capture server em `http://localhost:4477` (grava em `_shots/`).
+- `npm run dev` → Vite em `http://localhost:5173`.
+- Atalho: `npm run game [level] [vehicle]` → sobe os dois **e** abre o browser em
+  `?debug=1&level=<id>&vehicle=<vehicle>`.
+
+Servidores ficam de pé; rode em background, não bloqueie o turno esperando.
+
+### Abrir o jogo em debug (Playwright)
+
+Deep-link: `http://localhost:5173/?debug=1&level=<id>&vehicle=<vehicle>`.
+
+- **Playwright MCP** (`mcp__playwright__*`, se disponível): `navigate` até a URL,
+  espere o load, e tire screenshot da **página inteira** (inclui home/UI — o
+  `snap` do jogo captura só o canvas 3D, não a UI).
+- Sem MCP, use o CLI: `npx playwright screenshot <url> _shots/pagina.png`.
+
+Após **criar uma fase nova** em `src/levels.ts`, recarregue a página (Playwright
+navigate de novo) pra ela entrar no `LEVELS` do jogo; depois `load_level('id')`.
+
+### Cadeia de relé (como o comando chega ao jogo)
+
+```
+mcp__game__*  →  scripts/game-mcp.mjs (MCP stdio)  →  POST /cmd no capture server (4477)
+             →  DebugCapture.pollCommands() do jogo  →  executa  →  PNG/webm volta
+             →  POST /shot | /clip  →  salvo em _shots/
+```
+
+⚠️ **Gotcha**: `mcp__game__list_levels` devolve uma lista **hardcoded** dentro de
+`scripts/game-mcp.mjs` (não é o `levels.ts` vivo). Para fases novas, chame
+`mcp__game__load_level('id-novo')` direto (que lê o `LEVELS` real do jogo), e
+**não** confie no `list_levels` para enxergá-las.
+
+### Troubleshooting
+
+- `mcp__game__*` responde "capture server offline?" → rode `npm run shots`.
+- Fase não aparece → confira `level` id e `vehicle` no deep-link; sem `?level=` abre a home (seletor).
+- Quer capturar a UI (home, botões)? Playwright screenshot da página, não o `snap` do jogo.
+
+## 9. Verificação visual (modelo com visão + MCPs do jogo)
 
 **Você não confia só no código — você olha.** Tools disponíveis:
 
-- `set_view(px,py,pz,tx,ty,tz)` → posiciona a câmera num ponto exato.
-- `set_view_and_snap(px,py,pz,tx,ty,tz,filename)` → posiciona **e** salva `_shots/<filename>.png`.
-- `sweep(points)` → teleporta por N pontos capturando um PNG em cada (grade aérea).
-- `snap(filename)` → salva o frame atual.
-- `record(seconds)` → grava webm em `_shots/` (flythrough).
-- `resume_chase` → volta a câmera a seguir o veículo (encerra o modo livre).
+- `mcp__game__list_levels()` → lista os cenários (id, nome, veículo permitido).
+- `mcp__game__load_level(level, vehicle?)` → troca o cenário **em runtime** (id da fase + `car`|`airplane`), sem recarregar a página. É assim que você carrega a fase recém-criada pra inspecionar.
+- `mcp__game__set_view(px,py,pz,tx,ty,tz)` → move a câmera livre para `(px,py,pz)` olhando para `(tx,ty,tz)`.
+- `mcp__game__set_view_and_snap(px,py,pz,tx,ty,tz,filename?)` → idem **e** salva `_shots/<filename>.png`.
+- `mcp__game__snap(filename?)` → salva o frame atual em `_shots/<filename>.png`.
+- `mcp__game__record(seconds?)` → grava um webm em `_shots/` (flythrough).
+- `mcp__game__sweep(points)` → teleporta por vários pontos `[px,py,pz,tx,ty,tz]` capturando um PNG em cada (grade aérea).
+- `mcp__game__resume_chase()` → volta a câmera a seguir o veículo (encerra o modo livre).
+- `mcp__game__list_captures()` → lista os arquivos já salvos em `_shots/`.
 - `read_image(_shots/...png)` → **enxergar** o frame (você tem visão).
 
 ### Plano de câmera por regra
@@ -169,18 +219,20 @@ primeiro run com posicionamento/colisão já resolvidos.
 | Contraste/cor | `snap` ângulos variados | cada objeto distinguível |
 | Proporção | `snap` com avião/carro na cena | escala correta |
 
-## 9. Definition of Done (uma fase está pronta quando)
+## 10. Definition of Done (uma fase está pronta quando)
 
 1. `npm run typecheck` passa.
 2. Auto-check estrutural passa: `solids` sem sobreposição (dist ≥ r1+r2+folga), estradas conectadas, todo `y` = `terrainHeight(x,z)`.
 3. Render pass de evidência salvo em `_shots/` (top-down + 4 vistas + flythrough + noite), e **você olhou** cada imagem e não viu erro.
 4. `LevelConfig` novo em `src/levels.ts` (+ world/sistemas/GLBs se for fase elaborada), e doc de design atualizado em `docs/`.
 
-## 10. Loop de trabalho
+## 11. Loop de trabalho
 
 ```
 brief → layout (zonas + grafo de estradas) → gera (regras 6–12, seed) →
-typecheck → visual QA (MCPs + read_image) → ajusta (seed/posição/regra) → re-shoot
+typecheck → sobe stack (shots+dev) → abre debug (Playwright) →
+load_level (fase nova) → visual QA (sweep/snap/record + read_image) →
+ajusta (seed/posição/regra) → re-shoot
 ```
 
 Saia sempre com: código + o render pass (`_shots/*.png`) como prova visual.
