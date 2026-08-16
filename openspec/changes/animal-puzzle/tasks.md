@@ -30,4 +30,4 @@
 
 - [x] 6.1 `npm run typecheck` + `npm run build`
 - [x] 6.2 Jogar no dev server: arraste por mouse, arraste por toque, slot errado, quadro completo, "Jogar de novo"
-- [ ] 6.3 git commit + push
+- [x] 6.3 git commit + push
