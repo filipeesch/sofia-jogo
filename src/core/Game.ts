@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { Airplane } from '../entities/Airplane';
-import { FlightController } from '../controllers/FlightController';
+import type { Vehicle, VehicleController } from '../entities/Vehicle';
 import { CameraController } from '../controllers/CameraController';
 import { World } from '../world/World';
 import { DayNightCycle } from '../world/DayNightCycle';
@@ -25,8 +24,9 @@ export class Game {
   private sun: THREE.DirectionalLight;
   private clock = new THREE.Clock();
 
-  readonly airplane: Airplane;
-  readonly flight: FlightController;
+  readonly vehicle: Vehicle;
+  readonly controller: VehicleController;
+  private vehicleType: 'airplane' | 'car';
   private cam: CameraController;
   readonly world: World;
   readonly dayNight: DayNightCycle;
@@ -47,9 +47,10 @@ export class Game {
   private startX = 0;
   private startY = 0;
 
-  constructor(container: HTMLElement, level: LevelConfig, airplane: Airplane = new Airplane(), models: WorldModels = {}, ambientModel?: THREE.Group) {
-    this.airplane = airplane;
-    this.flight = new FlightController(airplane);
+  constructor(container: HTMLElement, level: LevelConfig, vehicle: Vehicle, controller: VehicleController, models: WorldModels = {}, ambientModel?: THREE.Group, vehicleType: 'airplane' | 'car' = 'airplane') {
+    this.vehicle = vehicle;
+    this.controller = controller;
+    this.vehicleType = vehicleType;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -94,20 +95,24 @@ export class Game {
     });
 
     this.world.addToScene(this.scene);
-    this.collectibles.build(new THREE.Vector3(0, 0, 0), 52, level.starCount);
+    this.collectibles.build(new THREE.Vector3(0, 0, 0), 90, level.starCount);
     this.collectibles.addToScene(this.scene);
     this.scene.add(this.particles);
 
-    this.airplane.position.set(0, 12, 42);
-    this.airplane.rotation.order = 'YXZ';
-    this.flight.yaw = Math.PI; // face the island center
-    this.scene.add(this.airplane);
+    this.vehicle.rotation.order = 'YXZ';
+    this.controller.yaw = Math.PI; // face the world center
+    if (this.vehicleType === 'car') {
+      this.vehicle.position.set(0, this.world.terrainHeight(0, 20) + 0.9, 20);
+    } else {
+      this.vehicle.position.set(0, 12, 42);
+    }
+    this.scene.add(this.vehicle);
 
     this.musicTrack = level.music;
     this.ambientPlanes = new AmbientPlanes(ambientModel);
     this.ambientPlanes.addToScene(this.scene);
 
-    this.proximity = new ProximityEvents(this.world, this.particles, this.audio, this.airplane);
+    this.proximity = new ProximityEvents(this.world, this.particles, this.audio, this.vehicle);
 
     this.registerClickables();
 
@@ -115,10 +120,11 @@ export class Game {
       this.ui.setStars(count);
       if (count % 5 === 0) this.celebrate();
     };
-    this.flight.onSpecial = () => {
+    this.controller.onSpecial = () => {
       this.audio.resume();
-      this.audio.special();
-      this.particles.burst(this.airplane.position, {
+      if (this.vehicleType === 'car') this.audio.horn();
+      else this.audio.special();
+      this.particles.burst(this.vehicle.position, {
         count: 26,
         color: 0xffffff,
         speed: 3,
@@ -128,13 +134,13 @@ export class Game {
         biasY: 1
       });
     };
-    this.flight.onBounce = () => this.audio.boing();
+    this.controller.onBounce = () => this.audio.boing();
     this.proximity.onRainbow = () => {
       this.trailTimer = 5;
     };
 
     this.ui = new UI(
-      () => this.flight.triggerSpecial(),
+      () => this.controller.triggerSpecial(),
       () => this.exit()
     );
     this.ui.setStars(0);
@@ -157,12 +163,12 @@ export class Game {
     if (e.pointerType === 'mouse') {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       const y = (e.clientY / window.innerHeight) * 2 - 1;
-      this.flight.setSteer(x, -y);
+      this.controller.setSteer(x, -y);
     }
   };
 
   private onMouseLeave = (): void => {
-    this.flight.setSteer(0, 0);
+    this.controller.setSteer(0, 0);
   };
 
   private onPointerDown = (e: PointerEvent): void => {
@@ -174,7 +180,7 @@ export class Game {
       this.tapAt(e.clientX, e.clientY);
     } else if (e.pointerType === 'mouse') {
       if (!(e.target as HTMLElement).closest('button')) {
-        if (!this.tapAt(e.clientX, e.clientY)) this.flight.triggerSpecial();
+        if (!this.tapAt(e.clientX, e.clientY)) this.controller.triggerSpecial();
       }
     }
   };
@@ -184,14 +190,14 @@ export class Game {
       const scale = Math.min(window.innerWidth, window.innerHeight) * 0.3;
       const x = clamp((e.clientX - this.startX) / scale, -1, 1);
       const y = clamp((this.startY - e.clientY) / scale, -1, 1);
-      this.flight.setSteer(x, y);
+      this.controller.setSteer(x, y);
     }
   };
 
   private onPointerUp = (e: PointerEvent): void => {
     if (this.activePointer === e.pointerId) {
       this.activePointer = null;
-      this.flight.setSteer(0, 0);
+      this.controller.setSteer(0, 0);
     }
   };
 
@@ -199,7 +205,7 @@ export class Game {
     this.audio.resume();
     if (e.code === 'Space') {
       e.preventDefault();
-      this.flight.triggerSpecial();
+      this.controller.triggerSpecial();
     }
   };
 
@@ -210,7 +216,7 @@ export class Game {
   };
 
   private registerClickables(): void {
-    this.clickables.register(this.airplane, () => this.flight.triggerSpecial());
+    this.clickables.register(this.vehicle, () => this.controller.triggerSpecial());
     for (const sprite of this.collectibles.sprites()) {
       this.clickables.register(sprite, () => this.collectibles.collectBySprite(sprite));
     }
@@ -261,6 +267,15 @@ export class Game {
         this.audio.plim();
       });
     }
+    for (const c of this.world.creatures) {
+      this.clickables.register(c.g, () => {
+        if (c.type === 'dog') this.audio.bark();
+        else if (c.type === 'cat') this.audio.meow();
+        else if (c.type === 'chicken') this.audio.cluck();
+        else if (c.type === 'sheep') this.audio.baa();
+        else this.audio.plim();
+      });
+    }
   }
 
   private tapAt(clientX: number, clientY: number): boolean {
@@ -282,7 +297,7 @@ export class Game {
     this.audio.fanfare();
     this.world.rainbow.pulse();
     this.trailTimer = 6;
-    const center = this.airplane.position.clone().add(new THREE.Vector3(0, 12, 0));
+    const center = this.vehicle.position.clone().add(new THREE.Vector3(0, 12, 0));
     this.particles.burst(center, {
       count: 60,
       color: 0xffe082,
@@ -308,25 +323,25 @@ export class Game {
 
     this.world.sky.setDayNight(state);
     this.world.setNight(state.nightAmount);
-    this.airplane.setNightLights(state.nightAmount > 0.5);
+    this.vehicle.setNightLights(state.nightAmount > 0.5);
     this.collectibles.setNight(state.nightAmount);
 
     const terrain = (x: number, z: number) => this.world.terrainHeight(x, z);
-    this.flight.update(dt, terrain);
-    this.flight.resolveCollisions(this.world.solids, terrain);
-    this.airplane.update(dt);
+    this.controller.update(dt, terrain);
+    this.controller.resolveCollisions(this.world.solids, terrain);
+    this.vehicle.update(dt);
 
-    this.cam.update(dt, this.airplane, this.flight.forward);
+    this.cam.update(dt, this.vehicle, this.controller.forward);
 
     this.world.update(dt, state.nightAmount);
     this.ambientPlanes.update(dt);
-    this.collectibles.update(dt, this.airplane.position, this.particles, this.audio);
+    this.collectibles.update(dt, this.vehicle.position, this.particles, this.audio);
     this.proximity.update(dt, state.nightAmount);
     this.particles.update(dt);
 
     if (this.trailTimer > 0) {
       this.trailTimer -= dt;
-      const tail = this.airplane.position.clone().addScaledVector(this.flight.forward, -1.8);
+      const tail = this.vehicle.position.clone().addScaledVector(this.controller.forward, -1.8);
       this.particles.burst(tail, { count: 1, color: 0xfff9c4, speed: 0.6, gravity: 0, life: 0.7, size: 4, biasY: 0 });
       this.particles.burst(tail, { count: 1, color: 0xffe082, speed: 0.6, gravity: 0, life: 0.7, size: 4, biasY: 0 });
     }

@@ -21,7 +21,7 @@ export class Snow extends THREE.Group {
 
     // Snowy ground.
     const g = new THREE.Mesh(
-      new THREE.PlaneGeometry(600, 600, 1, 1),
+      new THREE.PlaneGeometry(900, 900, 1, 1),
       new THREE.MeshStandardMaterial({ color: ground, roughness: 0.95 })
     );
     g.rotation.x = -Math.PI / 2;

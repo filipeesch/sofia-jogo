@@ -181,3 +181,88 @@ canvas {
   color: #66809a;
   font-weight: 500;
 }
+
+/* ---------- Launcher (kid OS) ---------- */
+
+.launcher {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: radial-gradient(130% 130% at 50% 0%, #8fd3f8 0%, #4aa8e8 50%, #2f7fc0 100%);
+}
+
+.launcher-title {
+  margin: 0;
+  font-size: clamp(30px, 7vw, 56px);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.launcher-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  justify-content: center;
+  max-width: 900px;
+}
+
+.app-card {
+  pointer-events: auto;
+  border: none;
+  cursor: pointer;
+  border-radius: 28px;
+  width: clamp(130px, 22vw, 170px);
+  height: clamp(130px, 22vw, 170px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  transition: transform 0.12s ease;
+}
+
+.app-card:hover { transform: translateY(-4px) scale(1.03); }
+.app-card:active { transform: scale(0.94); }
+
+.app-card-emoji { font-size: 56px; line-height: 1; }
+.app-card-name { font-size: 18px; font-weight: 800; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+
+/* ---------- Paint app ---------- */
+
+.paint { position: fixed; inset: 0; display: flex; flex-direction: column; background: #fff; }
+.paint canvas { flex: 1; width: 100%; touch-action: none; cursor: crosshair; }
+.paint-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px; flex-wrap: wrap; background: #f2f6fa; border-top: 2px solid #e3ebf2; }
+.paint-color { width: 46px; height: 46px; border-radius: 50%; border: 3px solid #d7e2ec; cursor: pointer; }
+.paint-color.active { border-color: #333; box-shadow: 0 0 0 3px #fff inset; }
+.paint-action { height: 46px; padding: 0 16px; border-radius: 999px; border: none; background: #fff; font-size: 20px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+/* ---------- Bubbles app ---------- */
+
+.bubbles { position: fixed; inset: 0; overflow: hidden; background: radial-gradient(120% 120% at 50% 30%, #c9ecff 0%, #7cc8f8 60%, #4aa8e8 100%); }
+.bubble { position: absolute; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(160,220,255,0.35) 60%, rgba(120,190,255,0.15)); border: 2px solid rgba(255,255,255,0.6); pointer-events: auto; cursor: pointer; }
+.bubble.pop { animation: bubblepop 0.2s ease forwards; }
+@keyframes bubblepop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+
+/* ---------- Animals app ---------- */
+
+.animals { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; box-sizing: border-box; background: linear-gradient(180deg, #eafbe3 0%, #cdeff0 100%); }
+.animals-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; max-width: 760px; }
+.animal-card { pointer-events: auto; border: none; cursor: pointer; border-radius: 24px; width: clamp(120px, 24vw, 160px); height: clamp(120px, 24vw, 160px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
+.animal-card:active { transform: scale(0.9); }
+.animal-card .emoji { font-size: 56px; line-height: 1; }
+.animal-card .name { font-size: 17px; font-weight: 800; color: #34506b; }
+.back-btn { position: absolute; top: 14px; left: 14px; }
+
+@keyframes floatUp {
+  from { transform: translateY(0); }
+  to { transform: translateY(-130vh); }
+}

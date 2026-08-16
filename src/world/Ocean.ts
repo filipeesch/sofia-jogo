@@ -38,7 +38,7 @@ export class Ocean extends THREE.Mesh {
       ].join('\n')
     });
 
-    const geometry = new THREE.PlaneGeometry(600, 600, 48, 48);
+    const geometry = new THREE.PlaneGeometry(900, 900, 48, 48);
     geometry.rotateX(-Math.PI / 2);
 
     super(geometry, material);

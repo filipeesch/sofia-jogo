@@ -4,12 +4,13 @@ import { Island } from './Island';
 import { Mountains } from './Mountains';
 import { Snow } from './Snow';
 import { Desert } from './Desert';
+import { Roads } from './Roads';
 import { Sky } from './Sky';
 import { House, Whale, Bird, Cloud, Rainbow, Balloon } from './landmarks';
 import type { LevelConfig } from '../levels';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
-import { rand } from '../utils';
+import { rand, TAU } from '../utils';
 
 type Terrain = Island | Mountains | Snow | Desert;
 
@@ -25,6 +26,8 @@ export class World {
   readonly balloons: Balloon[] = [];
   readonly houses: House[] = [];
   readonly solids: Solid[] = [];
+  readonly roads?: Roads;
+  readonly creatures: { g: THREE.Group; baseY: number; phase: number; type: string }[] = [];
 
   private tGlobal = 0;
 
@@ -80,6 +83,31 @@ export class World {
 
     this.houses = this.terrain.houses;
     this.solids = this.terrain.solids;
+
+    // Scatter animals + apple trees.
+    const creatureDefs: [string, number][] = [['dog', 2], ['cat', 2], ['chicken', 3], ['sheep', 2], ['appletree', 4]];
+    for (const [key, count] of creatureDefs) {
+      const src = models[key];
+      if (!src) continue;
+      for (let i = 0; i < count; i++) {
+        const g = src.clone();
+        const a = rand(0, TAU);
+        const r = rand(10, 50);
+        const x = Math.cos(a) * r;
+        const z = Math.sin(a) * r;
+        const y = this.terrain.terrainHeight(x, z);
+        g.position.set(x, y, z);
+        g.rotation.y = rand(0, TAU);
+        this.creatures.push({ g, baseY: y, phase: rand(0, TAU), type: key });
+        if (key === 'appletree') this.solids.push({ x, y: y + 2, z, r: 1.2, h: 4 });
+        else this.solids.push({ x, y: y + 0.7, z, r: 1.0, h: 1.4 });
+      }
+    }
+
+    // Streets for land worlds.
+    if (config.worldType === 'mountains' || config.worldType === 'snow' || config.worldType === 'desert') {
+      this.roads = new Roads();
+    }
   }
 
   addToScene(scene: THREE.Scene): void {
@@ -90,6 +118,8 @@ export class World {
     this.birds.forEach((b) => scene.add(b));
     this.clouds.forEach((c) => scene.add(c));
     this.balloons.forEach((b) => scene.add(b));
+    this.creatures.forEach((c) => scene.add(c.g));
+    if (this.roads) scene.add(this.roads);
   }
 
   terrainHeight(x: number, z: number): number {
@@ -107,6 +137,9 @@ export class World {
     this.clouds.forEach((c) => c.update(dt));
     this.balloons.forEach((b) => b.update(dt, this.tGlobal));
     this.houses.forEach((h) => h.update(dt));
+    for (const c of this.creatures) {
+      if (c.type !== 'appletree') c.g.position.y = c.baseY + Math.sin(this.tGlobal * 1.5 + c.phase) * 0.15;
+    }
   }
 
   setNight(night: number): void {

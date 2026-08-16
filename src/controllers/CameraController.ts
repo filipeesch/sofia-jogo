@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { Airplane } from '../entities/Airplane';
 import { dampVector } from '../utils';
 
 // Third-person chase camera: behind and slightly above, smooth and calm.
@@ -10,7 +9,7 @@ export class CameraController {
 
   constructor(readonly camera: THREE.PerspectiveCamera) {}
 
-  update(dt: number, airplane: Airplane, forward: THREE.Vector3): void {
+  update(dt: number, airplane: THREE.Object3D, forward: THREE.Vector3): void {
     this.tmp.copy(forward).multiplyScalar(-9);
     this.desired.copy(airplane.position).add(this.tmp);
     this.desired.y += 3.6;

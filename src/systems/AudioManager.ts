@@ -148,6 +148,30 @@ export class AudioManager {
     this.tone(520, 0.1, 'triangle', 0.2, 0, 320);
   }
 
+  horn(): void {
+    this.tone(392, 0.22, 'square', 0.14);
+    this.tone(311, 0.22, 'square', 0.14, 0.12);
+  }
+
+  bark(): void {
+    this.tone(300, 0.08, 'square', 0.2);
+    this.tone(220, 0.1, 'square', 0.18, 0.1);
+  }
+
+  meow(): void {
+    this.tone(720, 0.3, 'triangle', 0.16, 0, 380);
+  }
+
+  cluck(): void {
+    this.tone(900, 0.05, 'square', 0.13);
+    this.tone(700, 0.05, 'square', 0.13, 0.07);
+    this.tone(900, 0.06, 'square', 0.13, 0.14);
+  }
+
+  baa(): void {
+    this.tone(220, 0.4, 'sawtooth', 0.12, 0, 300);
+  }
+
   // --- Música de fundo procedural (uma trilha por mundo) ---
   private static readonly MUSIC_TRACKS: { beat: number; bass: number[]; tones: number[][]; melody: number[] }[] = [
     {

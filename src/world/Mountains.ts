@@ -22,7 +22,7 @@ export class Mountains extends THREE.Group {
 
     // Big flat meadow.
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(600, 600, 1, 1),
+      new THREE.PlaneGeometry(900, 900, 1, 1),
       new THREE.MeshStandardMaterial({ color: grass, roughness: 0.9, flatShading: true })
     );
     ground.rotation.x = -Math.PI / 2;

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { World } from '../world/World';
 import { ParticleEffects } from './ParticleEffects';
 import { AudioManager } from './AudioManager';
-import { Airplane } from '../entities/Airplane';
 
 // Simple proximity triggers with cooldowns so nothing fires constantly.
 export class ProximityEvents {
@@ -18,7 +17,7 @@ export class ProximityEvents {
     private world: World,
     private particles: ParticleEffects,
     private audio: AudioManager,
-    private airplane: Airplane
+    private airplane: THREE.Object3D
   ) {}
 
   update(dt: number, nightAmount: number): void {

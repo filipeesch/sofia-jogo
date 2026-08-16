@@ -61,7 +61,14 @@ const WORLD_MODELS: Record<string, { name: string; url: string }[]> = {
 };
 
 export async function loadWorldModels(worldType: string): Promise<WorldModels> {
-  const list = WORLD_MODELS[worldType] ?? [];
+  const ALWAYS = [
+    { name: 'dog', url: 'models/dog.glb' },
+    { name: 'cat', url: 'models/cat.glb' },
+    { name: 'chicken', url: 'models/chicken.glb' },
+    { name: 'sheep', url: 'models/sheep.glb' },
+    { name: 'appletree', url: 'models/appletree.glb' }
+  ];
+  const list = [...(WORLD_MODELS[worldType] ?? []), ...ALWAYS];
   const out: WorldModels = {};
   await Promise.all(
     list.map(async (m) => {
