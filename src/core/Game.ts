@@ -10,6 +10,7 @@ import { ParticleEffects } from '../systems/ParticleEffects';
 import { AudioManager } from '../systems/AudioManager';
 import { UI } from '../ui/UI';
 import { AmbientPlanes } from '../world/AmbientPlanes';
+import { Clickables } from '../systems/Clickables';
 import type { LevelConfig } from '../levels';
 import { clamp } from '../utils';
 import type { WorldModels } from '../assets';
@@ -38,6 +39,9 @@ export class Game {
   private trailTimer = 0;
   private ambientPlanes: AmbientPlanes;
   private musicTrack: number;
+  private clickables = new Clickables();
+  private raycaster = new THREE.Raycaster();
+  private pointerNdc = new THREE.Vector2();
 
   private activePointer: number | null = null;
   private startX = 0;
@@ -105,6 +109,8 @@ export class Game {
 
     this.proximity = new ProximityEvents(this.world, this.particles, this.audio, this.airplane);
 
+    this.registerClickables();
+
     this.collectibles.onCollect = (count) => {
       this.ui.setStars(count);
       if (count % 5 === 0) this.celebrate();
@@ -169,8 +175,11 @@ export class Game {
       this.activePointer = e.pointerId;
       this.startX = e.clientX;
       this.startY = e.clientY;
+      this.tapAt(e.clientX, e.clientY);
     } else if (e.pointerType === 'mouse') {
-      if (!(e.target as HTMLElement).closest('button')) this.flight.triggerSpecial();
+      if (!(e.target as HTMLElement).closest('button')) {
+        if (!this.tapAt(e.clientX, e.clientY)) this.flight.triggerSpecial();
+      }
     }
   };
 
@@ -203,6 +212,70 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   };
+
+  private registerClickables(): void {
+    for (const sprite of this.collectibles.sprites()) {
+      this.clickables.register(sprite, () => this.collectibles.collectBySprite(sprite));
+    }
+    if (this.world.whale) {
+      this.clickables.register(this.world.whale, () => {
+        this.world.whale!.jump();
+        this.particles.burst(this.world.whale!.position, {
+          count: 20,
+          color: 0xbfe4ff,
+          speed: 3,
+          gravity: -6,
+          life: 0.8,
+          size: 6,
+          biasY: 4
+        });
+        this.audio.splash();
+      });
+    }
+    for (const bird of this.world.birds) {
+      this.clickables.register(bird, () => {
+        bird.fly();
+        this.audio.chirp();
+      });
+    }
+    for (const cloud of this.world.clouds) {
+      this.clickables.register(cloud, () => {
+        this.particles.burst(cloud.position, {
+          count: 14,
+          color: 0xffffff,
+          speed: 2,
+          gravity: 0.3,
+          life: 1.1,
+          size: 5,
+          biasY: 1
+        });
+        this.audio.plim();
+      });
+    }
+    for (const balloon of this.world.balloons) {
+      this.clickables.register(balloon, () => {
+        balloon.bounce();
+        this.audio.pop();
+      });
+    }
+    for (const house of this.world.houses) {
+      this.clickables.register(house, () => {
+        house.blink();
+        this.audio.plim();
+      });
+    }
+  }
+
+  private tapAt(clientX: number, clientY: number): boolean {
+    this.pointerNdc.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointerNdc, this.camera);
+    const entry = this.clickables.pick(this.raycaster);
+    if (entry) {
+      entry.onTap();
+      return true;
+    }
+    return false;
+  }
 
   private exit(): void {
     this.onExit?.();

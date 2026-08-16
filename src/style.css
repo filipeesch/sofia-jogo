@@ -92,6 +92,11 @@ canvas {
   right: 14px;
 }
 
+.btn.fullscreen {
+  top: 14px;
+  right: 112px;
+}
+
 /* ---------- Home screen ---------- */
 
 .home {

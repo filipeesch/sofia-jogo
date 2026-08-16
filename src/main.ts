@@ -48,3 +48,8 @@ function backHome(): void {
 
 const home = new HomeScreen(LEVELS, startLevel);
 home.show();
+
+// PWA service worker (production only; avoids stale-cache issues during dev).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}

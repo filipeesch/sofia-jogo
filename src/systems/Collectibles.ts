@@ -26,6 +26,8 @@ export class Collectibles {
   private center = new THREE.Vector3();
   private radius = 50;
   private night = 0;
+  private particles: ParticleEffects | null = null;
+  private audio: AudioManager | null = null;
 
   build(center: THREE.Vector3, radius: number, count = 16): void {
     this.center.copy(center);
@@ -76,7 +78,18 @@ export class Collectibles {
     this.night = n;
   }
 
+  sprites(): THREE.Sprite[] {
+    return this.stars.filter((s) => s.active).map((s) => s.sprite);
+  }
+
+  collectBySprite(sprite: THREE.Sprite): void {
+    const st = this.stars.find((s) => s.sprite === sprite);
+    if (st && st.active) this.collect(st);
+  }
+
   update(dt: number, planePos: THREE.Vector3, particles: ParticleEffects, audio: AudioManager): void {
+    this.particles = particles;
+    this.audio = audio;
     const t = performance.now() * 0.001;
 
     for (const st of this.stars) {
@@ -107,22 +120,28 @@ export class Collectibles {
       st.mat.opacity = 1;
 
       if (planePos.distanceTo(st.sprite.position) < 2.8) {
-        st.active = false;
-        st.popping = true;
-        st.popT = 0;
-        particles.burst(st.sprite.position, {
-          count: 20,
-          color: 0xffd54a,
-          speed: 3,
-          gravity: -2,
-          life: 1.0,
-          size: 6,
-          biasY: 2
-        });
-        audio.collect();
-        this.count++;
-        this.onCollect?.(this.count);
+        this.collect(st);
       }
     }
+  }
+
+  private collect(st: Star): void {
+    st.active = false;
+    st.popping = true;
+    st.popT = 0;
+    if (this.particles) {
+      this.particles.burst(st.sprite.position, {
+        count: 20,
+        color: 0xffd54a,
+        speed: 3,
+        gravity: -2,
+        life: 1.0,
+        size: 6,
+        biasY: 2
+      });
+    }
+    if (this.audio) this.audio.collect();
+    this.count++;
+    this.onCollect?.(this.count);
   }
 }

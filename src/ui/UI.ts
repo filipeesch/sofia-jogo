@@ -42,7 +42,21 @@ export class UI {
       onHome();
     });
 
-    root.append(this.counterEl, homeBtn, this.soundBtn, this.specialBtn);
+    const fullscreenBtn = document.createElement('button');
+    fullscreenBtn.className = 'btn fullscreen';
+    fullscreenBtn.textContent = '⛶';
+    fullscreenBtn.setAttribute('aria-label', 'Tela cheia');
+    fullscreenBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        void document.documentElement.requestFullscreen();
+      }
+    });
+
+    root.append(this.counterEl, fullscreenBtn, homeBtn, this.soundBtn, this.specialBtn);
   }
 
   setStars(n: number): void {

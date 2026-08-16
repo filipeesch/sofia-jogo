@@ -139,6 +139,15 @@ export class AudioManager {
     [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.22, 'triangle', 0.2, i * 0.09));
   }
 
+  chirp(): void {
+    this.tone(1400, 0.07, 'sine', 0.18);
+    this.tone(1800, 0.09, 'sine', 0.15, 0.07);
+  }
+
+  pop(): void {
+    this.tone(520, 0.1, 'triangle', 0.2, 0, 320);
+  }
+
   // --- Música de fundo procedural (uma trilha por mundo) ---
   private static readonly MUSIC_TRACKS: { beat: number; bass: number[]; tones: number[][]; melody: number[] }[] = [
     {

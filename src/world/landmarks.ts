@@ -303,6 +303,7 @@ export class Rainbow extends THREE.Group {
 export class Balloon extends THREE.Group {
   private phase = rand(0, TAU);
   private speed = rand(0.5, 1.2);
+  private bounceT = 0;
 
   constructor(color: number, model?: THREE.Group) {
     super();
@@ -331,8 +332,19 @@ export class Balloon extends THREE.Group {
     this.add(line);
   }
 
+  bounce(): void {
+    this.bounceT = 0.4;
+  }
+
   update(dt: number, tGlobal: number): void {
     this.position.y += Math.sin(tGlobal * this.speed + this.phase) * 0.02;
     this.rotation.z = Math.sin(tGlobal * this.speed * 0.6 + this.phase) * 0.08;
+    if (this.bounceT > 0) {
+      this.bounceT -= dt;
+      const k = Math.max(0, this.bounceT) / 0.4;
+      this.scale.setScalar(1 + Math.sin((1 - k) * Math.PI) * 0.22);
+    } else {
+      this.scale.setScalar(1);
+    }
   }
 }
