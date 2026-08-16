@@ -23,7 +23,7 @@ const launcher = new Launcher([
   { id: 'carro', emoji: '🚗', name: 'Carro', color: 'linear-gradient(135deg,#ff6f91,#ff3d6e)', onOpen: () => openLevelSelect('car') },
   { id: 'pintura', emoji: '🎨', name: 'Pintura', color: 'linear-gradient(135deg,#7ae07a,#3cbf5a)', onOpen: openPaint },
   { id: 'bolhas', emoji: '🫧', name: 'Bolhas', color: 'linear-gradient(135deg,#4fc3f7,#0288d1)', onOpen: openBubbles },
-  { id: 'sons', emoji: '🐶', name: 'Sons', color: 'linear-gradient(135deg,#d1a6ff,#9c27b0)', onOpen: openAnimals }
+  { id: 'sons', emoji: '🐶', name: 'Quebra-Cabeça', color: 'linear-gradient(135deg,#d1a6ff,#9c27b0)', onOpen: openAnimals }
 ]);
 
 function clearAll(): void {

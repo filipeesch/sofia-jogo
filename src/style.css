@@ -398,3 +398,148 @@ canvas {
   from { transform: translateY(0); }
   to { transform: translateY(-130vh); }
 }
+
+/* ---------- Animals puzzle app ---------- */
+
+.puzzle-board {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 14px;
+  justify-content: center;
+  max-width: 560px;
+}
+
+.puzzle-slot {
+  position: relative;
+  width: clamp(76px, 18vw, 108px);
+  height: clamp(76px, 18vw, 108px);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 3px rgba(52, 80, 107, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.puzzle-ghost {
+  font-size: clamp(44px, 11vw, 64px);
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.puzzle-slot.filled {
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16), inset 0 0 0 3px rgba(102, 187, 106, 0.9);
+}
+
+.puzzle-slot.filled .puzzle-ghost { display: none; }
+
+.puzzle-piece {
+  pointer-events: auto;
+  border: none;
+  cursor: grab;
+  border-radius: 18px;
+  width: clamp(64px, 15vw, 84px);
+  height: clamp(64px, 15vw, 84px);
+  font-size: clamp(40px, 10vw, 56px);
+  line-height: 1;
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  transition: opacity 0.18s ease, transform 0.12s ease;
+}
+
+.puzzle-piece:active { transform: scale(0.94); }
+
+.puzzle-piece.held { opacity: 0; }
+
+.puzzle-piece.placed {
+  cursor: default;
+  background: transparent;
+  box-shadow: none;
+}
+
+.puzzle-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  max-width: 560px;
+  min-height: clamp(64px, 15vw, 84px);
+}
+
+/* The floating copy that follows the pointer while dragging. */
+.puzzle-drag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%) scale(1.12);
+  font-size: clamp(44px, 11vw, 60px);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 50;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.3));
+  will-change: transform;
+}
+
+/* Small star burst around a just-filled slot. */
+.puzzle-star {
+  position: absolute;
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 40;
+  animation: starpop 0.65s ease-out forwards;
+}
+
+@keyframes starpop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Confetti falling over the whole app on completion. */
+.puzzle-confetti {
+  position: absolute;
+  top: -48px;
+  pointer-events: none;
+  z-index: 30;
+  animation: confettiFall 1.9s linear forwards;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(115vh) rotate(540deg); opacity: 0; }
+}
+
+/* "Jogar de novo" pill between board and tray; space is reserved from the
+   start (visibility, not display) so the layout never jumps. */
+.puzzle-again {
+  pointer-events: auto;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 24px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #ffb74d, #ff8a65);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.puzzle-again.visible { visibility: visible; }
+.puzzle-again:active { transform: scale(0.94); }

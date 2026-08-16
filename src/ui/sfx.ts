@@ -17,10 +17,10 @@ export function resume(): void {
   if (c && c.state === 'suspended') void c.resume();
 }
 
-export function tone(freq: number, dur: number, type: OscillatorType = 'sine', vol = 0.2, glideTo?: number): void {
+export function tone(freq: number, dur: number, type: OscillatorType = 'sine', vol = 0.2, glideTo?: number, delay = 0): void {
   const c = ac();
   if (!c) return;
-  const t = c.currentTime;
+  const t = c.currentTime + delay;
   const o = c.createOscillator();
   o.type = type;
   o.frequency.setValueAtTime(freq, t);
@@ -42,3 +42,13 @@ export function baa(): void { tone(220, 0.4, 'sawtooth', 0.12, 300); }
 export function moo(): void { tone(160, 0.5, 'sawtooth', 0.14, 120); }
 export function quack(): void { tone(420, 0.1, 'square', 0.15, 300); }
 export function popSound(): void { tone(600, 0.08, 'triangle', 0.22, 300); }
+
+// Puzzle feedback (animal-puzzle): miss, hit and win.
+export function thump(): void { tone(150, 0.2, 'sine', 0.1, 90); }
+export function ding(): void { tone(660, 0.1, 'triangle', 0.14); tone(990, 0.14, 'triangle', 0.14, undefined, 0.09); }
+export function win(): void {
+  tone(523, 0.14, 'triangle', 0.16, undefined, 0);
+  tone(659, 0.14, 'triangle', 0.16, undefined, 0.13);
+  tone(784, 0.14, 'triangle', 0.16, undefined, 0.26);
+  tone(1047, 0.3, 'triangle', 0.18, undefined, 0.39);
+}
