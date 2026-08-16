@@ -25,6 +25,52 @@ export class DebugCapture {
       chase: () => this.chaseEnabled
     };
     this.buildOverlay();
+    this.pollTimer = window.setInterval(() => void this.pollCommands(), 400);
+    void this.pollCommands();
+  }
+
+  private lastCmdId = 0;
+  private pollTimer: number;
+
+  private async pollCommands(): Promise<void> {
+    try {
+      const res = await fetch(SERVER + '/cmd?since=' + this.lastCmdId);
+      const cmds = (await res.json()) as { id: number; cmd: string; args: unknown[] }[];
+      for (const c of cmds) {
+        this.lastCmdId = Math.max(this.lastCmdId, c.id);
+        this.execute(c.cmd, c.args);
+      }
+    } catch {
+      // capture server offline — ignore
+    }
+  }
+
+  private execute(cmd: string, args: unknown[]): void {
+    const a = args as number[];
+    switch (cmd) {
+      case 'setView':
+        this.setView(a[0], a[1], a[2], a[3], a[4], a[5]);
+        break;
+      case 'viewSnap':
+        this.setView(a[0], a[1], a[2], a[3], a[4], a[5]);
+        window.setTimeout(() => this.snap(typeof args[6] === 'string' ? args[6] : undefined), 300);
+        break;
+      case 'snap':
+        this.snap(typeof args[0] === 'string' ? args[0] : undefined);
+        break;
+      case 'record':
+        this.record(typeof args[0] === 'number' ? args[0] : 10);
+        break;
+      case 'sweep':
+        this.sweep(args[0] as number[][]);
+        break;
+      case 'resumeChase':
+        this.chaseEnabled = true;
+        this.sweepPoints = [];
+        break;
+      default:
+        console.warn('[debug] comando desconhecido:', cmd);
+    }
   }
 
   isChaseEnabled(): boolean {
