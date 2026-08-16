@@ -144,6 +144,43 @@ export class AudioManager {
     this.tone(1800, 0.09, 'sine', 0.15, 0.07);
   }
 
+  // Nuvem estourando: "psshh" fofo de ruído filtrado + dois tintles etéreos
+  // em subida (combina com o burst de partículas brancas subindo).
+  cloudPuff(): void {
+    this.noise(0.45, 900, 0.28);
+    this.tone(1320, 0.18, 'sine', 0.05, 0.05, 1760);
+    this.tone(1760, 0.22, 'sine', 0.04, 0.18, 2200);
+  }
+
+  // Balão de borracha: "boing" — o pitch despenca e volta, com wobble de LFO
+  // para a cara de látex (combina com o squash do bounce()).
+  balloonBoing(): void {
+    const ctx = this.ensure();
+    if (!ctx || !this.master) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(420, t);
+    o.frequency.exponentialRampToValueAtTime(180, t + 0.16);
+    o.frequency.exponentialRampToValueAtTime(260, t + 0.3);
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 26;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 18;
+    lfo.connect(lfoGain);
+    lfoGain.connect(o.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.2, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+    o.connect(g);
+    g.connect(this.master);
+    o.start(t);
+    o.stop(t + 0.36);
+    lfo.start(t);
+    lfo.stop(t + 0.36);
+  }
+
   pop(): void {
     this.tone(520, 0.1, 'triangle', 0.2, 0, 320);
   }

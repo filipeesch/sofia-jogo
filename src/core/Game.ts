@@ -128,6 +128,11 @@ export class Game {
         // Live positions of the clickable creatures (capture tooling and tests).
         dbg.creatures = () =>
           this.world.creatures.map((c) => [c.type, c.position.x, c.position.y, c.position.z, c.scale.x]);
+        // Live positions/scale of the clickable sky objects (clouds, balloons).
+        dbg.objects = () =>
+          this.world.clouds
+            .map((c) => ({ kind: 'cloud', p: [c.position.x, c.position.y, c.position.z] }))
+            .concat(this.world.balloons.map((b) => ({ kind: 'balloon', p: [b.position.x, b.position.y, b.position.z], s: b.scale.x })));
       }
     }
 
@@ -267,13 +272,13 @@ export class Game {
           size: 5,
           biasY: 1
         });
-        this.audio.plim();
+        this.audio.cloudPuff();
       });
     }
     for (const balloon of this.world.balloons) {
       this.clickables.register(balloon, () => {
         balloon.bounce();
-        this.audio.pop();
+        this.audio.balloonBoing();
       });
     }
     for (const house of this.world.houses) {
