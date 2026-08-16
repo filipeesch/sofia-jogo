@@ -1,8 +1,6 @@
-# Subagent 1 — Melhorar modelos 3D (Qwen visão + Blender MCP)
+# Workflow — melhorar modelos 3D (agente com visão + Blender MCP)
 
-Roda via tool workflow com:
-- provider: llm-pi-ai
-- model: qwen3.8-27b-radixark-nvfp4
+Roda via tool `workflow` orquestrando um agente com visão.
 
 ## Prompt do agente
 

@@ -27,8 +27,8 @@ __debug.sweep([
 ]);
 
 ## Saída
-Os arquivos ficam em _shots/ (gitignorado) prontos para o modelo de visão
-(read_image) ou para o subagent Qwen quando o spawn estiver disponível.
+Os arquivos ficam em _shots/ (gitignorado) prontos para o agente de visão
+ler com read_image.
 
 ## MCP do jogo (interface para o AGENTE — caminho preferido)
 

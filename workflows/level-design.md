@@ -1,6 +1,6 @@
-# Subagent 2 — Design de fase elaborado (Qwen)
+# Workflow — design de fase elaborado (agente)
 
-Roda via tool workflow com provider llm-pi-ai e model qwen3.8-27b-radixark-nvfp4.
+Roda via tool `workflow` orquestrando um agente.
 
 ## Prompt do agente
 
