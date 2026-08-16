@@ -7,6 +7,7 @@ import { Collectibles } from '../systems/Collectibles';
 import { ProximityEvents } from '../systems/ProximityEvents';
 import { ParticleEffects } from '../systems/ParticleEffects';
 import { AudioManager } from '../systems/AudioManager';
+import { playSound, preloadSound } from '../ui/sounds';
 import { UI } from '../ui/UI';
 import { AmbientPlanes } from '../world/AmbientPlanes';
 import { Clickables } from '../systems/Clickables';
@@ -120,6 +121,15 @@ export class Game {
     this.proximity = new ProximityEvents(this.world, this.particles, this.audio, this.vehicle);
 
     this.registerClickables();
+
+    if (this.debugCapture) {
+      const dbg = (window as unknown as Record<string, unknown>).__debug as Record<string, unknown> | undefined;
+      if (dbg) {
+        // Live positions of the clickable creatures (capture tooling and tests).
+        dbg.creatures = () =>
+          this.world.creatures.map((c) => [c.type, c.position.x, c.position.y, c.position.z, c.scale.x]);
+      }
+    }
 
     this.collectibles.onCollect = (count) => {
       this.ui.setStars(count);
@@ -272,15 +282,28 @@ export class Game {
         this.audio.plim();
       });
     }
+    // Real recordings for the creatures that have one (public/sounds/);
+    // the procedural synth of AudioManager is the fallback when the file is
+    // missing (same philosophy as the animal puzzle). Unknown creatures keep
+    // the generic plim, as before.
+    const creatureSounds: Record<string, { file: string; synth: () => void }> = {
+      dog: { file: 'sounds/dog.mp3', synth: () => this.audio.bark() },
+      cat: { file: 'sounds/cat.mp3', synth: () => this.audio.meow() },
+      chicken: { file: 'sounds/chicken.mp3', synth: () => this.audio.cluck() },
+      sheep: { file: 'sounds/sheep.mp3', synth: () => this.audio.baa() },
+      cow: { file: 'sounds/cow.mp3', synth: () => this.audio.moo() },
+      duck: { file: 'sounds/duck.mp3', synth: () => this.audio.quack() },
+    };
+    const presentTypes = new Set(this.world.creatures.map((c) => c.type));
+    for (const t of presentTypes) {
+      const s = creatureSounds[t];
+      if (s) void preloadSound(s.file);
+    }
     for (const c of this.world.creatures) {
+      const s = creatureSounds[c.type];
       this.clickables.register(c, () => {
         c.hop();
-        if (c.type === 'dog') this.audio.bark();
-        else if (c.type === 'cat') this.audio.meow();
-        else if (c.type === 'chicken') this.audio.cluck();
-        else if (c.type === 'sheep') this.audio.baa();
-        else if (c.type === 'cow') this.audio.moo();
-        else if (c.type === 'duck') this.audio.quack();
+        if (s) playSound(s.file, s.synth);
         else this.audio.plim();
       });
     }
