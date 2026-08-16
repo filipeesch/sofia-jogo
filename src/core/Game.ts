@@ -135,10 +135,6 @@ export class Game {
 
     this.ui = new UI(
       () => this.flight.triggerSpecial(),
-      () => {
-        const m = this.audio.toggle();
-        this.ui.setMuted(m);
-      },
       () => this.exit()
     );
     this.ui.setStars(0);
@@ -214,6 +210,7 @@ export class Game {
   };
 
   private registerClickables(): void {
+    this.clickables.register(this.airplane, () => this.flight.triggerSpecial());
     for (const sprite of this.collectibles.sprites()) {
       this.clickables.register(sprite, () => this.collectibles.collectBySprite(sprite));
     }

@@ -45,7 +45,21 @@ export class HomeScreen {
       grid.append(card);
     }
 
-    this.root.append(title, subtitle, grid);
+    const fullscreenBtn = document.createElement('button');
+    fullscreenBtn.className = 'btn fullscreen';
+    fullscreenBtn.textContent = '⛶';
+    fullscreenBtn.setAttribute('aria-label', 'Tela cheia');
+    fullscreenBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        void document.documentElement.requestFullscreen();
+      }
+    });
+
+    this.root.append(title, subtitle, grid, fullscreenBtn);
   }
 
   show(): void {
