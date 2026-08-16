@@ -2,6 +2,10 @@ import * as THREE from 'three';
 
 const SERVER = 'http://localhost:4477';
 
+// Cursor de comandos compartilhado entre instâncias: sobrevive à troca de fase
+// (novo Game → novo DebugCapture) sem re-executar comandos antigos da fila.
+let cmdCursor = 0;
+
 // Runtime "engine viewport" for debug: control the camera, capture PNGs and short videos.
 export class DebugCapture {
   private chaseEnabled = true;
@@ -28,15 +32,14 @@ export class DebugCapture {
     void this.pollCommands();
   }
 
-  private lastCmdId = 0;
   private pollTimer: number;
 
   private async pollCommands(): Promise<void> {
     try {
-      const res = await fetch(SERVER + '/cmd?since=' + this.lastCmdId);
+      const res = await fetch(SERVER + '/cmd?since=' + cmdCursor);
       const cmds = (await res.json()) as { id: number; cmd: string; args: unknown[] }[];
       for (const c of cmds) {
-        this.lastCmdId = Math.max(this.lastCmdId, c.id);
+        cmdCursor = Math.max(cmdCursor, c.id);
         this.execute(c.cmd, c.args);
       }
     } catch {
@@ -67,6 +70,11 @@ export class DebugCapture {
         this.chaseEnabled = true;
         this.sweepPoints = [];
         break;
+      case 'loadLevel': {
+        const g = window as unknown as { __loadLevel?: (level: string, vehicle?: string) => void };
+        g.__loadLevel?.(String(args[0] ?? ''), typeof args[1] === 'string' ? args[1] : undefined);
+        break;
+      }
       default:
         console.warn('[debug] comando desconhecido:', cmd);
     }
@@ -74,6 +82,12 @@ export class DebugCapture {
 
   isChaseEnabled(): boolean {
     return this.chaseEnabled;
+  }
+
+  dispose(): void {
+    window.clearInterval(this.pollTimer);
+    this.sweepPoints = [];
+    this.pendingSnap = null;
   }
 
   setView(px: number, py: number, pz: number, tx: number, ty: number, tz: number): void {

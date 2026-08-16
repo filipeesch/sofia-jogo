@@ -373,6 +373,7 @@ export class Game {
 
   dispose(): void {
     this.renderer.setAnimationLoop(null);
+    this.debugCapture?.dispose();
 
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointermove', this.onPointerMoveMouse);

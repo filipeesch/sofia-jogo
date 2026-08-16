@@ -11,6 +11,7 @@ import { FlightController } from './controllers/FlightController';
 import { CarController } from './controllers/CarController';
 import { loadGLB, loadWorldModels } from './assets';
 import { LEVELS } from './levels';
+import type { LevelConfig } from './levels';
 import type { Vehicle, VehicleController } from './entities/Vehicle';
 
 const app = document.getElementById('app')!;
@@ -91,6 +92,11 @@ async function startLevel(id: string, vehicleType: 'airplane' | 'car'): Promise<
   game.start();
 }
 
+function resolveVehicle(level: LevelConfig, param: string | null): 'airplane' | 'car' {
+  const airplaneOnly = level.vehicle === 'airplane';
+  return param === 'airplane' || airplaneOnly ? 'airplane' : 'car';
+}
+
 function boot(): void {
   const params = new URLSearchParams(window.location.search);
   const levelId = params.get('level');
@@ -99,12 +105,21 @@ function boot(): void {
     return;
   }
   const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
-  const vehicleParam = params.get('vehicle');
-  const airplaneOnly = level.vehicle === 'airplane';
-  const vehicleType: 'airplane' | 'car' =
-    vehicleParam === 'airplane' || airplaneOnly ? 'airplane' : 'car';
-  void startLevel(level.id, vehicleType);
+  void startLevel(level.id, resolveVehicle(level, params.get('vehicle')));
 }
+
+// Troca de fase em runtime (usada pela tool MCP `load_level`), sem recarregar a página.
+(window as unknown as Record<string, unknown>).__loadLevel = (levelId: string, vehicleParam?: string) => {
+  const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
+  const vt = resolveVehicle(level, vehicleParam ?? null);
+  const url = new URL(window.location.href);
+  url.searchParams.set('debug', '1');
+  url.searchParams.set('level', level.id);
+  url.searchParams.set('vehicle', vt);
+  window.history.replaceState(null, '', url);
+  clearAll();
+  void startLevel(level.id, vt);
+};
 
 boot();
 

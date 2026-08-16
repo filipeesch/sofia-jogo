@@ -28,3 +28,14 @@ Um comando de lançamento SHALL iniciar o capture server e o dev server quando n
 #### Scenario: Launch with no servers running
 - **WHEN** o agente executa o comando de lançamento para um cenário
 - **THEN** ambos os servidores são iniciados e o browser abre em `http://localhost:5173/?debug=1&level=<id>&vehicle=<vehicle>`
+### Requirement: Runtime level selection via MCP
+O jogo SHALL permitir trocar o cenário em runtime via uma tool MCP, sem recarregar a página.
+
+#### Scenario: Load level via MCP
+- **WHEN** o agente chama a tool MCP `load_level` com um level id válido
+- **THEN** o jogo descarta o cenário atual e inicia o cenário solicitado, mantendo o modo debug ativo
+
+#### Scenario: List levels via MCP
+- **WHEN** o agente chama a tool MCP `list_levels`
+- **THEN** o servidor retorna a lista de cenários disponíveis (id, nome, veículo permitido)
+

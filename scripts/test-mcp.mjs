@@ -30,7 +30,7 @@ const init = await call('initialize', { protocolVersion: '2024-11-05', capabilit
 results.push(['initialize', init.result?.protocolVersion === '2024-11-05' ? 'PASS' : 'FAIL']);
 
 const tl = await call('tools/list', {});
-results.push(['tools/list (' + (tl.result?.tools?.length ?? 0) + ' tools)', tl.result?.tools?.length === 7 ? 'PASS' : 'FAIL']);
+results.push(['tools/list (' + (tl.result?.tools?.length ?? 0) + ' tools)', tl.result?.tools?.length === 9 ? 'PASS' : 'FAIL']);
 
 const ping = await call('ping', {});
 results.push(['ping', ping.result !== undefined ? 'PASS' : 'FAIL']);
@@ -42,7 +42,9 @@ for (const [name, args] of [
   ['record', { seconds: 2 }],
   ['sweep', { points: [[8, 6, 8, 0, 0, 0], [10, 10, 30, -70, 2, 40]] }],
   ['resume_chase', {}],
-  ['list_captures', {}]
+  ['list_captures', {}],
+  ['list_levels', {}],
+  ['load_level', { level: 'neve', vehicle: 'car' }]
 ]) {
   const r = await call('tools/call', { name, arguments: args });
   const ok = !r.error && r.result?.content?.[0]?.type === 'text';

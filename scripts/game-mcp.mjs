@@ -6,6 +6,16 @@ import { createInterface } from 'node:readline';
 
 const SERVER = 'http://localhost:' + (process.env.SHOTS_PORT || '4477');
 
+const LEVELS = [
+  { id: 'vale', name: 'Vale Vivo', emoji: '🌄', vehicle: 'both' },
+  { id: 'valenoite', name: 'Vale à Noite', emoji: '🌙', vehicle: 'both' },
+  { id: 'ilha', name: 'Ilha Feliz', emoji: '🌴', vehicle: 'airplane' },
+  { id: 'montanhas', name: 'Vale das Montanhas', emoji: '⛰️', vehicle: 'both' },
+  { id: 'neve', name: 'Mundo da Neve', emoji: '❄️', vehicle: 'both' },
+  { id: 'deserto', name: 'Deserto', emoji: '🏜️', vehicle: 'both' },
+  { id: 'noite', name: 'Noite Estrelada', emoji: '⭐', vehicle: 'both' }
+];
+
 const TOOLS = [
   {
     name: 'set_view_and_snap',
@@ -41,6 +51,16 @@ const TOOLS = [
     name: 'list_captures',
     description: 'Lista os arquivos capturados em _shots/.',
     inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'list_levels',
+    description: 'Lista os cenários disponíveis (id, nome, veículo permitido).',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'load_level',
+    description: 'Troca o cenário em runtime (level id + vehicle car|airplane), sem recarregar a página.',
+    inputSchema: { type: 'object', properties: { level: { type: 'string' }, vehicle: { type: 'string' } }, required: ['level'] }
   }
 ];
 
@@ -92,6 +112,13 @@ async function handleCall(id, name, args) {
         text = await res.text();
         break;
       }
+      case 'list_levels':
+        text = JSON.stringify(LEVELS);
+        break;
+      case 'load_level':
+        await httpPost('/cmd', { cmd: 'loadLevel', args: [args.level, args.vehicle] });
+        text = 'loading level ' + args.level + (args.vehicle ? ' (' + args.vehicle + ')' : '');
+        break;
       default:
         send({ jsonrpc: '2.0', id, error: { code: -32601, message: 'unknown tool: ' + name } });
         return;

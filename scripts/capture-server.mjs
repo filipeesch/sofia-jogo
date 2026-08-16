@@ -7,7 +7,8 @@ const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '_shot
 const PORT = Number(process.env.SHOTS_PORT || 4477);
 fs.mkdirSync(dir, { recursive: true });
 
-let cmdSeq = 0;
+// ids monotônicos (nunca reiniciam para trás), para o cursor do cliente sobreviver a reinícios
+let cmdSeq = Date.now();
 const queue = [];
 
 function readBody(req) {
