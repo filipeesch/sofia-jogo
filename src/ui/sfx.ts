@@ -1,6 +1,6 @@
 let ctx: AudioContext | null = null;
 
-function ac(): AudioContext | null {
+export function audioCtx(): AudioContext | null {
   if (ctx) return ctx;
   try {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -13,12 +13,12 @@ function ac(): AudioContext | null {
 }
 
 export function resume(): void {
-  const c = ac();
+  const c = audioCtx();
   if (c && c.state === 'suspended') void c.resume();
 }
 
 export function tone(freq: number, dur: number, type: OscillatorType = 'sine', vol = 0.2, glideTo?: number, delay = 0): void {
-  const c = ac();
+  const c = audioCtx();
   if (!c) return;
   const t = c.currentTime + delay;
   const o = c.createOscillator();
@@ -41,6 +41,12 @@ export function cluck(): void { tone(900, 0.05, 'square', 0.13); tone(700, 0.05,
 export function baa(): void { tone(220, 0.4, 'sawtooth', 0.12, 300); }
 export function moo(): void { tone(160, 0.5, 'sawtooth', 0.14, 120); }
 export function quack(): void { tone(420, 0.1, 'square', 0.15, 300); }
+export function oink(): void { tone(240, 0.12, 'square', 0.16, 180); tone(200, 0.12, 'square', 0.14, 150, 0.16); }
+export function neigh(): void { tone(600, 0.4, 'sawtooth', 0.12, 900); tone(700, 0.3, 'sawtooth', 0.1, 1000, 0.15); }
+export function roar(): void { tone(90, 0.6, 'sawtooth', 0.22, 160); tone(70, 0.5, 'square', 0.14, 120, 0.1); }
+export function ribbit(): void { tone(120, 0.18, 'square', 0.18, 80); tone(140, 0.14, 'square', 0.14, 90, 0.22); }
+export function hoot(): void { tone(400, 0.18, 'sine', 0.2, 320); tone(380, 0.22, 'sine', 0.16, 300, 0.24); }
+export function crow(): void { tone(880, 0.12, 'square', 0.15); tone(700, 0.1, 'square', 0.14, 600, 0.14); tone(950, 0.2, 'square', 0.15, 800, 0.28); }
 export function popSound(): void { tone(600, 0.08, 'triangle', 0.22, 300); }
 
 // Puzzle feedback (animal-puzzle): miss, hit and win.

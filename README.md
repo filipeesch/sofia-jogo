@@ -10,7 +10,9 @@ Sem game over, sem vidas, sem dano — não existe jeito de jogar errado.
 
 - TypeScript + Three.js + Vite
 - Sem backend, sem login, sem assets externos obrigatórios
-- Áudio 100% procedural (Web Audio API): sons + música de fundo
+- Áudio: efeitos 100% procedurais (Web Audio API); os sons dos animais do quebra-cabeça
+  são gravações reais em `public/sounds/*.mp3`, com fallback procedural se falharem
+  (créditos em `docs/audio-credits.md`)
 - Avião e objetos dos mundos modelados no Blender (`public/models/*.glb`), com
   fallback procedural automático se o GLB não carregar
 

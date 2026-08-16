@@ -404,15 +404,15 @@ canvas {
 .puzzle-board {
   display: grid;
   grid-template-columns: repeat(3, auto);
-  gap: 14px;
+  gap: 10px;
   justify-content: center;
-  max-width: 560px;
+  max-width: 500px;
 }
 
 .puzzle-slot {
   position: relative;
-  width: clamp(76px, 18vw, 108px);
-  height: clamp(76px, 18vw, 108px);
+  width: clamp(56px, 12vw, 80px);
+  height: clamp(56px, 12vw, 80px);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 3px rgba(52, 80, 107, 0.14);
@@ -423,7 +423,7 @@ canvas {
 }
 
 .puzzle-ghost {
-  font-size: clamp(44px, 11vw, 64px);
+  font-size: clamp(34px, 8.5vw, 52px);
   line-height: 1;
   filter: grayscale(1);
   opacity: 0.28;
@@ -442,9 +442,9 @@ canvas {
   border: none;
   cursor: grab;
   border-radius: 18px;
-  width: clamp(64px, 15vw, 84px);
-  height: clamp(64px, 15vw, 84px);
-  font-size: clamp(40px, 10vw, 56px);
+  width: clamp(52px, 12vw, 68px);
+  height: clamp(52px, 12vw, 68px);
+  font-size: clamp(32px, 8vw, 46px);
   line-height: 1;
   background: #fff;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
@@ -469,10 +469,10 @@ canvas {
 .puzzle-tray {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 10px;
   justify-content: center;
-  max-width: 560px;
-  min-height: clamp(64px, 15vw, 84px);
+  max-width: 500px;
+  min-height: clamp(52px, 12vw, 68px);
 }
 
 /* The floating copy that follows the pointer while dragging. */
@@ -481,7 +481,7 @@ canvas {
   left: 0;
   top: 0;
   transform: translate(-50%, -50%) scale(1.12);
-  font-size: clamp(44px, 11vw, 60px);
+  font-size: clamp(38px, 9vw, 54px);
   line-height: 1;
   pointer-events: none;
   z-index: 50;
@@ -543,3 +543,6 @@ canvas {
 
 .puzzle-again.visible { visibility: visible; }
 .puzzle-again:active { transform: scale(0.94); }
+
+/* 12 animals need a tighter vertical rhythm to fit small screens. */
+.animals { gap: 14px; }
