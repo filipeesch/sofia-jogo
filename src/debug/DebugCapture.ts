@@ -11,7 +11,6 @@ export class DebugCapture {
   private chunks: Blob[] = [];
   private sweepPoints: { pos: THREE.Vector3; look: THREE.Vector3 }[] = [];
   private sweepIdx = 0;
-  private sweepT = 0;
 
   constructor(private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement) {
     const g = window as unknown as Record<string, unknown>;
@@ -92,7 +91,6 @@ export class DebugCapture {
       look: new THREE.Vector3(p[3] ?? 0, p[4] ?? 0, p[5] ?? 0)
     }));
     this.sweepIdx = 0;
-    this.sweepT = 0;
   }
 
   snap(name?: string): void {
@@ -126,23 +124,19 @@ export class DebugCapture {
     }
   }
 
-  update(dt: number): void {
+  update(_dt: number): void {
     if (this.sweepPoints.length === 0) return;
-    const a = this.sweepPoints[this.sweepIdx];
-    const b = this.sweepPoints[Math.min(this.sweepIdx + 1, this.sweepPoints.length - 1)];
-    this.sweepT += dt * 0.5;
-    if (this.sweepT >= 1) {
-      this.sweepT = 0;
-      this.snap('sweep_' + this.sweepIdx + '.png');
-      this.sweepIdx++;
-      if (this.sweepIdx >= this.sweepPoints.length) {
-        this.sweepPoints = [];
-        this.chaseEnabled = true;
-        return;
-      }
+    // Teleporta a câmera direto para o próximo waypoint (sem interpolação) e
+    // captura um frame por ponto. O postRender() grava o frame recém-renderizado.
+    const p = this.sweepPoints[this.sweepIdx];
+    this.camera.position.set(p.pos.x, p.pos.y, p.pos.z);
+    this.camera.lookAt(p.look.x, p.look.y, p.look.z);
+    this.snap('sweep_' + this.sweepIdx + '.png');
+    this.sweepIdx++;
+    if (this.sweepIdx >= this.sweepPoints.length) {
+      this.sweepPoints = [];
+      // chase permanece desativado: a câmera fica no último waypoint.
     }
-    this.camera.position.lerpVectors(a.pos, b.pos, this.sweepT);
-    this.camera.lookAt(a.look.clone().lerp(b.look, this.sweepT));
   }
 
   // Called right after renderer.render so the framebuffer is fresh.

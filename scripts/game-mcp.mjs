@@ -29,7 +29,7 @@ const TOOLS = [
   },
   {
     name: 'sweep',
-    description: 'Voa a câmera por vários pontos [px,py,pz,tx,ty,tz] capturando um PNG em cada um.',
+    description: 'Teleporta a câmera por vários pontos [px,py,pz,tx,ty,tz] capturando um PNG em cada um (sem animação entre pontos).',
     inputSchema: { type: 'object', properties: { points: { type: 'array', items: { type: 'array', items: { type: 'number' } } } }, required: ['points'] }
   },
   {

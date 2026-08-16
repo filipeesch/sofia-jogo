@@ -91,7 +91,22 @@ async function startLevel(id: string, vehicleType: 'airplane' | 'car'): Promise<
   game.start();
 }
 
-launcher.show();
+function boot(): void {
+  const params = new URLSearchParams(window.location.search);
+  const levelId = params.get('level');
+  if (!levelId) {
+    launcher.show();
+    return;
+  }
+  const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
+  const vehicleParam = params.get('vehicle');
+  const airplaneOnly = level.vehicle === 'airplane';
+  const vehicleType: 'airplane' | 'car' =
+    vehicleParam === 'airplane' || airplaneOnly ? 'airplane' : 'car';
+  void startLevel(level.id, vehicleType);
+}
+
+boot();
 
 // PWA service worker (production only).
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

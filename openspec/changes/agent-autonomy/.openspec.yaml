@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-08-16
+goal: "Enable an AI agent to fully control the running game: open a scenario
+  directly in debug mode and teleport the camera instantly to any position for
+  captures"
