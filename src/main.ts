@@ -39,7 +39,8 @@ function clearAll(): void {
 
 function openLevelSelect(vehicleType: 'airplane' | 'car'): void {
   clearAll();
-  const levelSelect = new HomeScreen(LEVELS, (id) => void startLevel(id, vehicleType));
+  const levels = vehicleType === 'car' ? LEVELS.filter((l) => l.vehicle !== 'airplane') : LEVELS;
+  const levelSelect = new HomeScreen(levels, (id) => void startLevel(id, vehicleType));
   levelSelect.show();
 }
 

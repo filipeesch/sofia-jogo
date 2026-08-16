@@ -6,9 +6,14 @@ export class Car extends THREE.Group {
   private wheels: { o: THREE.Object3D; axis: THREE.Vector3 }[] = [];
   private q = new THREE.Quaternion();
   private bounceT = 0;
+  private headlight: THREE.SpotLight;
 
   constructor(procedural = true) {
     super();
+    this.headlight = new THREE.SpotLight(0xfff3c4, 0, 26, 0.55, 0.45);
+    this.headlight.position.set(0, 0.75, 1.3);
+    this.headlight.target.position.set(0, 0.3, 7);
+    this.add(this.headlight, this.headlight.target);
     if (procedural) this.buildProcedural();
   }
 
@@ -46,7 +51,9 @@ export class Car extends THREE.Group {
     }
   }
 
-  setNightLights(_on: boolean): void {}
+  setNightLights(on: boolean): void {
+    this.headlight.intensity = on ? 7 : 0;
+  }
 
   playBounce(): void {
     this.bounceT = 0.28;

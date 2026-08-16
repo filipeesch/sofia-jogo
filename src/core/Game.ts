@@ -64,7 +64,7 @@ export class Game {
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
     this.camera.position.set(0, 15, 52);
-    this.cam = new CameraController(this.camera);
+    this.cam = new CameraController(this.camera, this.vehicleType === 'car' ? 6.5 : 9, this.vehicleType === 'car' ? 2.4 : 3.6);
 
     this.scene.fog = new THREE.Fog(level.skyDayHorizon, 60, 240);
 
@@ -102,7 +102,7 @@ export class Game {
     this.vehicle.rotation.order = 'YXZ';
     this.controller.yaw = Math.PI; // face the world center
     if (this.vehicleType === 'car') {
-      this.vehicle.position.set(0, this.world.terrainHeight(0, 20) + 0.9, 20);
+      this.vehicle.position.set(0, this.world.terrainHeight(0, 20) + 0.05, 20);
     } else {
       this.vehicle.position.set(0, 12, 42);
     }
@@ -268,11 +268,14 @@ export class Game {
       });
     }
     for (const c of this.world.creatures) {
-      this.clickables.register(c.g, () => {
+      this.clickables.register(c, () => {
+        c.hop();
         if (c.type === 'dog') this.audio.bark();
         else if (c.type === 'cat') this.audio.meow();
         else if (c.type === 'chicken') this.audio.cluck();
         else if (c.type === 'sheep') this.audio.baa();
+        else if (c.type === 'cow') this.audio.moo();
+        else if (c.type === 'duck') this.audio.quack();
         else this.audio.plim();
       });
     }

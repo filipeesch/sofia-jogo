@@ -7,12 +7,12 @@ export class CameraController {
   private look = new THREE.Vector3();
   private tmp = new THREE.Vector3();
 
-  constructor(readonly camera: THREE.PerspectiveCamera) {}
+  constructor(readonly camera: THREE.PerspectiveCamera, private distance = 9, private height = 3.6) {}
 
   update(dt: number, airplane: THREE.Object3D, forward: THREE.Vector3): void {
-    this.tmp.copy(forward).multiplyScalar(-9);
+    this.tmp.copy(forward).multiplyScalar(-this.distance);
     this.desired.copy(airplane.position).add(this.tmp);
-    this.desired.y += 3.6;
+    this.desired.y += this.height;
 
     dampVector(this.camera.position, this.camera.position, this.desired, 4.5, dt);
 

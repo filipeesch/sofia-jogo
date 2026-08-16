@@ -1,4 +1,4 @@
-export type WorldType = 'island' | 'mountains' | 'snow' | 'desert';
+export type WorldType = 'island' | 'mountains' | 'snow' | 'desert' | 'valley';
 
 export interface LevelConfig {
   id: string;
@@ -17,9 +17,48 @@ export interface LevelConfig {
   cloudCount: number;
   houseColors: number[];
   music: number;
+  vehicle: 'airplane' | 'car' | 'both';
 }
 
 export const LEVELS: LevelConfig[] = [
+  {
+    id: 'vale',
+    name: 'Vale Vivo',
+    emoji: '🌄',
+    description: 'Vila, fazenda, lago e floresta',
+    worldType: 'valley',
+    skyDayTop: 0x7fc8f8,
+    skyDayHorizon: 0xeaf6ff,
+    groundColor: 0x74c463,
+    oceanDeep: 0x1a7bb0,
+    oceanShallow: 0x38b0d8,
+    cycleSeconds: 150,
+    startNight: false,
+    starCount: 18,
+    cloudCount: 10,
+    houseColors: [0xff8a80, 0x80d8ff, 0xfff176],
+    music: 1,
+    vehicle: 'both'
+  },
+  {
+    id: 'valenoite',
+    name: 'Vale à Noite',
+    emoji: '🌙',
+    description: 'O vale com as luzes acesas',
+    worldType: 'valley',
+    skyDayTop: 0x3a6cc8,
+    skyDayHorizon: 0x9cc4ff,
+    groundColor: 0x5aa86e,
+    oceanDeep: 0x0a3d66,
+    oceanShallow: 0x2c6fa8,
+    cycleSeconds: 180,
+    startNight: true,
+    starCount: 22,
+    cloudCount: 8,
+    houseColors: [0xffe08a, 0x9ad0ff, 0xffb3d9],
+    music: 3,
+    vehicle: 'both'
+  },
   {
     id: 'ilha',
     name: 'Ilha Feliz',
@@ -36,7 +75,8 @@ export const LEVELS: LevelConfig[] = [
     starCount: 16,
     cloudCount: 10,
     houseColors: [0xff8a80, 0x80d8ff, 0xfff176],
-    music: 0
+    music: 0,
+    vehicle: 'airplane'
   },
   {
     id: 'montanhas',
@@ -54,7 +94,8 @@ export const LEVELS: LevelConfig[] = [
     starCount: 16,
     cloudCount: 12,
     houseColors: [0xc98a5e, 0xa8d8b9, 0xffd88a],
-    music: 1
+    music: 1,
+    vehicle: 'both'
   },
   {
     id: 'neve',
@@ -72,7 +113,8 @@ export const LEVELS: LevelConfig[] = [
     starCount: 16,
     cloudCount: 10,
     houseColors: [0xc9644a, 0x9fd0f0, 0xe0b060],
-    music: 3
+    music: 3,
+    vehicle: 'both'
   },
   {
     id: 'deserto',
@@ -90,12 +132,13 @@ export const LEVELS: LevelConfig[] = [
     starCount: 16,
     cloudCount: 8,
     houseColors: [0xd9a066, 0xcf9a5a, 0xe0b080],
-    music: 2
+    music: 2,
+    vehicle: 'both'
   },
   {
     id: 'noite',
     name: 'Noite Estrelada',
-    emoji: '🌙',
+    emoji: '⭐',
     description: 'Picos nevados sob a lua',
     worldType: 'mountains',
     skyDayTop: 0x3a6cc8,
@@ -108,6 +151,7 @@ export const LEVELS: LevelConfig[] = [
     starCount: 22,
     cloudCount: 9,
     houseColors: [0xffe08a, 0x9ad0ff, 0xffb3d9],
-    music: 3
+    music: 3,
+    vehicle: 'both'
   }
 ];

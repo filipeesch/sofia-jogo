@@ -172,6 +172,14 @@ export class AudioManager {
     this.tone(220, 0.4, 'sawtooth', 0.12, 0, 300);
   }
 
+  moo(): void {
+    this.tone(160, 0.5, 'sawtooth', 0.14, 0, 120);
+  }
+
+  quack(): void {
+    this.tone(420, 0.1, 'square', 0.15, 0, 300);
+  }
+
   // --- Música de fundo procedural (uma trilha por mundo) ---
   private static readonly MUSIC_TRACKS: { beat: number; bass: number[]; tones: number[][]; melody: number[] }[] = [
     {

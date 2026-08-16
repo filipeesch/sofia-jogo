@@ -57,6 +57,21 @@ const WORLD_MODELS: Record<string, { name: string; url: string }[]> = {
     { name: 'bird', url: 'models/bird.glb' },
     { name: 'balloon', url: 'models/balloon.glb' },
     { name: 'house', url: 'models/house.glb' }
+  ],
+  valley: [
+    { name: 'house', url: 'models/house.glb' },
+    { name: 'pine', url: 'models/pine.glb' },
+    { name: 'tree', url: 'models/tree.glb' },
+    { name: 'bird', url: 'models/bird.glb' },
+    { name: 'balloon', url: 'models/balloon.glb' },
+    { name: 'barn', url: 'models/barn.glb' },
+    { name: 'fence', url: 'models/fence.glb' },
+    { name: 'lamp', url: 'models/lamp.glb' },
+    { name: 'bench', url: 'models/bench.glb' },
+    { name: 'cow', url: 'models/cow.glb' },
+    { name: 'duck', url: 'models/duck.glb' },
+    { name: 'bush', url: 'models/bush.glb' },
+    { name: 'flower', url: 'models/flower.glb' }
   ]
 };
 
@@ -66,7 +81,8 @@ export async function loadWorldModels(worldType: string): Promise<WorldModels> {
     { name: 'cat', url: 'models/cat.glb' },
     { name: 'chicken', url: 'models/chicken.glb' },
     { name: 'sheep', url: 'models/sheep.glb' },
-    { name: 'appletree', url: 'models/appletree.glb' }
+    { name: 'appletree', url: 'models/appletree.glb' },
+    { name: 'car', url: 'models/car.glb' }
   ];
   const list = [...(WORLD_MODELS[worldType] ?? []), ...ALWAYS];
   const out: WorldModels = {};
