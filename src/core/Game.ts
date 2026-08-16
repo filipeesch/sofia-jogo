@@ -10,6 +10,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { UI } from '../ui/UI';
 import { AmbientPlanes } from '../world/AmbientPlanes';
 import { Clickables } from '../systems/Clickables';
+import { DebugCapture } from '../debug/DebugCapture';
 import type { LevelConfig } from '../levels';
 import { clamp } from '../utils';
 import type { WorldModels } from '../assets';
@@ -40,6 +41,7 @@ export class Game {
   private ambientPlanes: AmbientPlanes;
   private musicTrack: number;
   private clickables = new Clickables();
+  private debugCapture: DebugCapture | null = null;
   private raycaster = new THREE.Raycaster();
   private pointerNdc = new THREE.Vector2();
 
@@ -52,7 +54,9 @@ export class Game {
     this.controller = controller;
     this.vehicleType = vehicleType;
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    const debug = new URLSearchParams(window.location.search).has('debug');
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: debug });
+    if (debug) console.log('[debug] modo de captura ativo — suba o servidor com npm run shots e use window.__debug no console');
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(level.skyDayHorizon);
@@ -65,6 +69,7 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
     this.camera.position.set(0, 15, 52);
     this.cam = new CameraController(this.camera, this.vehicleType === 'car' ? 6.5 : 9, this.vehicleType === 'car' ? 2.4 : 3.6);
+    if (debug) this.debugCapture = new DebugCapture(this.camera, this.renderer.domElement);
 
     this.scene.fog = new THREE.Fog(level.skyDayHorizon, 60, 240);
 
@@ -334,7 +339,10 @@ export class Game {
     this.controller.resolveCollisions(this.world.solids, terrain);
     this.vehicle.update(dt);
 
-    this.cam.update(dt, this.vehicle, this.controller.forward);
+    this.debugCapture?.update(dt);
+    if (!this.debugCapture || this.debugCapture.isChaseEnabled()) {
+      this.cam.update(dt, this.vehicle, this.controller.forward);
+    }
 
     this.world.update(dt, state.nightAmount);
     this.ambientPlanes.update(dt);
@@ -354,6 +362,7 @@ export class Game {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this.update(dt);
     this.renderer.render(this.scene, this.camera);
+    this.debugCapture?.postRender();
   };
 
   start(): void {

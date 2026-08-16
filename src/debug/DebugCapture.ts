@@ -1,0 +1,154 @@
+import * as THREE from 'three';
+
+const SERVER = 'http://localhost:4477';
+
+// Runtime "engine viewport" for debug: control the camera, capture PNGs and short videos.
+export class DebugCapture {
+  private chaseEnabled = true;
+  private pendingSnap: string | null = null;
+  private recorder: MediaRecorder | null = null;
+  private recording = false;
+  private chunks: Blob[] = [];
+  private sweepPoints: { pos: THREE.Vector3; look: THREE.Vector3 }[] = [];
+  private sweepIdx = 0;
+  private sweepT = 0;
+
+  constructor(private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement) {
+    const g = window as unknown as Record<string, unknown>;
+    g.__debug = {
+      setView: (px: number, py: number, pz: number, tx: number, ty: number, tz: number) => this.setView(px, py, pz, tx, ty, tz),
+      snap: (name?: string) => this.snap(name),
+      record: (seconds?: number) => this.record(seconds ?? 10),
+      stopRecord: () => this.stopRecord(),
+      sweep: (points: number[][], _fps?: number) => this.sweep(points),
+      resumeChase: () => { this.chaseEnabled = true; this.sweepPoints = []; },
+      chase: () => this.chaseEnabled
+    };
+    this.buildOverlay();
+  }
+
+  isChaseEnabled(): boolean {
+    return this.chaseEnabled;
+  }
+
+  setView(px: number, py: number, pz: number, tx: number, ty: number, tz: number): void {
+    this.chaseEnabled = false;
+    this.sweepPoints = [];
+    this.camera.position.set(px, py, pz);
+    this.camera.lookAt(tx, ty, tz);
+  }
+
+  sweep(points: number[][]): void {
+    if (!points.length) return;
+    this.chaseEnabled = false;
+    this.sweepPoints = points.map((p) => ({
+      pos: new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0),
+      look: new THREE.Vector3(p[3] ?? 0, p[4] ?? 0, p[5] ?? 0)
+    }));
+    this.sweepIdx = 0;
+    this.sweepT = 0;
+  }
+
+  snap(name?: string): void {
+    this.pendingSnap = name ?? 'cap_' + Date.now() + '.png';
+  }
+
+  record(seconds = 10): void {
+    if (this.recording) return;
+    try {
+      const stream = this.canvas.captureStream(30);
+      const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      this.chunks = [];
+      rec.ondataavailable = (e) => { if (e.data.size) this.chunks.push(e.data); };
+      rec.onstop = () => {
+        this.recording = false;
+        const blob = new Blob(this.chunks, { type: 'video/webm' });
+        void blob.arrayBuffer().then((buf) => this.post('/clip', this.toBase64(buf), 'clip_' + Date.now() + '.webm'));
+      };
+      this.recorder = rec;
+      rec.start();
+      this.recording = true;
+      window.setTimeout(() => this.stopRecord(), seconds * 1000);
+    } catch (e) {
+      console.warn('record failed', e);
+    }
+  }
+
+  stopRecord(): void {
+    if (this.recorder && this.recording) {
+      this.recorder.stop();
+    }
+  }
+
+  update(dt: number): void {
+    if (this.sweepPoints.length === 0) return;
+    const a = this.sweepPoints[this.sweepIdx];
+    const b = this.sweepPoints[Math.min(this.sweepIdx + 1, this.sweepPoints.length - 1)];
+    this.sweepT += dt * 0.5;
+    if (this.sweepT >= 1) {
+      this.sweepT = 0;
+      this.snap('sweep_' + this.sweepIdx + '.png');
+      this.sweepIdx++;
+      if (this.sweepIdx >= this.sweepPoints.length) {
+        this.sweepPoints = [];
+        this.chaseEnabled = true;
+        return;
+      }
+    }
+    this.camera.position.lerpVectors(a.pos, b.pos, this.sweepT);
+    this.camera.lookAt(a.look.clone().lerp(b.look, this.sweepT));
+  }
+
+  // Called right after renderer.render so the framebuffer is fresh.
+  postRender(): void {
+    if (this.pendingSnap === null) return;
+    const name = this.pendingSnap;
+    this.pendingSnap = null;
+    try {
+      const dataUrl = this.canvas.toDataURL('image/png');
+      const base64 = dataUrl.split(',')[1];
+      void this.post('/shot', base64, name);
+    } catch (e) {
+      console.warn('snap failed', e);
+    }
+  }
+
+  private async post(path: string, base64: string, filename: string): Promise<void> {
+    try {
+      const res = await fetch(SERVER + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, data: base64 })
+      });
+      console.log('[debug] ' + path + ' ->', await res.text());
+    } catch (e) {
+      console.warn('[debug] capture server offline — rode: npm run shots');
+    }
+  }
+
+  private toBase64(buf: ArrayBuffer): string {
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+  }
+
+  private buildOverlay(): void {
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:8px;z-index:99;';
+    const btn = (label: string, fn: () => void) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = 'pointer-events:auto;border:none;border-radius:14px;padding:10px 14px;background:#222;color:#fff;font-size:14px;cursor:pointer;';
+      b.addEventListener('pointerdown', (e) => { e.stopPropagation(); fn(); });
+      bar.append(b);
+    };
+    btn('📸 Snap', () => this.snap());
+    btn('🎥 10s', () => this.record(10));
+    btn('▶ Chase', () => { this.chaseEnabled = true; this.sweepPoints = []; });
+    document.body.append(bar);
+  }
+}
