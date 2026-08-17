@@ -46,9 +46,15 @@ const WORLD_MODELS: Record<string, { name: string; url: string }[]> = {
     { name: 'whale', url: 'models/whale.glb' },
     { name: 'bird', url: 'models/bird.glb' },
     { name: 'balloon', url: 'models/balloon.glb' },
-    { name: 'peak', url: 'models/peak.glb' },
-    { name: 'mountain', url: 'models/mountain.glb' },
-    { name: 'house', url: 'models/house.glb' }
+    { name: 'house', url: 'models/house.glb' },
+    { name: 'barn', url: 'models/barn.glb' },
+    { name: 'fence', url: 'models/fence.glb' },
+    { name: 'lamp', url: 'models/lamp.glb' },
+    { name: 'bench', url: 'models/bench.glb' },
+    { name: 'duck', url: 'models/duck.glb' },
+    { name: 'cow', url: 'models/cow.glb' },
+    { name: 'bush', url: 'models/bush.glb' },
+    { name: 'flower', url: 'models/flower.glb' }
   ],
   mountains: [
     { name: 'pine', url: 'models/pine.glb' },
@@ -56,7 +62,16 @@ const WORLD_MODELS: Record<string, { name: string; url: string }[]> = {
     { name: 'peak', url: 'models/peak.glb' },
     { name: 'bird', url: 'models/bird.glb' },
     { name: 'balloon', url: 'models/balloon.glb' },
-    { name: 'house', url: 'models/house.glb' }
+    { name: 'house', url: 'models/house.glb' },
+    { name: 'snowman', url: 'models/snowman.glb' },
+    { name: 'barn', url: 'models/barn.glb' },
+    { name: 'fence', url: 'models/fence.glb' },
+    { name: 'lamp', url: 'models/lamp.glb' },
+    { name: 'bench', url: 'models/bench.glb' },
+    { name: 'duck', url: 'models/duck.glb' },
+    { name: 'cow', url: 'models/cow.glb' },
+    { name: 'bush', url: 'models/bush.glb' },
+    { name: 'flower', url: 'models/flower.glb' }
   ],
   valley: [
     { name: 'house', url: 'models/house.glb' },

@@ -37,7 +37,11 @@ export class World {
 
   constructor(config: LevelConfig, models: WorldModels = {}) {
     if (config.worldType === 'mountains') {
-      this.terrain = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+      const mountains = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+      this.terrain = mountains;
+      this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'mountains');
+      this.traffic = new Traffic(models.car, this.roads, 6);
+      this.creatures.push(...mountains.animals);
     } else if (config.worldType === 'snow') {
       this.terrain = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
     } else if (config.worldType === 'desert') {
@@ -49,10 +53,14 @@ export class World {
       this.traffic = new Traffic(models.car, this.roads);
       this.creatures.push(...valley.animals);
     } else {
-      this.terrain = new Island({ grass: config.groundColor, houseColors: config.houseColors }, models);
+      const island = new Island({ grass: config.groundColor, houseColors: config.houseColors }, models);
+      this.terrain = island;
       this.ocean = new Ocean({ deep: config.oceanDeep, shallow: config.oceanShallow });
       this.whale = new Whale(models.whale);
-      this.whale.position.set(-32, -1.2, 22);
+      this.whale.position.set(-88, -1.2, 56); // open sea, outside the beach ring
+      this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'island');
+      this.traffic = new Traffic(models.car, this.roads, 3);
+      this.creatures.push(...island.animals);
     }
 
     this.rainbow.position.set(24, 0, -24);
@@ -94,14 +102,17 @@ export class World {
     this.houses = this.terrain.houses;
     this.solids = this.terrain.solids;
 
-    if (config.worldType === 'mountains' || config.worldType === 'snow' || config.worldType === 'desert') {
+    // Snow and desert keep the generic grid; the mountains world builds its
+    // own connected road network above (kind 'mountains').
+    if (config.worldType === 'snow' || config.worldType === 'desert') {
       this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'grid');
       this.traffic = new Traffic(models.car, this.roads);
     }
 
-    // Wandering animals for the non-valley worlds (the valley brings its own).
-    if (config.worldType !== 'valley') {
-      this.scatterAnimals(models, config.worldType === 'island' ? 28 : 50);
+    // Wandering animals for worlds that do not place their own.
+    // (valley, mountains and island all define their animals per zone.)
+    if (config.worldType !== 'valley' && config.worldType !== 'mountains' && config.worldType !== 'island') {
+      this.scatterAnimals(models, 50);
     }
   }
 
@@ -159,6 +170,11 @@ export class World {
 
   setNight(night: number): void {
     this.houses.forEach((h) => h.setLights(night > 0.55));
-    if (this.terrain instanceof Valley) this.terrain.setNightLamps(night > 0.5);
+    if (
+      this.terrain instanceof Valley ||
+      this.terrain instanceof Mountains ||
+      this.terrain instanceof Island
+    )
+      this.terrain.setNightLamps(night > 0.5);
   }
 }

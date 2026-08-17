@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { MOUNTAINS_ROADS } from './mountainsLayout';
+import { ISLAND_ROADS } from './islandLayout';
 
 const VALLEY_DEFS: [number, number][][] = [
   [[0, 0], [-15, 6], [-30, 16], [-50, 28], [-70, 40]],
@@ -15,16 +17,27 @@ const GRID_DEFS: [number, number][][] = [
   [[18, -32], [18, 32]]
 ];
 
+// Vale das Montanhas: the road network lives in mountainsLayout.ts
+// (MOUNTAINS_ROADS) so the level auto-check can validate the same geometry.
+// main: spawn (0,24) → vila (0,4); branches: fazenda, lago, pinheiral.
+export const MOUNTAINS_DEFS = MOUNTAINS_ROADS;
+
+// Ilha Feliz: the road network lives in islandLayout.ts (ISLAND_ROADS) so the
+// level auto-check can validate the same geometry. Hub at the village; spokes
+// to serra, lagoa, fazenda and two beaches.
+export const ISLAND_DEFS = ISLAND_ROADS;
+
 // Curved roads (splines) that follow the terrain, with paths for traffic.
 export class Roads extends THREE.Group {
   readonly paths: THREE.Vector3[][] = [];
 
-  constructor(terrainHeight: (x: number, z: number) => number, kind: 'valley' | 'grid' = 'grid') {
+  constructor(terrainHeight: (x: number, z: number) => number, kind: 'valley' | 'grid' | 'mountains' | 'island' = 'grid') {
     super();
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x48515c, roughness: 0.95 });
     const lineMat = new THREE.MeshStandardMaterial({ color: 0xf0e6a8, roughness: 0.9 });
 
-    const defs = kind === 'valley' ? VALLEY_DEFS : GRID_DEFS;
+    const defs =
+      kind === 'valley' ? VALLEY_DEFS : kind === 'mountains' ? MOUNTAINS_DEFS : kind === 'island' ? ISLAND_DEFS : GRID_DEFS;
     for (const def of defs) {
       const pts = this.sample(def);
       const path3 = pts.map(([x, z]) => new THREE.Vector3(x, terrainHeight(x, z), z));

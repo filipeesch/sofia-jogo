@@ -1,26 +1,46 @@
 import * as THREE from 'three';
 import { House } from './landmarks';
+import { Animal } from './Animals';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
-import { rand, TAU } from '../utils';
+import { TAU } from '../utils';
+import {
+  buildMountainsLayout,
+  mountainTerrainHeight,
+  MOUNTAINS_HILLS,
+  mulberry32,
+  MOUNTAIN_SEED,
+  type MountainsLayout,
+  type PeakPos
+} from './mountainsLayout';
 
-// A mountain range: ring of snowy peaks around a green valley with a lake and a cabin.
+// "Vale das Montanhas": a green valley ringed by snowy peaks, with a village,
+// a farm, a lake and a pine forest. All positions come from
+// mountainsLayout.ts (deterministic, validated by scripts/check-mountain-level.mjs).
 export class Mountains extends THREE.Group {
   readonly houses: House[] = [];
   readonly solids: Solid[] = [];
+  readonly animals: Animal[] = [];
 
+  private layout: MountainsLayout;
   private foliage: { g: THREE.Group; phase: number; speed: number }[] = [];
-  private peaks: { x: number; z: number; r: number; h: number }[] = [];
-  private hills: { x: number; z: number; r: number; h: number }[] = [];
+  private lamps: { mat: THREE.MeshStandardMaterial }[] = [];
+  private peaks: PeakPos[] = [];
+  private hills = MOUNTAINS_HILLS;
+  // Visual-only PRNG (sway phase/speed, initial animal facing) — positions
+  // always come from the deterministic layout.
+  private rng: () => number;
 
   constructor(config: { grass?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
     super();
+    this.layout = buildMountainsLayout();
+    this.rng = mulberry32(MOUNTAIN_SEED + 1);
 
     const grass = config.grass ?? 0x6fc45c;
     const lakeColor = config.lake ?? 0x38b0d8;
-    const houseColors = config.houseColors ?? [0xff8a80, 0x80d8ff, 0xfff176];
+    const houseColors = config.houseColors ?? [0xc98a5e, 0xa8d8b9, 0xffd88a];
 
-    // Big flat meadow.
+    // ---- L0: ground, lake, peaks, soft hills ----
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(900, 900, 1, 1),
       new THREE.MeshStandardMaterial({ color: grass, roughness: 0.9, flatShading: true })
@@ -29,119 +49,188 @@ export class Mountains extends THREE.Group {
     ground.receiveShadow = true;
     this.add(ground);
 
-    // Lake in the valley.
-    const lake = new THREE.Mesh(
-      new THREE.CircleGeometry(9, 32),
-      new THREE.MeshStandardMaterial({ color: lakeColor, roughness: 0.3 })
-    );
-    lake.rotation.x = -Math.PI / 2;
-    lake.position.set(-9, 0.08, 7);
-    lake.receiveShadow = true;
-    this.add(lake);
-
-    // Ring of snowy peaks (detailed GLB when available).
-    const peakDefs: { a: number; r: number; rad: number; h: number }[] = [
-      { a: 0, r: 46, rad: 12, h: 15 },
-      { a: 60, r: 44, rad: 11, h: 18 },
-      { a: 120, r: 46, rad: 12, h: 14 },
-      { a: 180, r: 45, rad: 13, h: 17 },
-      { a: 240, r: 44, rad: 11, h: 16 },
-      { a: 300, r: 46, rad: 12, h: 15 }
-    ];
-    for (const p of peakDefs) {
-      const rad = (p.a * Math.PI) / 180;
-      const x = Math.cos(rad) * p.r;
-      const z = Math.sin(rad) * p.r;
-      if (models.peak) {
-        const g = models.peak.clone();
-        g.position.set(x, 0, z);
-        g.scale.setScalar(p.h / 7);
-        g.rotation.y = rand(0, TAU);
-        this.add(g);
-        this.solids.push({ x, y: 0, z, r: p.rad, h: p.h });
-      } else {
-        this.addPeak(x, z, p.rad, p.h);
-      }
-      this.peaks.push({ x, z, r: p.rad, h: p.h });
-    }
-
-    // Soft hills in the valley.
-    const hillDefs: [number, number, number, number][] = [
-      [10, -6, 5, 1.6],
-      [-16, -12, 6, 2.0],
-      [14, 16, 5, 1.8],
-      [-8, 14, 5, 1.6],
-      [16, -14, 6, 2.0]
-    ];
-    for (const [x, z, r, h] of hillDefs) {
-      const hillGeo = new THREE.SphereGeometry(1, 12, 10);
-      hillGeo.scale(r, h, r);
-      const hill = new THREE.Mesh(
-        hillGeo,
-        new THREE.MeshStandardMaterial({ color: new THREE.Color(grass).offsetHSL(0, 0, 0.06).getHex(), roughness: 0.85, flatShading: true })
+    for (const w of this.layout.waters) {
+      const lake = new THREE.Mesh(
+        new THREE.CircleGeometry(w.r, 40),
+        new THREE.MeshStandardMaterial({ color: lakeColor, roughness: 0.3 })
       );
-      hill.position.set(x, 0, z);
-      hill.castShadow = true;
-      hill.receiveShadow = true;
-      this.add(hill);
-      this.hills.push({ x, z, r, h });
+      lake.rotation.x = -Math.PI / 2;
+      lake.position.set(w.x, 0.08, w.z);
+      lake.receiveShadow = true;
+      this.add(lake);
     }
 
-    // Trees scattered in the valley (avoiding the lake).
-    const treeSpots: [number, number][] = [
-      [3, -4], [8, -14], [6, 12], [-8, -18], [18, 0],
-      [-20, 12], [0, 18], [-24, -4], [22, -10],
-      [12, 4], [-12, -20], [14, 22], [-16, 18], [24, -12]
-    ];
-    treeSpots.forEach(([x, z], i) => {
-      if (Math.hypot(x, z) > 28) return;
-      if (models.pine || models.tree) this.addGLBTree(models, x, z, i);
-      else this.addTree(x, z);
-    });
+    for (const p of this.layout.peaks) this.addPeak(p, models.peak);
+    this.peaks = this.layout.peaks;
 
-    // Cabin.
-    const cabin = new House(houseColors[0], 0x8d4a2f, models.house ? models.house.clone() : undefined);
-    cabin.position.set(12, 0, 10);
-    this.add(cabin);
-    this.houses.push(cabin);
-    this.solids.push({ x: 12, y: 1.6, z: 10, r: 1.9, h: 3.2 });
+    for (const hill of this.hills) {
+      const hillGeo = new THREE.SphereGeometry(1, 12, 10);
+      hillGeo.scale(hill.r, hill.h, hill.r);
+      const hillMesh = new THREE.Mesh(
+        hillGeo,
+        new THREE.MeshStandardMaterial({
+          color: new THREE.Color(grass).offsetHSL(0, 0, 0.06).getHex(),
+          roughness: 0.85,
+          flatShading: true
+        })
+      );
+      hillMesh.position.set(hill.x, 0, hill.z);
+      hillMesh.castShadow = true;
+      hillMesh.receiveShadow = true;
+      this.add(hillMesh);
+    }
+
+    // ---- L2: anchors beside the roads (village, farm, lake edge) ----
+    for (const h of this.layout.houses) {
+      const house = new House(
+        houseColors[h.colorIndex % houseColors.length],
+        0x8d4a2f,
+        models.house ? models.house.clone() : undefined
+      );
+      house.position.set(h.x, h.y, h.z);
+      house.rotation.y = h.rotY;
+      this.add(house);
+      this.houses.push(house);
+      this.solids.push({ x: h.x, y: h.y + 1.6, z: h.z, r: 1.9, h: 3.2 });
+    }
+
+    if (models.lamp) {
+      for (const l of this.layout.lamps) {
+        const lamp = models.lamp.clone();
+        lamp.position.set(l.x, l.y, l.z);
+        this.add(lamp);
+        lamp.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh && m.name === 'LampHead') {
+            const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshStandardMaterial;
+            mat.emissive.set(0xffd97a);
+            mat.emissiveIntensity = 0;
+            this.lamps.push({ mat });
+          }
+        });
+      }
+    }
+
+    if (models.bench) {
+      for (const b of this.layout.benches) {
+        const bench = models.bench.clone();
+        bench.position.set(b.x, b.y, b.z);
+        bench.rotation.y = b.rotY;
+        this.add(bench);
+        this.solids.push({ x: b.x, y: b.y + 0.5, z: b.z, r: 1.0, h: 1.0 });
+      }
+    }
+
+    const { barn, fencePosts } = this.layout;
+    if (models.barn) {
+      const barnMesh = models.barn.clone();
+      barnMesh.position.set(barn.x, barn.y, barn.z);
+      this.add(barnMesh);
+      this.solids.push({ x: barn.x, y: barn.y + 2, z: barn.z, r: 2.3, h: 4 });
+    }
+    if (models.fence) {
+      for (const f of fencePosts) {
+        const post = models.fence.clone();
+        post.position.set(f.x, f.y, f.z);
+        post.rotation.y = f.rotY;
+        this.add(post);
+        this.solids.push({ x: f.x, y: f.y + 0.5, z: f.z, r: 0.4, h: 1 });
+      }
+    }
+
+    // Animals (farm + meadow + lake edge) — all defined by the layout.
+    for (const a of this.layout.animals) {
+      const src = models[a.type];
+      if (!src) continue;
+      const animal = new Animal(src.clone(), a.x, a.z, a.type, a.wanderR);
+      animal.position.set(a.x, a.y + 0.15, a.z);
+      animal.rotation.y = this.rng() * TAU;
+      this.add(animal);
+      this.animals.push(animal);
+      if (a.type !== 'duck') this.solids.push({ x: a.x, y: a.y + 0.7, z: a.z, r: 1.0, h: 1.4 });
+    }
+
+    // ---- L3: vegetation (meadow trees + dense pine ring + filler) ----
+    for (const t of this.layout.trees) {
+      this.addTree(models, t);
+    }
+    if (models.bush) {
+      for (const b of this.layout.bushes) {
+        const bush = models.bush.clone();
+        bush.position.set(b.x, b.y, b.z);
+        bush.rotation.y = this.rng() * TAU;
+        this.add(bush);
+      }
+    }
+    if (models.flower) {
+      for (const f of this.layout.flowers) {
+        const flower = models.flower.clone();
+        flower.position.set(f.x, f.y, f.z);
+        this.add(flower);
+      }
+    }
+
+    // ---- L4: decorations (snowmen on the peak slopes) ----
+    for (const s of this.layout.snowmen) {
+      if (!models.snowman) continue;
+      const snowman = models.snowman.clone();
+      snowman.position.set(s.x, s.y, s.z);
+      snowman.rotation.y = s.rotY;
+      this.add(snowman);
+      this.solids.push({ x: s.x, y: s.y + 1.1, z: s.z, r: 0.9, h: 2.2 });
+    }
   }
 
-  private addGLBTree(models: WorldModels, x: number, z: number, i: number): void {
-    const src = i % 2 === 0 && models.pine ? models.pine : models.tree ?? models.pine;
-    if (!src) return;
-    const g = src.clone();
-    const s = rand(0.8, 1.3);
-    g.scale.setScalar(s);
-    const y = this.terrainHeight(x, z);
-    g.position.set(x, y, z);
-    g.rotation.y = rand(0, TAU);
-    this.add(g);
-    this.foliage.push({ g, phase: rand(0, TAU), speed: rand(0.6, 1.1) });
-    this.solids.push({ x, y: y + 1.5 * s, z, r: 1.1 * s, h: 4 * s });
+  private addTree(models: WorldModels, t: { x: number; z: number; y: number; scale: number; rotY: number; pine: boolean }): void {
+    const src = t.pine
+      ? models.pine ?? models.tree
+      : models.appletree ?? models.tree ?? models.pine;
+    const g = src ? src.clone() : undefined;
+    if (g) {
+      g.scale.setScalar(t.scale);
+      g.position.set(t.x, t.y, t.z);
+      g.rotation.y = t.rotY;
+      this.add(g);
+      this.foliage.push({ g, phase: this.rng() * TAU, speed: 0.6 + this.rng() * 0.5 });
+    } else {
+      this.addDraftTree(t.x, t.z, t.scale);
+    }
+    this.solids.push({ x: t.x, y: t.y + 2 * t.scale, z: t.z, r: 1.2 * t.scale, h: 4 * t.scale });
   }
 
-  private addPeak(x: number, z: number, r: number, h: number): void {
+  private addPeak(p: PeakPos, model?: THREE.Group): void {
+    if (model) {
+      const g = model.clone();
+      g.position.set(p.x, 0, p.z);
+      g.scale.setScalar(p.h / 7);
+      this.add(g);
+      this.solids.push({ x: p.x, y: 0, z: p.z, r: p.rad, h: p.h });
+      return;
+    }
+    this.addPeakDraft(p);
+  }
+
+  private addPeakDraft(p: PeakPos): void {
     const mountain = new THREE.Mesh(
-      new THREE.ConeGeometry(r, h, 12),
+      new THREE.ConeGeometry(p.rad, p.h, 12),
       new THREE.MeshStandardMaterial({ color: 0x9aa7b8, roughness: 0.9, flatShading: true })
     );
-    mountain.position.set(x, h / 2, z);
+    mountain.position.set(p.x, p.h / 2, p.z);
     mountain.castShadow = true;
     mountain.receiveShadow = true;
     this.add(mountain);
 
     const snow = new THREE.Mesh(
-      new THREE.ConeGeometry(r * 0.32, h * 0.32, 12),
+      new THREE.ConeGeometry(p.rad * 0.32, p.h * 0.32, 12),
       new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
     );
-    snow.position.set(x, h - h * 0.16, z);
+    snow.position.set(p.x, p.h - p.h * 0.16, p.z);
     this.add(snow);
 
-    this.solids.push({ x, y: 0, z, r, h });
+    this.solids.push({ x: p.x, y: 0, z: p.z, r: p.rad, h: p.h });
   }
 
-  private addTree(x: number, z: number): void {
+  private addDraftTree(x: number, z: number, scale: number): void {
     const g = new THREE.Group();
     const trunk = new THREE.Mesh(
       new THREE.CylinderGeometry(0.28, 0.42, 1.4, 8),
@@ -168,25 +257,18 @@ export class Mountains extends THREE.Group {
     foliage.position.y = 0.7;
     g.add(foliage);
 
+    g.scale.setScalar(scale);
     g.position.set(x, this.terrainHeight(x, z), z);
     this.add(g);
-    this.foliage.push({ g: foliage, phase: rand(0, TAU), speed: rand(0.6, 1.2) });
-    this.solids.push({ x, y: this.terrainHeight(x, z) + 1.2, z, r: 1.1, h: 4.5 });
+    this.foliage.push({ g: foliage, phase: this.rng() * TAU, speed: 0.6 + this.rng() * 0.6 });
   }
 
   terrainHeight(x: number, z: number): number {
-    let h = 0;
-    for (const p of this.peaks) {
-      const d = Math.hypot(x - p.x, z - p.z);
-      const n = d / p.r;
-      if (n < 1) h += p.h * (1 - n);
-    }
-    for (const hill of this.hills) {
-      const d = Math.hypot(x - hill.x, z - hill.z);
-      const n = d / hill.r;
-      if (n < 1) h += hill.h * Math.sqrt(Math.max(0, 1 - n * n));
-    }
-    return h;
+    return mountainTerrainHeight(x, z);
+  }
+
+  setNightLamps(on: boolean): void {
+    for (const l of this.lamps) l.mat.emissiveIntensity = on ? 1.6 : 0;
   }
 
   update(dt: number, tGlobal: number): void {
