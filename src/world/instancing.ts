@@ -75,8 +75,13 @@ export function instanceProps(
 
   for (const mesh of meshes) {
     const rel = inv.clone().multiply(mesh.matrixWorld);
-    const geo = mesh.geometry.clone().applyMatrix4(rel);
+    const srcGeo = mesh.geometry;
+    const geo = srcGeo.clone().applyMatrix4(rel);
     const mat = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.Material;
+    // The template's original geometry is now orphaned (the InstancedMesh uses
+    // the clone). Free its GPU buffer; clone() copied the JS attribute arrays,
+    // so the template itself stays reusable.
+    srcGeo.dispose();
 
     const im = new THREE.InstancedMesh(geo, mat, placements.length);
     im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

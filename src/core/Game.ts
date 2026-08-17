@@ -28,6 +28,24 @@ function wrapAngle(a: number): number {
   return a - Math.PI;
 }
 
+// Collects every texture a material references (direct slots like Sprite.map
+// and ShaderMaterial uniform values), so dispose() can free them on the GPU.
+function collectMaterialTextures(material: THREE.Material, out: Set<THREE.Texture>): void {
+  const mat = material as unknown as Record<string, unknown>;
+  for (const value of Object.values(mat)) {
+    if (value && typeof value === 'object' && (value as THREE.Texture).isTexture) {
+      out.add(value as THREE.Texture);
+    }
+  }
+  const uniforms = (material as unknown as { uniforms?: Record<string, { value?: unknown }> }).uniforms;
+  if (uniforms) {
+    for (const u of Object.values(uniforms)) {
+      const inner = u && (u as { value?: unknown }).value;
+      if (inner && (inner as THREE.Texture).isTexture) out.add(inner as THREE.Texture);
+    }
+  }
+}
+
 export class Game {
   onExit?: () => void;
 
@@ -594,7 +612,10 @@ export class Game {
     window.removeEventListener('pointercancel', this.onPointerUp);
     window.removeEventListener('keydown', this.onKeyDown);
 
-    // Best-effort GPU resource cleanup (skip Sprite's shared geometry).
+    // Best-effort GPU resource cleanup: dispose geometries, materials and the
+    // textures they reference (sky/star CanvasTextures, etc.). Instanced meshes
+    // are covered too (they are meshes).
+    const textures = new Set<THREE.Texture>();
     this.scene.traverse((obj) => {
       const any = obj as {
         geometry?: THREE.BufferGeometry;
@@ -603,14 +624,20 @@ export class Game {
         isPoints?: boolean;
       };
       if (any.geometry && (any.isMesh || any.isPoints)) any.geometry.dispose();
-      if (any.material) {
-        if (Array.isArray(any.material)) any.material.forEach((m) => m.dispose());
-        else any.material.dispose();
+      const mats = any.material ? (Array.isArray(any.material) ? any.material : [any.material]) : [];
+      for (const m of mats) {
+        collectMaterialTextures(m, textures);
+        m.dispose();
       }
     });
+    textures.forEach((t) => t.dispose());
 
     this.audio.dispose();
     this.renderer.dispose();
+    // Deterministically release the WebGL context: each Game creates its own
+    // renderer/context, so without this the browser keeps old contexts alive
+    // across level switches (and eventually hits its context limit).
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     document.getElementById('ui')!.innerHTML = '';
   }
