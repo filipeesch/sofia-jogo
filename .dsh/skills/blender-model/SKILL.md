@@ -1,6 +1,6 @@
 ---
 name: blender-model
-description: Modelar objetos 3D para o jogo Avião Aventureiro usando o Blender MCP (execute_blender_code) — toy low-poly infantilizado, com detalhes reconhecíveis, exportando GLB no contrato exato que o código do jogo espera (root EMPTY + meshes com nomes/material names específicos).
+description: Modelar objetos 3D para o jogo Avião Aventureiro usando o Blender MCP (execute_blender_code) — toy low-poly infantilizado, com detalhes reconhecíveis, exportando GLB otimizado (draw calls ≈ 1 por material; root EMPTY + meshes com nomes/material names específicos).
 ---
 
 # Modelagem de objetos (Blender MCP)
@@ -60,6 +60,42 @@ e seta `castShadow = true` em todo mesh. Consequências:
 Regra geral: nomeie meshes/materiais em inglês, descritivos, e **use os nomes
 da tabela acima quando o objeto for desses tipos** (senão animação/tinta/brilho
 não funcionam).
+
+### Otimização de draw calls — 1 primitiva por material
+
+**Por quê:** no Three.js cada `(mesh, material)` do GLB vira **um draw call por
+instância em cena**. Vários modelos atuais explodiram em meshes soltos:
+`aviao.glb` tem 31 meshes, `car.glb` 31, `cow` 26, `cat` 24, `chicken`
+21, `bird` 21, `sheep` 18, `dog` 17, `whale` 19, `snowman` 23. Como o
+cenário repete árvores/animais/carros dezenas de vezes, isso vira **milhares de
+draw calls** (a causa do framerate baixo — ver `docs/performance.md`).
+
+**Regra de ouro:** draw calls ≈ **nº de materiais distintos**, não nº de meshes.
+- Use **2–4 materiais** por objeto (cor base + detalhe + vidro/janela + rodas…)
+  e **reaproveite o mesmo material** (mesmo datablock) em várias partes — não
+  crie material novo só porque a cor é igual.
+- **Junte (Join) todos os meshes que compartilham o mesmo material** num único
+  mesh. Resultado: nº de meshes ≈ nº de materiais.
+
+**Só fica separado o que o código consulta por nome** (animação/tinta/brilho):
+`Propeller` (avião, gira), objetos `Wheel*` (carro, giram), `WingL`/`WingR`
+(pássaro, batem), mesh `LampHead` (poste, emissivo) e materiais `Body`/`Roof`/
+`Windows` (casa, tinta + janela). Todo o resto (fuselagem, cauda, patas,
+manchas, chifres…) **junta por material**.
+
+**Alvo orientativo de meshes por modelo:** avião ~5–10, carro ~6–8, vaca ~4–6,
+pássaro ~4–6, baleia ~3–5, casa ~4–6, boneco ~4–6, árvore ~3–4. **Nunca 20+.**
+
+**Como juntar no Blender (por material):**
+1. Garanta que as partes de mesma cor usam o **mesmo material** (não cópias com
+   a mesma cor).
+2. Selecione-as e `Join` (`Ctrl+J`) — vira um objeto com 1 material ⇒ 1
+   primitiva ⇒ 1 draw call. Repita por material; depois parenteie no root EMPTY
+   (seção 3).
+
+**Verificação:** com `?debug=1`, `window.__debug.stats()` retorna
+`{ calls, triangles, ... }`. Após exportar e carregar no jogo, o draw call do
+modelo deve ser ≈ o nº de materiais (não o nº de meshes do Blender).
 
 ### Objetos por mundo (paleta de bioma — combine com a skill `level-gen`)
 
@@ -148,6 +184,7 @@ chaminé (cilindro), rodas (cilindro achatado) etc.
 3. Flat-shaded, toy, infantilizado, reconhecível de longe.
 4. Screenshot (Blender) + snap (jogo) **olhados** e aprovados por você.
 5. `npm run typecheck` passa e o jogo carrega o modelo sem warning de load.
+6. Modelo otimizado: meshes fundidos por material — draw calls ≈ nº de materiais; só ficam separados os nós nomeados (`Propeller`, `Wheel*`, `Wing*`, `LampHead`, materiais `Body`/`Roof`/`Windows`).
 
 ## 6. Aceleradores opcionais (use com critério)
 

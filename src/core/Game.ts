@@ -9,12 +9,24 @@ import { ParticleEffects } from '../systems/ParticleEffects';
 import { AudioManager } from '../systems/AudioManager';
 import { playSound, preloadSound } from '../ui/sounds';
 import { UI } from '../ui/UI';
+import { buildRoadTour } from '../rails/roadTour';
+import { flightTourPoints } from '../rails/flightTour';
+import { PathFollower } from '../rails/pathFollower';
+import { ROAD_DEFS } from '../rails/roadDefs';
+import type { CarController } from '../controllers/CarController';
+import type { FlightController } from '../controllers/FlightController';
 import { AmbientPlanes } from '../world/AmbientPlanes';
 import { Clickables } from '../systems/Clickables';
 import { DebugCapture } from '../debug/DebugCapture';
 import type { LevelConfig } from '../levels';
-import { clamp } from '../utils';
+import { clamp, damp, dampFactor } from '../utils';
 import type { WorldModels } from '../assets';
+
+function wrapAngle(a: number): number {
+  a = (a + Math.PI) % (Math.PI * 2);
+  if (a < 0) a += Math.PI * 2;
+  return a - Math.PI;
+}
 
 export class Game {
   onExit?: () => void;
@@ -39,6 +51,7 @@ export class Game {
   private ui: UI;
 
   private trailTimer = 0;
+  private shadowTimer = 0;
   private ambientPlanes: AmbientPlanes;
   private musicTrack: number;
   private clickables = new Clickables();
@@ -49,6 +62,20 @@ export class Game {
   private activePointer: number | null = null;
   private startX = 0;
   private startY = 0;
+
+  // "Sobre trilhos": on-rails mode. Default ON — the car drives a closed
+  // tour through every road of the level; the airplane loops over the
+  // points of interest. The HUD toggle (or the T key) switches modes.
+  private railMode = true;
+  private rail: PathFollower;
+  private railForward = new THREE.Vector3(0, 0, -1);
+  private railYaw = 0;
+  private railPitch = 0;
+  private railBank = 0;
+  private rejoinFrom = new THREE.Vector3();
+  private rejoinT = 0;
+  private rejoinDur = 1;
+  private readonly railScratch = new THREE.Vector3();
 
   constructor(container: HTMLElement, level: LevelConfig, vehicle: Vehicle, controller: VehicleController, models: WorldModels = {}, ambientModel?: THREE.Group, vehicleType: 'airplane' | 'car' = 'airplane') {
     this.vehicle = vehicle;
@@ -79,7 +106,11 @@ export class Game {
 
     this.sun = new THREE.DirectionalLight(0xfff4dc, 2.4);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    // The sun's shadow is re-rendered on a fixed cadence (see update), not
+    // every frame: it barely moves between frames and the scene is mostly
+    // static, so a 60fps shadow pass is pure waste.
+    this.sun.shadow.autoUpdate = false;
+    this.sun.shadow.mapSize.set(1024, 1024);
     const sc = this.sun.shadow.camera;
     sc.left = -70;
     sc.right = 70;
@@ -89,6 +120,7 @@ export class Game {
     sc.far = 300;
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.02;
+    this.sun.shadow.needsUpdate = true; // render the shadow map once at startup
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
@@ -114,6 +146,30 @@ export class Game {
     }
     this.scene.add(this.vehicle);
 
+    // Build the on-rails path. The car tour is computed from the level's road
+    // network (every street is driven; dead ends get a 180° U-turn). The
+    // airplane loops over the world's points of interest instead.
+    const railTerrain = (x: number, z: number) => this.world.terrainHeight(x, z);
+    const roadDefs = this.world.roads ? ROAD_DEFS[this.world.roads.kind] : ROAD_DEFS.valley;
+    const tourPoints =
+      this.vehicleType === 'car'
+        ? buildRoadTour(roadDefs, railTerrain, this.vehicle.position.x, this.vehicle.position.z, {
+            solids: this.world.solids
+          }).points
+        : flightTourPoints(level.worldType);
+    this.rail = new PathFollower(tourPoints);
+    this.rail.s =
+      this.vehicleType === 'car'
+        ? this.rail.nearest(this.vehicle.position.x, this.vehicle.position.z)
+        : this.rail.nearest(this.vehicle.position.x, this.vehicle.position.z, this.vehicle.position.y);
+    this.railForward.copy(this.rail.getForward());
+    this.railYaw = Math.atan2(this.railForward.x, this.railForward.z);
+    // Glide from the spawn point onto the rail instead of snapping.
+    this.rejoinFrom.copy(this.vehicle.position);
+    this.rail.posAt(this.railScratch);
+    this.rejoinDur = clamp(this.rejoinFrom.distanceTo(this.railScratch) / this.railSpeed(), 0.5, 4);
+    this.rejoinT = this.rejoinDur;
+
     this.musicTrack = level.music;
     this.ambientPlanes = new AmbientPlanes(ambientModel);
     this.ambientPlanes.addToScene(this.scene);
@@ -133,6 +189,40 @@ export class Game {
           this.world.clouds
             .map((c) => ({ kind: 'cloud', p: [c.position.x, c.position.y, c.position.z] }))
             .concat(this.world.balloons.map((b) => ({ kind: 'balloon', p: [b.position.x, b.position.y, b.position.z], s: b.scale.x })));
+        // On-rails mode state (capture tooling and tests).
+        dbg.toggleRail = () => this.setRailMode(!this.railMode);
+        dbg.rail = () => ({
+          mode: this.railMode,
+          s: this.rail.s,
+          total: this.rail.total,
+          pos: [this.vehicle.position.x, this.vehicle.position.y, this.vehicle.position.z]
+        });
+        // Renderer stats (draw calls / triangles / GPU memory) for profiling.
+        dbg.stats = () => {
+          const info = this.renderer.info;
+          let instanced = 0;
+          let instCount = 0;
+          let meshes = 0;
+          let objects = 0;
+          this.scene.traverse((o) => {
+            objects++;
+            const any = o as { isInstancedMesh?: boolean; count?: number; isMesh?: boolean; isPoints?: boolean };
+            if (any.isInstancedMesh) {
+              instanced++;
+              instCount += any.count ?? 0;
+            } else if (any.isMesh || any.isPoints) meshes++;
+          });
+          return {
+            calls: info.render.calls,
+            triangles: info.render.triangles,
+            geometries: info.memory.geometries,
+            textures: info.memory.textures,
+            objects,
+            meshes,
+            instanced,
+            instCount
+          };
+        };
       }
     }
 
@@ -161,7 +251,8 @@ export class Game {
 
     this.ui = new UI(
       () => this.controller.triggerSpecial(),
-      () => this.exit()
+      () => this.exit(),
+      { railMode: this.railMode, onToggleRail: () => this.setRailMode(!this.railMode) }
     );
     this.ui.setStars(0);
 
@@ -226,6 +317,9 @@ export class Game {
     if (e.code === 'Space') {
       e.preventDefault();
       this.controller.triggerSpecial();
+    }
+    if (e.code === 'KeyT') {
+      this.setRailMode(!this.railMode);
     }
   };
 
@@ -329,6 +423,78 @@ export class Game {
     this.onExit?.();
   }
 
+  private railSpeed(): number {
+    return this.vehicleType === 'car' ? 9 : 11;
+  }
+
+  // On-rails update: follow the tour path, orient the vehicle along it with
+  // smooth heading/bank and a short glide when rejoining the rail after
+  // manual driving. Returns the forward vector (used by the chase camera).
+  private updateRail(dt: number): THREE.Vector3 {
+    this.rail.update(dt, this.railSpeed());
+    this.rail.posAt(this.railScratch);
+    if (this.rejoinT > 0) {
+      this.rejoinT = Math.max(0, this.rejoinT - dt);
+      const t = 1 - this.rejoinT / this.rejoinDur;
+      const k = t * t * (3 - 2 * t); // smoothstep
+      this.vehicle.position.lerpVectors(this.rejoinFrom, this.railScratch, k);
+    } else {
+      this.vehicle.position.copy(this.railScratch);
+    }
+
+    const f = this.rail.getForward();
+    this.railForward.copy(f);
+    const targetYaw = Math.atan2(f.x, f.z);
+    const rate = wrapAngle(targetYaw - this.railYaw) / Math.max(dt, 1e-4);
+    this.railYaw = this.railYaw + wrapAngle(targetYaw - this.railYaw) * dampFactor(9, dt);
+
+    this.vehicle.rotation.order = 'YXZ';
+    this.vehicle.rotation.y = this.railYaw;
+    this.vehicle.rotation.x = 0;
+    if (this.vehicleType === 'car') {
+      // Slight body roll into turns (matches the manual feel).
+      this.vehicle.rotation.z = damp(this.vehicle.rotation.z, clamp(rate * 0.05, -0.16, 0.16), 5, dt);
+    } else {
+      this.railPitch = damp(this.railPitch, Math.asin(clamp(f.y, -1, 1)), 5, dt);
+      this.railBank = damp(this.railBank, clamp(-rate * 0.35, -0.55, 0.55), 4, dt);
+      this.vehicle.rotation.x = -this.railPitch;
+      this.vehicle.rotation.z = this.railBank;
+    }
+    return this.railForward;
+  }
+
+  // Switch between on-rails and manual control. Rejoining the rail glides the
+  // vehicle back to the closest point of the tour; leaving the rail hands the
+  // current heading to the manual controller (no heading jump).
+  setRailMode(on: boolean): void {
+    if (this.railMode === on) return;
+    this.railMode = on;
+    this.ui.setRailMode(on);
+    if (on) {
+      const p = this.vehicle.position;
+      this.rail.s =
+        this.vehicleType === 'car'
+          ? this.rail.nearest(p.x, p.z)
+          : this.rail.nearest(p.x, p.z, p.y);
+      this.railForward.copy(this.rail.getForward());
+      this.railYaw = Math.atan2(this.railForward.x, this.railForward.z);
+      this.rejoinFrom.copy(p);
+      this.rail.posAt(this.railScratch);
+      this.rejoinDur = clamp(p.distanceTo(this.railScratch) / this.railSpeed(), 0.5, 4);
+      this.rejoinT = this.rejoinDur;
+    } else {
+      this.controller.setSteer(0, 0);
+      const yaw = Math.atan2(this.railForward.x, this.railForward.z);
+      if (this.vehicleType === 'car') {
+        (this.controller as CarController).yaw = yaw;
+      } else {
+        const fc = this.controller as FlightController;
+        fc.yaw = yaw;
+        fc.pitch = this.railPitch;
+      }
+    }
+  }
+
   private celebrate(): void {
     this.audio.fanfare();
     this.world.rainbow.pulse();
@@ -348,6 +514,16 @@ export class Game {
   private update(dt: number): void {
     const state = this.dayNight.update(dt);
 
+    // Re-render the shadow map on a fixed cadence instead of every frame
+    // (~7Hz here). The sun moves very slowly through the day/night cycle and
+    // the props are mostly static, so this is visually indistinguishable while
+    // removing most of the shadow-pass cost.
+    this.shadowTimer -= dt;
+    if (this.shadowTimer <= 0) {
+      this.shadowTimer = 0.15;
+      this.sun.shadow.needsUpdate = true;
+    }
+
     this.hemi.color.copy(state.ambientColor);
     this.hemi.groundColor.copy(state.groundColor);
     this.hemi.intensity = state.ambientIntensity;
@@ -363,13 +539,19 @@ export class Game {
     this.collectibles.setNight(state.nightAmount);
 
     const terrain = (x: number, z: number) => this.world.terrainHeight(x, z);
-    this.controller.update(dt, terrain);
-    this.controller.resolveCollisions(this.world.solids, terrain);
+    let forward: THREE.Vector3;
+    if (this.railMode) {
+      forward = this.updateRail(dt);
+    } else {
+      this.controller.update(dt, terrain);
+      this.controller.resolveCollisions(this.world.solids, terrain);
+      forward = this.controller.forward;
+    }
     this.vehicle.update(dt);
 
     this.debugCapture?.update(dt);
     if (!this.debugCapture || this.debugCapture.isChaseEnabled()) {
-      this.cam.update(dt, this.vehicle, this.controller.forward);
+      this.cam.update(dt, this.vehicle, forward);
     }
 
     this.world.update(dt, state.nightAmount);
@@ -380,7 +562,7 @@ export class Game {
 
     if (this.trailTimer > 0) {
       this.trailTimer -= dt;
-      const tail = this.vehicle.position.clone().addScaledVector(this.controller.forward, -1.8);
+      const tail = this.vehicle.position.clone().addScaledVector(forward, -1.8);
       this.particles.burst(tail, { count: 1, color: 0xfff9c4, speed: 0.6, gravity: 0, life: 0.7, size: 4, biasY: 0 });
       this.particles.burst(tail, { count: 1, color: 0xffe082, speed: 0.6, gravity: 0, life: 0.7, size: 4, biasY: 0 });
     }

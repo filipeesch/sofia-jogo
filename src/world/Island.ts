@@ -17,6 +17,7 @@ import {
   type IslandLayout,
   type IslandPeakPos
 } from './islandLayout';
+import { instanceProps, meshMaterialNamed, type InstancedProps, type InstancePlacement } from './instancing';
 
 // "Ilha Feliz": a big tropical island (radius 76, ~5x the old one in usable
 // area) with a village, a lagoon with ducks, a farm, a palm beach and two
@@ -30,7 +31,7 @@ export class Island extends THREE.Group {
   readonly radius = ISLAND_RADIUS;
 
   private layout: IslandLayout;
-  private foliage: { g: THREE.Group; phase: number; speed: number }[] = [];
+  private treeInsts: InstancedProps[] = [];
   private lamps: { mat: THREE.MeshStandardMaterial }[] = [];
   // Visual-only PRNG (sway phase/speed, initial animal facing, rock jitter) —
   // positions always come from the deterministic layout.
@@ -109,30 +110,24 @@ export class Island extends THREE.Group {
     }
 
     if (models.lamp) {
-      for (const l of this.layout.lamps) {
-        const lamp = models.lamp.clone();
-        lamp.position.set(l.x, l.y, l.z);
-        this.add(lamp);
-        lamp.traverse((o) => {
-          const m = o as THREE.Mesh;
-          if (m.isMesh && m.name === 'LampHead') {
-            const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshStandardMaterial;
-            mat.emissive.set(0xffd97a);
-            mat.emissiveIntensity = 0;
-            this.lamps.push({ mat });
-          }
-        });
+      const lampMat = meshMaterialNamed(models.lamp, 'LampHead');
+      if (lampMat) {
+        lampMat.emissive.set(0xffd97a);
+        lampMat.emissiveIntensity = 0;
+        this.lamps.push({ mat: lampMat });
       }
+      const placements: InstancePlacement[] = this.layout.lamps.map((l) => ({ x: l.x, y: l.y, z: l.z }));
+      const inst = instanceProps(models.lamp, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     if (models.bench) {
-      for (const b of this.layout.benches) {
-        const bench = models.bench.clone();
-        bench.position.set(b.x, b.y, b.z);
-        bench.rotation.y = b.rotY;
-        this.add(bench);
+      const placements: InstancePlacement[] = this.layout.benches.map((b) => {
         this.solids.push({ x: b.x, y: b.y + 0.5, z: b.z, r: 1.0, h: 1.0 });
-      }
+        return { x: b.x, y: b.y, z: b.z, rotY: b.rotY };
+      });
+      const inst = instanceProps(models.bench, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     const { barn, fencePosts } = this.layout;
@@ -143,13 +138,12 @@ export class Island extends THREE.Group {
       this.solids.push({ x: barn.x, y: barn.y + 2, z: barn.z, r: 2.3, h: 4 });
     }
     if (models.fence) {
-      for (const f of fencePosts) {
-        const post = models.fence.clone();
-        post.position.set(f.x, f.y, f.z);
-        post.rotation.y = f.rotY;
-        this.add(post);
+      const placements: InstancePlacement[] = fencePosts.map((f) => {
         this.solids.push({ x: f.x, y: f.y + 0.5, z: f.z, r: 0.4, h: 1 });
-      }
+        return { x: f.x, y: f.y, z: f.z, rotY: f.rotY };
+      });
+      const inst = instanceProps(models.fence, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     // Animals (farm + village + lagoon edge) — all defined by the layout.
@@ -165,37 +159,43 @@ export class Island extends THREE.Group {
     }
 
     // ---- L3: vegetation (palm grove + inland trees + filler) ----
-    for (const t of this.layout.trees) this.addTree(models, t);
-    if (models.bush) {
-      for (const b of this.layout.bushes) {
-        const bush = models.bush.clone();
-        bush.position.set(b.x, b.y, b.z);
-        bush.rotation.y = this.rng() * TAU;
-        this.add(bush);
+    const treeGroups: Record<string, InstancePlacement[]> = {};
+    for (const t of this.layout.trees) {
+      const src = t.palm ? models.palm ?? models.tree : models.appletree ?? models.tree ?? models.palm;
+      if (!src) {
+        this.addDraftTree(t.x, t.z, t.scale);
+      } else {
+        const tplKey = t.palm
+          ? models.palm ? 'palm' : 'tree'
+          : models.appletree ? 'appletree' : models.tree ? 'tree' : 'palm';
+        (treeGroups[tplKey] ??= []).push({
+          x: t.x,
+          y: t.y,
+          z: t.z,
+          scale: t.scale,
+          rotY: t.rotY,
+          phase: this.rng() * TAU,
+          speed: 0.6 + this.rng() * 0.5
+        });
       }
+      this.solids.push({ x: t.x, y: t.y + 2 * t.scale, z: t.z, r: 1.2 * t.scale, h: 4 * t.scale });
+    }
+    for (const key of Object.keys(treeGroups)) {
+      const inst = instanceProps(models[key], treeGroups[key], { castShadow: true, sway: 0.06 });
+      this.add(inst.group);
+      this.treeInsts.push(inst);
+    }
+
+    if (models.bush) {
+      const placements: InstancePlacement[] = this.layout.bushes.map((b) => ({ x: b.x, y: b.y, z: b.z, rotY: this.rng() * TAU }));
+      const inst = instanceProps(models.bush, placements, { castShadow: false });
+      this.add(inst.group);
     }
     if (models.flower) {
-      for (const f of this.layout.flowers) {
-        const flower = models.flower.clone();
-        flower.position.set(f.x, f.y, f.z);
-        this.add(flower);
-      }
+      const placements: InstancePlacement[] = this.layout.flowers.map((f) => ({ x: f.x, y: f.y, z: f.z }));
+      const inst = instanceProps(models.flower, placements, { castShadow: false });
+      this.add(inst.group);
     }
-  }
-
-  private addTree(models: WorldModels, t: { x: number; z: number; y: number; scale: number; rotY: number; palm: boolean }): void {
-    const src = t.palm ? models.palm ?? models.tree : models.appletree ?? models.tree ?? models.palm;
-    const g = src ? src.clone() : undefined;
-    if (g) {
-      g.scale.setScalar(t.scale);
-      g.position.set(t.x, t.y, t.z);
-      g.rotation.y = t.rotY;
-      this.add(g);
-      this.foliage.push({ g, phase: this.rng() * TAU, speed: 0.6 + this.rng() * 0.5 });
-    } else {
-      this.addDraftTree(t.x, t.z, t.scale);
-    }
-    this.solids.push({ x: t.x, y: t.y + 2 * t.scale, z: t.z, r: 1.2 * t.scale, h: 4 * t.scale });
   }
 
   // Rocky tropical mountain: a dome that matches islandTerrainHeight, topped
@@ -263,7 +263,6 @@ export class Island extends THREE.Group {
     g.scale.setScalar(scale);
     g.position.set(x, this.terrainHeight(x, z), z);
     this.add(g);
-    this.foliage.push({ g: foliage, phase: this.rng() * TAU, speed: 0.6 + this.rng() * 0.6 });
   }
 
   private baseHeight(x: number, z: number): number {
@@ -282,8 +281,6 @@ export class Island extends THREE.Group {
   }
 
   update(dt: number, tGlobal: number): void {
-    for (const f of this.foliage) {
-      f.g.rotation.z = Math.sin(tGlobal * f.speed + f.phase) * 0.06;
-    }
+    for (const inst of this.treeInsts) inst.update?.(tGlobal);
   }
 }

@@ -4,6 +4,7 @@ import { Animal } from './Animals';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand, TAU } from '../utils';
+import { instanceProps, meshMaterialNamed, type InstancedProps, type InstancePlacement } from './instancing';
 
 // The "Vale Vivo": a big living valley with vila, farm, lake and forest zones.
 export class Valley extends THREE.Group {
@@ -12,7 +13,7 @@ export class Valley extends THREE.Group {
   readonly animals: Animal[] = [];
 
   private lamps: { mat: THREE.MeshStandardMaterial }[] = [];
-  private trees: { g: THREE.Group; phase: number }[] = [];
+  private treeInsts: InstancedProps[] = [];
   private hills: { x: number; z: number; r: number; h: number }[] = [];
 
   constructor(config: { grass?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
@@ -60,56 +61,59 @@ export class Valley extends THREE.Group {
       this.solids.push({ x, y: this.terrainHeight(x, z) + 1.6, z, r: 1.9, h: 3.2 });
     });
 
-    // Street lamps (glow at night).
+    // Street lamps (glow at night) — instanced, sharing one LampHead material.
     if (models.lamp) {
       const lampSpots: [number, number][] = [[0, 16], [16, 0], [0, -16], [-16, 0], [8, 8], [-8, -8]];
-      for (const [x, z] of lampSpots) {
-        const l = models.lamp.clone();
-        l.position.set(x, this.terrainHeight(x, z), z);
-        this.add(l);
-        l.traverse((o) => {
-          const m = o as THREE.Mesh;
-          if (m.isMesh && m.name === 'LampHead') {
-            const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshStandardMaterial;
-            mat.emissive.set(0xffd97a);
-            mat.emissiveIntensity = 0;
-            this.lamps.push({ mat });
-          }
-        });
+      const lampMat = meshMaterialNamed(models.lamp, 'LampHead');
+      if (lampMat) {
+        lampMat.emissive.set(0xffd97a);
+        lampMat.emissiveIntensity = 0;
+        this.lamps.push({ mat: lampMat });
       }
+      const placements: InstancePlacement[] = lampSpots.map(([x, z]) => ({ x, y: this.terrainHeight(x, z), z }));
+      const inst = instanceProps(models.lamp, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
-    // Benches near the lake.
+    // Benches near the lake (instanced).
     if (models.bench) {
-      for (const [x, z] of [[44, -22], [58, -26], [50, -40]] as [number, number][]) {
-        const b = models.bench.clone();
-        b.position.set(x, this.terrainHeight(x, z), z);
-        b.rotation.y = rand(0, TAU);
-        this.add(b);
-        this.solids.push({ x, y: this.terrainHeight(x, z) + 0.5, z, r: 1.0, h: 1.0 });
-      }
+      const placements: InstancePlacement[] = [[44, -22], [58, -26], [50, -40]].map(([x, z]) => {
+        const y = this.terrainHeight(x, z);
+        this.solids.push({ x, y: y + 0.5, z, r: 1.0, h: 1.0 });
+        return { x, y, z, rotY: rand(0, TAU) };
+      });
+      const inst = instanceProps(models.bench, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     // ---- FAZENDA at (-70, 40) ----
     if (models.barn) {
+      // The barn sits inside the fence, away from the road corner at
+      // (-70, 40) where the two farm roads meet (the on-rails tour drives
+      // right past that corner).
       const barn = models.barn.clone();
-      barn.position.set(-70, this.terrainHeight(-70, 40), 40);
+      barn.position.set(-66, this.terrainHeight(-66, 22), 22);
       this.add(barn);
-      this.solids.push({ x: -70, y: this.terrainHeight(-70, 40) + 2, z: 40, r: 2.3, h: 4 });
+      this.solids.push({ x: -66, y: this.terrainHeight(-66, 22) + 2, z: 22, r: 2.3, h: 4 });
     }
     if (models.fence) {
       const size = 14;
+      // Gate gaps: where the farm roads cross the fence line there are no
+      // posts, so the on-rails tour can pass through cleanly.
+      const gates: [number, number][] = [[-46, 25], [-65, 44], [-62, 44]];
+      const placements: InstancePlacement[] = [];
       for (let i = -size; i <= size; i += 3) {
         for (const [sx, sz, ry] of [[i, -size, 0], [i, size, 0], [-size, i, Math.PI / 2], [size, i, Math.PI / 2]] as [number, number, number][]) {
           const fx = -60 + sx;
           const fz = 30 + sz;
-          const f = models.fence.clone();
-          f.position.set(fx, this.terrainHeight(fx, fz), fz);
-          f.rotation.y = ry;
-          this.add(f);
-          this.solids.push({ x: fx, y: this.terrainHeight(fx, fz) + 0.5, z: fz, r: 0.4, h: 1 });
+          if (gates.some(([gx, gz]) => gx === fx && gz === fz)) continue;
+          const y = this.terrainHeight(fx, fz);
+          placements.push({ x: fx, y, z: fz, rotY: ry });
+          this.solids.push({ x: fx, y: y + 0.5, z: fz, r: 0.4, h: 1 });
         }
       }
+      const inst = instanceProps(models.fence, placements, { castShadow: false });
+      this.add(inst.group);
     }
     const farmAnimals: [string, number, number][] = [
       ['cow', -60, 22], ['cow', -56, 38], ['sheep', -48, 22], ['sheep', -52, 40],
@@ -139,6 +143,7 @@ export class Valley extends THREE.Group {
 
     // ---- FLORESTA at (60, 40) ----
     if (models.pine || models.tree || models.appletree) {
+      const groups: Record<string, InstancePlacement[]> = {};
       for (let i = 0; i < 42; i++) {
         const a = rand(0, TAU);
         const r = rand(5, 26);
@@ -148,41 +153,43 @@ export class Valley extends THREE.Group {
         const key = i % 3 === 0 ? 'pine' : i % 3 === 1 ? 'tree' : 'appletree';
         const src = models[key] ?? models.tree ?? models.pine;
         if (!src) continue;
-        const t = src.clone();
+        const tplKey = models[key] ? key : models.tree ? 'tree' : 'pine';
         const s = rand(0.9, 1.5);
-        t.scale.setScalar(s);
         const y = this.terrainHeight(x, z);
-        t.position.set(x, y, z);
-        t.rotation.y = rand(0, TAU);
-        this.add(t);
-        this.trees.push({ g: t, phase: rand(0, TAU) });
+        (groups[tplKey] ??= []).push({ x, y, z, scale: s, rotY: rand(0, TAU), phase: rand(0, TAU) });
         this.solids.push({ x, y: y + 2 * s, z, r: 1.2 * s, h: 4 * s });
+      }
+      for (const key of Object.keys(groups)) {
+        const inst = instanceProps(models[key], groups[key], { castShadow: true, sway: 0.04 });
+        this.add(inst.group);
+        this.treeInsts.push(inst);
       }
     }
 
-    // Bushes and flowers everywhere (density).
+    // Bushes and flowers everywhere (density) — instanced.
     if (models.bush) {
+      const placements: InstancePlacement[] = [];
       for (let i = 0; i < 18; i++) {
         const a = rand(0, TAU);
         const r = rand(12, 70);
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
-        const b = models.bush.clone();
-        b.position.set(x, this.terrainHeight(x, z), z);
-        b.rotation.y = rand(0, TAU);
-        this.add(b);
+        placements.push({ x, y: this.terrainHeight(x, z), z, rotY: rand(0, TAU) });
       }
+      const inst = instanceProps(models.bush, placements, { castShadow: false });
+      this.add(inst.group);
     }
     if (models.flower) {
+      const placements: InstancePlacement[] = [];
       for (let i = 0; i < 34; i++) {
         const a = rand(0, TAU);
         const r = rand(5, 62);
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
-        const f = models.flower.clone();
-        f.position.set(x, this.terrainHeight(x, z), z);
-        this.add(f);
+        placements.push({ x, y: this.terrainHeight(x, z), z });
       }
+      const inst = instanceProps(models.flower, placements, { castShadow: false });
+      this.add(inst.group);
     }
   }
 
@@ -201,8 +208,6 @@ export class Valley extends THREE.Group {
   }
 
   update(dt: number, tGlobal: number): void {
-    for (const t of this.trees) {
-      t.g.rotation.z = Math.sin(tGlobal * 0.8 + t.phase) * 0.04;
-    }
+    for (const inst of this.treeInsts) inst.update?.(tGlobal);
   }
 }

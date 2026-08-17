@@ -3,6 +3,7 @@ import { House } from './landmarks';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand, TAU } from '../utils';
+import { instanceProps } from './instancing';
 
 // A desert world: sandy ground, dunes, an oasis, a pyramid and cacti.
 export class Desert extends THREE.Group {
@@ -67,8 +68,9 @@ export class Desert extends THREE.Group {
 
     // Pyramid.
     if (models.pyramid) {
-      const px = 16;
-      const pz = -12;
+      // The pyramid sits off the road band so the on-rails tour can pass by.
+      const px = 10;
+      const pz = -8;
       const py = this.terrainHeight(px, pz);
       const p = models.pyramid.clone();
       p.position.set(px, py, pz);
@@ -77,22 +79,22 @@ export class Desert extends THREE.Group {
       this.solids.push({ x: px, y: py + 3.5, z: pz, r: 4.5, h: 7 });
     }
 
-    // Cacti.
+    // Cacti (instanced).
     if (models.cactus) {
+      // Cacti keep clear of the road band (the on-rails tour drives the
+      // grid roads; solids on the centerline would be hit by the car).
       const spots: [number, number][] = [
-        [-4, -2], [8, -14], [24, 16], [-22, 0], [-6, -18], [22, -4], [4, 16], [22, 6], [-18, 14],
-        [2, 8], [-12, -8], [10, -22], [-18, 20], [24, 12]
+        [-4, -6], [4, -4], [24, 22], [-24, -6], [-6, -22], [22, -4], [4, 22], [22, 6], [-12, 20],
+        [2, 8], [-12, -8], [10, -22], [-24, 20], [24, 10]
       ];
-      for (const [x, z] of spots) {
+      const placements = spots.map(([x, z]) => {
         const y = this.terrainHeight(x, z);
         const s = rand(0.8, 1.4);
-        const c = models.cactus.clone();
-        c.scale.setScalar(s);
-        c.position.set(x, y, z);
-        c.rotation.y = rand(0, TAU);
-        this.add(c);
         this.solids.push({ x, y: y + 1.0 * s, z, r: 0.9 * s, h: 2.0 * s });
-      }
+        return { x, y, z, scale: s, rotY: rand(0, TAU) };
+      });
+      const inst = instanceProps(models.cactus, placements, { castShadow: true });
+      this.add(inst.group);
     }
   }
 

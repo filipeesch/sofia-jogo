@@ -3,13 +3,14 @@ import { House } from './landmarks';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand, TAU } from '../utils';
+import { instanceProps, type InstancedProps } from './instancing';
 
 // A snowy world: white ground, frozen lake, snow drifts, a cabin, snowmen and pine trees.
 export class Snow extends THREE.Group {
   readonly houses: House[] = [];
   readonly solids: Solid[] = [];
 
-  private pines: { g: THREE.Group; phase: number; speed: number }[] = [];
+  private pines: InstancedProps = { group: new THREE.Group() };
   private hills: { x: number; z: number; r: number; h: number }[] = [];
 
   constructor(config: { ground?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
@@ -57,45 +58,44 @@ export class Snow extends THREE.Group {
       this.hills.push({ x, z, r, h });
     }
 
-    // Cozy cabin.
+    // Cozy cabin. Kept off the road band (z = -15) so the on-rails tour
+    // can drive right up to its door.
     const cx = 0;
-    const cz = -14;
+    const cz = -21;
     const cabin = new House(houseColors[0], 0x8a4a2f, models.house ? models.house.clone() : undefined);
     cabin.position.set(cx, this.terrainHeight(cx, cz), cz);
     this.add(cabin);
     this.houses.push(cabin);
     this.solids.push({ x: cx, y: this.terrainHeight(cx, cz) + 1.6, z: cz, r: 1.9, h: 3.2 });
 
-    // Snowmen.
+    // Snowmen (instanced).
     if (models.snowman) {
-      const spots: [number, number][] = [[2, 6], [-14, -4], [0, 14], [-4, 12], [10, -10]];
-      for (const [x, z] of spots) {
+      const spots: [number, number][] = [[2, 6], [-14, -4], [0, 21], [-4, 19], [10, -10]];
+      const placements = spots.map(([x, z]) => {
         const y = this.terrainHeight(x, z);
-        const c = models.snowman.clone();
-        c.position.set(x, y, z);
-        c.rotation.y = rand(0, TAU);
-        this.add(c);
         this.solids.push({ x, y: y + 1.8, z, r: 1.6, h: 3.8 });
-      }
+        return { x, y, z, rotY: rand(0, TAU) };
+      });
+      const inst = instanceProps(models.snowman, placements, { castShadow: true });
+      this.add(inst.group);
     }
 
-    // Pine trees.
+    // Pine trees (instanced, with a gentle sway).
     if (models.pine) {
+      // Pines keep clear of the road band (the on-rails tour drives the
+      // grid roads, and solids sit on the centerline there would be hit).
       const spots: [number, number][] = [
-        [-4, -2], [8, -14], [16, 10], [-20, 2], [-6, -18], [26, -8], [-18, 16], [4, 16], [18, -18],
-        [10, 0], [-12, 16], [24, -14], [-24, 10], [12, 18]
+        [-22, 6], [8, -8], [22, 10], [-26, 4], [-6, -22], [26, -8], [-24, 22], [4, 22], [24, -22],
+        [10, 5], [-12, 22], [24, -8], [-24, 10], [12, 24]
       ];
-      for (const [x, z] of spots) {
+      const placements = spots.map(([x, z]) => {
         const y = this.terrainHeight(x, z);
         const s = rand(0.8, 1.3);
-        const c = models.pine.clone();
-        c.scale.setScalar(s);
-        c.position.set(x, y, z);
-        c.rotation.y = rand(0, TAU);
-        this.add(c);
-        this.pines.push({ g: c, phase: rand(0, TAU), speed: rand(0.6, 1.1) });
         this.solids.push({ x, y: y + 1.5 * s, z, r: 1.2 * s, h: 4 * s });
-      }
+        return { x, y, z, scale: s, rotY: rand(0, TAU), phase: rand(0, TAU), speed: rand(0.6, 1.1) };
+      });
+      this.pines = instanceProps(models.pine, placements, { castShadow: true, sway: 0.05, swayX: 0.03 });
+      this.add(this.pines.group);
     }
   }
 
@@ -110,9 +110,6 @@ export class Snow extends THREE.Group {
   }
 
   update(_dt: number, tGlobal: number): void {
-    for (const p of this.pines) {
-      p.g.rotation.z = Math.sin(tGlobal * p.speed + p.phase) * 0.05;
-      p.g.rotation.x = Math.cos(tGlobal * p.speed * 0.7 + p.phase) * 0.03;
-    }
+    this.pines.update?.(tGlobal);
   }
 }

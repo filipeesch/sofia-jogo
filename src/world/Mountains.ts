@@ -13,6 +13,7 @@ import {
   type MountainsLayout,
   type PeakPos
 } from './mountainsLayout';
+import { instanceProps, meshMaterialNamed, type InstancedProps, type InstancePlacement } from './instancing';
 
 // "Vale das Montanhas": a green valley ringed by snowy peaks, with a village,
 // a farm, a lake and a pine forest. All positions come from
@@ -23,7 +24,7 @@ export class Mountains extends THREE.Group {
   readonly animals: Animal[] = [];
 
   private layout: MountainsLayout;
-  private foliage: { g: THREE.Group; phase: number; speed: number }[] = [];
+  private treeInsts: InstancedProps[] = [];
   private lamps: { mat: THREE.MeshStandardMaterial }[] = [];
   private peaks: PeakPos[] = [];
   private hills = MOUNTAINS_HILLS;
@@ -60,8 +61,18 @@ export class Mountains extends THREE.Group {
       this.add(lake);
     }
 
-    for (const p of this.layout.peaks) this.addPeak(p, models.peak);
+    // Snowy peaks (instanced when the peak model is available).
     this.peaks = this.layout.peaks;
+    if (models.peak) {
+      const placements = this.peaks.map((p) => {
+        this.solids.push({ x: p.x, y: 0, z: p.z, r: p.rad, h: p.h });
+        return { x: p.x, z: p.z, scale: p.h / 7 };
+      });
+      const inst = instanceProps(models.peak, placements, { castShadow: true });
+      this.add(inst.group);
+    } else {
+      for (const p of this.peaks) this.addPeakDraft(p);
+    }
 
     for (const hill of this.hills) {
       const hillGeo = new THREE.SphereGeometry(1, 12, 10);
@@ -95,30 +106,24 @@ export class Mountains extends THREE.Group {
     }
 
     if (models.lamp) {
-      for (const l of this.layout.lamps) {
-        const lamp = models.lamp.clone();
-        lamp.position.set(l.x, l.y, l.z);
-        this.add(lamp);
-        lamp.traverse((o) => {
-          const m = o as THREE.Mesh;
-          if (m.isMesh && m.name === 'LampHead') {
-            const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshStandardMaterial;
-            mat.emissive.set(0xffd97a);
-            mat.emissiveIntensity = 0;
-            this.lamps.push({ mat });
-          }
-        });
+      const lampMat = meshMaterialNamed(models.lamp, 'LampHead');
+      if (lampMat) {
+        lampMat.emissive.set(0xffd97a);
+        lampMat.emissiveIntensity = 0;
+        this.lamps.push({ mat: lampMat });
       }
+      const placements: InstancePlacement[] = this.layout.lamps.map((l) => ({ x: l.x, y: l.y, z: l.z }));
+      const inst = instanceProps(models.lamp, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     if (models.bench) {
-      for (const b of this.layout.benches) {
-        const bench = models.bench.clone();
-        bench.position.set(b.x, b.y, b.z);
-        bench.rotation.y = b.rotY;
-        this.add(bench);
+      const placements: InstancePlacement[] = this.layout.benches.map((b) => {
         this.solids.push({ x: b.x, y: b.y + 0.5, z: b.z, r: 1.0, h: 1.0 });
-      }
+        return { x: b.x, y: b.y, z: b.z, rotY: b.rotY };
+      });
+      const inst = instanceProps(models.bench, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     const { barn, fencePosts } = this.layout;
@@ -129,13 +134,12 @@ export class Mountains extends THREE.Group {
       this.solids.push({ x: barn.x, y: barn.y + 2, z: barn.z, r: 2.3, h: 4 });
     }
     if (models.fence) {
-      for (const f of fencePosts) {
-        const post = models.fence.clone();
-        post.position.set(f.x, f.y, f.z);
-        post.rotation.y = f.rotY;
-        this.add(post);
+      const placements: InstancePlacement[] = fencePosts.map((f) => {
         this.solids.push({ x: f.x, y: f.y + 0.5, z: f.z, r: 0.4, h: 1 });
-      }
+        return { x: f.x, y: f.y, z: f.z, rotY: f.rotY };
+      });
+      const inst = instanceProps(models.fence, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     // Animals (farm + meadow + lake edge) — all defined by the layout.
@@ -151,63 +155,50 @@ export class Mountains extends THREE.Group {
     }
 
     // ---- L3: vegetation (meadow trees + dense pine ring + filler) ----
+    const treeGroups: Record<string, InstancePlacement[]> = {};
     for (const t of this.layout.trees) {
-      this.addTree(models, t);
+      const src = t.pine ? models.pine ?? models.tree : models.appletree ?? models.tree ?? models.pine;
+      if (!src) continue;
+      const tplKey = t.pine
+        ? models.pine ? 'pine' : 'tree'
+        : models.appletree ? 'appletree' : models.tree ? 'tree' : 'pine';
+      (treeGroups[tplKey] ??= []).push({
+        x: t.x,
+        y: t.y,
+        z: t.z,
+        scale: t.scale,
+        rotY: t.rotY,
+        phase: this.rng() * TAU,
+        speed: 0.6 + this.rng() * 0.5
+      });
+      this.solids.push({ x: t.x, y: t.y + 2 * t.scale, z: t.z, r: 1.2 * t.scale, h: 4 * t.scale });
     }
+    for (const key of Object.keys(treeGroups)) {
+      const inst = instanceProps(models[key], treeGroups[key], { castShadow: true, sway: 0.06 });
+      this.add(inst.group);
+      this.treeInsts.push(inst);
+    }
+
     if (models.bush) {
-      for (const b of this.layout.bushes) {
-        const bush = models.bush.clone();
-        bush.position.set(b.x, b.y, b.z);
-        bush.rotation.y = this.rng() * TAU;
-        this.add(bush);
-      }
+      const placements: InstancePlacement[] = this.layout.bushes.map((b) => ({ x: b.x, y: b.y, z: b.z, rotY: this.rng() * TAU }));
+      const inst = instanceProps(models.bush, placements, { castShadow: false });
+      this.add(inst.group);
     }
     if (models.flower) {
-      for (const f of this.layout.flowers) {
-        const flower = models.flower.clone();
-        flower.position.set(f.x, f.y, f.z);
-        this.add(flower);
-      }
+      const placements: InstancePlacement[] = this.layout.flowers.map((f) => ({ x: f.x, y: f.y, z: f.z }));
+      const inst = instanceProps(models.flower, placements, { castShadow: false });
+      this.add(inst.group);
     }
 
     // ---- L4: decorations (snowmen on the peak slopes) ----
-    for (const s of this.layout.snowmen) {
-      if (!models.snowman) continue;
-      const snowman = models.snowman.clone();
-      snowman.position.set(s.x, s.y, s.z);
-      snowman.rotation.y = s.rotY;
-      this.add(snowman);
-      this.solids.push({ x: s.x, y: s.y + 1.1, z: s.z, r: 0.9, h: 2.2 });
+    if (models.snowman) {
+      const placements: InstancePlacement[] = this.layout.snowmen.map((s) => {
+        this.solids.push({ x: s.x, y: s.y + 1.1, z: s.z, r: 0.9, h: 2.2 });
+        return { x: s.x, y: s.y, z: s.z, rotY: s.rotY };
+      });
+      const inst = instanceProps(models.snowman, placements, { castShadow: true });
+      this.add(inst.group);
     }
-  }
-
-  private addTree(models: WorldModels, t: { x: number; z: number; y: number; scale: number; rotY: number; pine: boolean }): void {
-    const src = t.pine
-      ? models.pine ?? models.tree
-      : models.appletree ?? models.tree ?? models.pine;
-    const g = src ? src.clone() : undefined;
-    if (g) {
-      g.scale.setScalar(t.scale);
-      g.position.set(t.x, t.y, t.z);
-      g.rotation.y = t.rotY;
-      this.add(g);
-      this.foliage.push({ g, phase: this.rng() * TAU, speed: 0.6 + this.rng() * 0.5 });
-    } else {
-      this.addDraftTree(t.x, t.z, t.scale);
-    }
-    this.solids.push({ x: t.x, y: t.y + 2 * t.scale, z: t.z, r: 1.2 * t.scale, h: 4 * t.scale });
-  }
-
-  private addPeak(p: PeakPos, model?: THREE.Group): void {
-    if (model) {
-      const g = model.clone();
-      g.position.set(p.x, 0, p.z);
-      g.scale.setScalar(p.h / 7);
-      this.add(g);
-      this.solids.push({ x: p.x, y: 0, z: p.z, r: p.rad, h: p.h });
-      return;
-    }
-    this.addPeakDraft(p);
   }
 
   private addPeakDraft(p: PeakPos): void {
@@ -230,39 +221,6 @@ export class Mountains extends THREE.Group {
     this.solids.push({ x: p.x, y: 0, z: p.z, r: p.rad, h: p.h });
   }
 
-  private addDraftTree(x: number, z: number, scale: number): void {
-    const g = new THREE.Group();
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.28, 0.42, 1.4, 8),
-      new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.9, flatShading: true })
-    );
-    trunk.position.y = 0.7;
-    trunk.castShadow = true;
-    g.add(trunk);
-
-    const foliage = new THREE.Group();
-    const c1 = new THREE.Mesh(
-      new THREE.SphereGeometry(1.1, 10, 8),
-      new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.85, flatShading: true })
-    );
-    c1.position.y = 1.9;
-    c1.castShadow = true;
-    const c2 = new THREE.Mesh(
-      new THREE.SphereGeometry(0.8, 10, 8),
-      new THREE.MeshStandardMaterial({ color: 0x66bb6a, roughness: 0.85, flatShading: true })
-    );
-    c2.position.set(0.35, 2.6, 0.2);
-    c2.castShadow = true;
-    foliage.add(c1, c2);
-    foliage.position.y = 0.7;
-    g.add(foliage);
-
-    g.scale.setScalar(scale);
-    g.position.set(x, this.terrainHeight(x, z), z);
-    this.add(g);
-    this.foliage.push({ g: foliage, phase: this.rng() * TAU, speed: 0.6 + this.rng() * 0.6 });
-  }
-
   terrainHeight(x: number, z: number): number {
     return mountainTerrainHeight(x, z);
   }
@@ -272,8 +230,6 @@ export class Mountains extends THREE.Group {
   }
 
   update(dt: number, tGlobal: number): void {
-    for (const f of this.foliage) {
-      f.g.rotation.z = Math.sin(tGlobal * f.speed + f.phase) * 0.06;
-    }
+    for (const inst of this.treeInsts) inst.update?.(tGlobal);
   }
 }
