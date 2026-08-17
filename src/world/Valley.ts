@@ -4,6 +4,7 @@ import { Animal } from './Animals';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
 import { rand, TAU } from '../utils';
+import { VALLEY_DEFS } from '../rails/roadDefs';
 import { instanceProps, meshMaterialNamed, type InstancedProps, type InstancePlacement } from './instancing';
 
 // The "Vale Vivo": a big living valley with vila, farm, lake and forest zones.
@@ -30,13 +31,14 @@ export class Valley extends THREE.Group {
     g.receiveShadow = true;
     this.add(g);
 
-    // Lake.
+    // Lake — also the keep-out zone for benches/ducks/scatter props.
+    const LAKE_X = 50, LAKE_Z = -30, LAKE_R = 15;
     const lake = new THREE.Mesh(
-      new THREE.CircleGeometry(15, 40),
+      new THREE.CircleGeometry(LAKE_R, 40),
       new THREE.MeshStandardMaterial({ color: 0x38b0d8, roughness: 0.2 })
     );
     lake.rotation.x = -Math.PI / 2;
-    lake.position.set(50, 0.05, -30);
+    lake.position.set(LAKE_X, 0.05, LAKE_Z);
     lake.receiveShadow = true;
     this.add(lake);
 
@@ -50,6 +52,22 @@ export class Valley extends THREE.Group {
       this.add(m);
       this.hills.push({ x, z, r, h });
     }
+
+    // Road centerlines (pre-sampled splines) — keep scatter props off the asphalt.
+    const roadPts: [number, number][][] = VALLEY_DEFS.map((def) => {
+      const c = new THREE.CatmullRomCurve3(def.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+      const pts: [number, number][] = [];
+      for (let i = 0; i <= 70; i++) { const p = c.getPoint(i / 70); pts.push([p.x, p.z]); }
+      return pts;
+    });
+    const distToRoad = (x: number, z: number): number => {
+      let best = Infinity;
+      for (const pts of roadPts) for (const [rx, rz] of pts) {
+        const d = Math.hypot(rx - x, rz - z);
+        if (d < best) best = d;
+      }
+      return best;
+    };
 
     // ---- VILA at (0,0) ----
     const houseSpots: [number, number][] = [[8, 8], [-8, 10], [4, -10], [-10, -6]];
@@ -77,7 +95,8 @@ export class Valley extends THREE.Group {
 
     // Benches near the lake (instanced).
     if (models.bench) {
-      const placements: InstancePlacement[] = [[44, -22], [58, -26], [50, -40]].map(([x, z]) => {
+      // Shore spots: outside the water, clear of the road, facing the lake.
+      const placements: InstancePlacement[] = [[34, -24], [65, -23], [50, -46]].map(([x, z]) => {
         const y = this.terrainHeight(x, z);
         this.solids.push({ x, y: y + 0.5, z, r: 1.0, h: 1.0 });
         return { x, y, z, rotY: rand(0, TAU) };
@@ -132,7 +151,8 @@ export class Valley extends THREE.Group {
 
     // Ducks at the lake.
     if (models.duck) {
-      for (const [x, z] of [[52, -34], [48, -28], [56, -30]] as [number, number][]) {
+      // At the water's edge, not in the middle of the lake.
+      for (const [x, z] of [[55, -42], [38, -33], [53, -18]] as [number, number][]) {
         const a = new Animal(models.duck.clone(), x, z, 'duck', 6);
         a.position.set(x, this.terrainHeight(x, z) + 0.15, z);
         a.rotation.y = rand(0, TAU);
@@ -169,11 +189,13 @@ export class Valley extends THREE.Group {
     // Bushes and flowers everywhere (density) — instanced.
     if (models.bush) {
       const placements: InstancePlacement[] = [];
-      for (let i = 0; i < 18; i++) {
+      for (let tries = 0; placements.length < 18 && tries < 90; tries++) {
         const a = rand(0, TAU);
         const r = rand(12, 70);
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
+        if (Math.hypot(x - LAKE_X, z - LAKE_Z) < LAKE_R + 1.2) continue; // fora da água
+        if (distToRoad(x, z) < 2.6) continue;                            // fora da pista
         placements.push({ x, y: this.terrainHeight(x, z), z, rotY: rand(0, TAU) });
       }
       const inst = instanceProps(models.bush, placements, { castShadow: false });
@@ -181,11 +203,13 @@ export class Valley extends THREE.Group {
     }
     if (models.flower) {
       const placements: InstancePlacement[] = [];
-      for (let i = 0; i < 34; i++) {
+      for (let tries = 0; placements.length < 34 && tries < 170; tries++) {
         const a = rand(0, TAU);
         const r = rand(5, 62);
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
+        if (Math.hypot(x - LAKE_X, z - LAKE_Z) < LAKE_R + 0.8) continue; // fora da água
+        if (distToRoad(x, z) < 2.25) continue;                           // fora da pista
         placements.push({ x, y: this.terrainHeight(x, z), z });
       }
       const inst = instanceProps(models.flower, placements, { castShadow: false });
