@@ -442,7 +442,8 @@ export class Game {
   }
 
   private railSpeed(): number {
-    return this.vehicleType === 'car' ? 9 : 11;
+    // Car at a calm half speed (4.5 m/s); the airplane keeps its cruise speed.
+    return this.vehicleType === 'car' ? 4.5 : 11;
   }
 
   // On-rails update: follow the tour path, orient the vehicle along it with
@@ -460,11 +461,14 @@ export class Game {
       this.vehicle.position.copy(this.railScratch);
     }
 
-    const f = this.rail.getForward();
+    const f = this.rail.getForward(); // already smoothed (look-ahead + decay)
     this.railForward.copy(f);
     const targetYaw = Math.atan2(f.x, f.z);
-    const rate = wrapAngle(targetYaw - this.railYaw) / Math.max(dt, 1e-4);
+    const prevYaw = this.railYaw;
     this.railYaw = this.railYaw + wrapAngle(targetYaw - this.railYaw) * dampFactor(9, dt);
+    // Yaw rate from the smoothed heading (a noisy derivative of the raw target
+    // would make the body roll/bank shiver on the sample steps).
+    const rate = wrapAngle(this.railYaw - prevYaw) / Math.max(dt, 1e-4);
 
     this.vehicle.rotation.order = 'YXZ';
     this.vehicle.rotation.y = this.railYaw;

@@ -41,6 +41,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Apaga a fila (útil ao recarregar a página: cada página nova reprocessa
+  // toda a fila a partir do cursor 0).
+  if (req.method === 'DELETE' && url.pathname === '/cmd') {
+    const n = queue.length;
+    queue.length = 0;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, cleared: n }));
+    return;
+  }
+
   if (req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('capture server ok');

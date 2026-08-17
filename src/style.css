@@ -97,6 +97,33 @@ canvas {
   right: 14px;
 }
 
+/* On-rails / manual mode toggle (top center of the HUD). */
+.mode-toggle {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: clamp(14px, 3.2vw, 18px);
+  font-weight: 800;
+  font-family: inherit;
+  color: #22405c;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  line-height: 1;
+}
+
+.mode-toggle:active {
+  transform: translateX(-50%) scale(0.94);
+}
+
 /* ---------- Home screen ---------- */
 
 .home {

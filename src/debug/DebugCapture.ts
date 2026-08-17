@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 
-const SERVER = 'http://localhost:4477';
+// Default port of scripts/capture-server.mjs. A ?shots=PORT query param can
+// point a debug page at a dedicated capture server (useful when several game
+// tabs are open at once — each tab talks only to its own server).
+const SERVER = 'http://localhost:' + (new URLSearchParams(window.location.search).get('shots') || 4477);
 
 // Cursor de comandos compartilhado entre instâncias: sobrevive à troca de fase
 // (novo Game → novo DebugCapture) sem re-executar comandos antigos da fila.
