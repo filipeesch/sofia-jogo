@@ -532,13 +532,13 @@ export class Game {
   private update(dt: number): void {
     const state = this.dayNight.update(dt);
 
-    // Re-render the shadow map on a fixed cadence instead of every frame
-    // (~7Hz here). The sun moves very slowly through the day/night cycle and
-    // the props are mostly static, so this is visually indistinguishable while
-    // removing most of the shadow-pass cost.
+    // Re-render the shadow map at 30fps (instead of every frame). The sun
+    // moves very slowly through the day/night cycle and the props are mostly
+    // static, so this keeps shadows smooth while removing most of the
+    // shadow-pass cost.
     this.shadowTimer -= dt;
     if (this.shadowTimer <= 0) {
-      this.shadowTimer = 0.15;
+      this.shadowTimer = 1 / 30;
       this.sun.shadow.needsUpdate = true;
     }
 
