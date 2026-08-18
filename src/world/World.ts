@@ -43,9 +43,17 @@ export class World {
       this.traffic = new Traffic(models.car, this.roads, 6);
       this.creatures.push(...mountains.animals);
     } else if (config.worldType === 'snow') {
-      this.terrain = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+      const snow = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+      this.terrain = snow;
+      this.roads = new Roads((x, z) => snow.terrainHeight(x, z), 'snow');
+      this.traffic = new Traffic(models.car, this.roads);
+      this.creatures.push(...snow.animals);
     } else if (config.worldType === 'desert') {
-      this.terrain = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors }, models);
+      const desert = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors }, models);
+      this.terrain = desert;
+      this.roads = new Roads((x, z) => desert.terrainHeight(x, z), 'desert');
+      this.traffic = new Traffic(models.car, this.roads);
+      this.creatures.push(...desert.animals);
     } else if (config.worldType === 'valley') {
       const valley = new Valley({ grass: config.groundColor, houseColors: config.houseColors }, models);
       this.terrain = valley;
@@ -104,38 +112,8 @@ export class World {
     this.houses = this.terrain.houses;
     this.solids = this.terrain.solids;
 
-    // Snow and desert keep the generic grid; the mountains world builds its
-    // own connected road network above (kind 'mountains').
-    if (config.worldType === 'snow' || config.worldType === 'desert') {
-      this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'grid');
-      this.traffic = new Traffic(models.car, this.roads);
-    }
-
-    // Wandering animals for worlds that do not place their own.
-    // (valley, mountains and island all define their animals per zone.)
-    if (config.worldType !== 'valley' && config.worldType !== 'mountains' && config.worldType !== 'island') {
-      this.scatterAnimals(models, 50);
-    }
-  }
-
-  private scatterAnimals(models: WorldModels, maxRadius: number): void {
-    const defs: [string, number][] = [['dog', 2], ['cat', 2], ['chicken', 3], ['sheep', 2]];
-    for (const [key, count] of defs) {
-      const src = models[key];
-      if (!src) continue;
-      for (let i = 0; i < count; i++) {
-        const a = rand(0, TAU);
-        const r = rand(10, maxRadius);
-        const x = Math.cos(a) * r;
-        const z = Math.sin(a) * r;
-        const y = this.terrain.terrainHeight(x, z);
-        const animal = new Animal(src.clone(), x, z, key, 16);
-        animal.position.set(x, y + 0.15, z);
-        animal.rotation.y = rand(0, TAU);
-        this.creatures.push(animal);
-        this.solids.push({ x, y: y + 0.7, z, r: 1.0, h: 1.4 });
-      }
-    }
+    // Every world places its own road network (kind matches the world's pure
+    // layout module) and its own animals, so there is no generic fallback.
   }
 
   addToScene(scene: THREE.Scene): void {
@@ -174,6 +152,8 @@ export class World {
     this.houses.forEach((h) => h.setLights(night > 0.55));
     if (
       this.terrain instanceof Valley ||
+      this.terrain instanceof Snow ||
+      this.terrain instanceof Desert ||
       this.terrain instanceof Mountains ||
       this.terrain instanceof Island
     )

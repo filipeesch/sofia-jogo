@@ -20,12 +20,32 @@ export class BubblesApp {
     const ui = document.getElementById('ui')!;
     ui.innerHTML = '';
     ui.append(this.root);
-    this.timer = window.setInterval(() => this.spawn(), 420);
+    this.startSpawning();
+    document.addEventListener('visibilitychange', this.onVisibility);
   }
 
   destroy(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    this.stopSpawning();
+    document.removeEventListener('visibilitychange', this.onVisibility);
     this.root.remove();
+  }
+
+  // Don't keep spawning bubbles while the screen is locked (Android) or the
+  // tab is hidden.
+  private onVisibility = (): void => {
+    if (document.visibilityState === 'hidden') this.stopSpawning();
+    else this.startSpawning();
+  };
+
+  private startSpawning(): void {
+    if (this.timer === null) this.timer = window.setInterval(() => this.spawn(), 420);
+  }
+
+  private stopSpawning(): void {
+    if (this.timer !== null) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
   }
 
   private spawn(): void {

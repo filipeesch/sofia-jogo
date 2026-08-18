@@ -31,14 +31,18 @@ const WORLD_MODELS: Record<string, { name: string; url: string }[]> = {
     { name: 'pine', url: 'models/pine.glb' },
     { name: 'bird', url: 'models/bird.glb' },
     { name: 'balloon', url: 'models/balloon.glb' },
-    { name: 'house', url: 'models/house.glb' }
+    { name: 'house', url: 'models/house.glb' },
+    { name: 'lamp', url: 'models/lamp.glb' },
+    { name: 'cow', url: 'models/cow.glb' }
   ],
   desert: [
     { name: 'cactus', url: 'models/cactus.glb' },
     { name: 'pyramid', url: 'models/pyramid.glb' },
     { name: 'bird', url: 'models/bird.glb' },
     { name: 'balloon', url: 'models/balloon.glb' },
-    { name: 'house', url: 'models/house.glb' }
+    { name: 'house', url: 'models/house.glb' },
+    { name: 'lamp', url: 'models/lamp.glb' },
+    { name: 'cow', url: 'models/cow.glb' }
   ],
   island: [
     { name: 'palm', url: 'models/palm.glb' },
@@ -77,6 +81,7 @@ const WORLD_MODELS: Record<string, { name: string; url: string }[]> = {
     { name: 'house', url: 'models/house.glb' },
     { name: 'pine', url: 'models/pine.glb' },
     { name: 'tree', url: 'models/tree.glb' },
+    { name: 'appletree', url: 'models/appletree.glb' },
     { name: 'bird', url: 'models/bird.glb' },
     { name: 'balloon', url: 'models/balloon.glb' },
     { name: 'barn', url: 'models/barn.glb' },

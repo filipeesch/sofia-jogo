@@ -131,6 +131,11 @@ function boot(): void {
   void startLevel(level.id, vt);
 };
 
+// Android/Chrome: a long-press (or right-click) would open the browser's
+// context menu over the game — that never helps a toddler, so block it
+// everywhere (puzzle, paint, bubbles, 3D levels, launcher).
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
 boot();
 
 // PWA service worker (production only).

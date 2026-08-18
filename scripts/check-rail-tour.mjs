@@ -21,6 +21,9 @@ import { PathFollower } from '../src/rails/pathFollower.ts';
 import { ROAD_DEFS } from '../src/rails/roadDefs.ts';
 import { mountainTerrainHeight, buildMountainsLayout, layoutSolids as mountainLayoutSolids } from '../src/world/mountainsLayout.ts';
 import { islandTerrainHeight, buildIslandLayout, layoutSolids as islandLayoutSolids } from '../src/world/islandLayout.ts';
+import { valleyTerrainHeight, buildValleyLayout, layoutSolids as valleyLayoutSolids } from '../src/world/valleyLayout.ts';
+import { snowTerrainHeight, buildSnowLayout, layoutSolids as snowLayoutSolids } from '../src/world/snowLayout.ts';
+import { desertTerrainHeight, buildDesertLayout, layoutSolids as desertLayoutSolids } from '../src/world/desertLayout.ts';
 
 const issues = [];
 
@@ -40,70 +43,29 @@ function distToPolyline2D(x, z, poly) {
   return best;
 }
 
-// Hill/dune terrain: sum of flattened hemisphere bumps (same math as the
-// Snow / Desert / Valley terrainHeight methods).
-function hillTerrain(hills) {
-  return (x, z) => {
-    let h = 0;
-    for (const [hx, hz, r, hh] of hills) {
-      const n = Math.hypot(x - hx, z - hz) / r;
-      if (n < 1) h += hh * Math.sqrt(Math.max(0, 1 - n * n));
-    }
-    return h;
-  };
-}
-
 // ---- deterministic per-world terrain + collision solids ----
-// (mirror of src/world/Snow.ts, Desert.ts, Valley.ts — fixed object lists;
-//  random-scaled trees/cacti use their worst-case radius; the random valley
-//  forest trees and the scattered animals are not reproducible in Node and
-//  are dodged at runtime by the tour's lateral-offset pass instead.)
-const VALLEY_HILLS = [[-30, -28, 22, 3.5], [24, 50, 18, 3.0], [-58, -18, 20, 3.2], [38, 8, 16, 2.6]];
-const SNOW_HILLS = [[10, 6, 6, 2.0], [-16, 8, 7, 2.4], [4, -18, 5, 1.6], [18, -8, 6, 2.0], [-10, -12, 5, 1.7], [22, 6, 5, 1.8]];
-const DESERT_DUNES = [[8, -6, 7, 2.2], [-14, 6, 8, 2.6], [16, 12, 6, 2.0], [-6, -16, 7, 2.4], [-18, -14, 6, 2.0], [28, -20, 7, 2.4]];
-
-function valleySolids() {
-  const out = [];
-  for (const [x, z] of [[8, 8], [-8, 10], [4, -10], [-10, -6]]) out.push({ x, z, r: 1.9, kind: 'house' });
-  for (const [x, z] of [[44, -22], [58, -26], [50, -40]]) out.push({ x, z, r: 1.0, kind: 'bench' });
-  out.push({ x: -66, z: 22, r: 2.3, kind: 'barn' });
-  const size = 14;
-  const gates = [[-46, 25], [-65, 44], [-62, 44]];
-  for (let i = -size; i <= size; i += 3) {
-    for (const [sx, sz] of [[i, -size], [i, size], [-size, i], [size, i]]) {
-      const fx = -60 + sx, fz = 30 + sz;
-      if (gates.some(([gx, gz]) => gx === fx && gz === fz)) continue;
-      out.push({ x: fx, z: fz, r: 0.4, kind: 'fence' });
-    }
-  }
-  for (const [x, z] of [[-60, 22], [-56, 38], [-48, 22], [-52, 40], [-64, 30], [-58, 18], [-78, 28], [-70, 50]]) {
-    out.push({ x, z, r: 1.0, kind: 'animal' });
-  }
-  return out;
-}
-
-function snowSolids() {
-  const out = [{ x: 0, z: -21, r: 1.9, kind: 'cabin' }];
-  for (const [x, z] of [[2, 6], [-14, -4], [0, 21], [-4, 19], [10, -10]]) out.push({ x, z, r: 1.6, kind: 'snowman' });
-  const pines = [[-22, 6], [8, -8], [22, 10], [-26, 4], [-6, -22], [26, -8], [-24, 22], [4, 22], [24, -22], [10, 5], [-12, 22], [24, -8], [-24, 10], [12, 24]];
-  for (const [x, z] of pines) out.push({ x, z, r: 1.2 * 1.3, kind: 'pine' }); // worst-case scale
-  return out;
-}
-
-function desertSolids() {
-  const out = [
-    { x: 8, z: 6, r: 1.9, kind: 'house' },
-    { x: 10, z: -8, r: 4.5, kind: 'pyramid' }
-  ];
-  const cacti = [[-4, -6], [4, -4], [24, 22], [-24, -6], [-6, -22], [22, -4], [4, 22], [22, 6], [-12, 20], [2, 8], [-12, -8], [10, -22], [-24, 20], [24, 10]];
-  for (const [x, z] of cacti) out.push({ x, z, r: 0.9 * 1.4, kind: 'cactus' }); // worst-case scale
-  return out;
-}
+// Every world now reports its own terrain + solids from the pure layout
+// module (single source of truth, same data the level auto-checks use).
 
 const WORLD_CAR = [
-  { world: 'valley', kind: 'valley', terrain: hillTerrain(VALLEY_HILLS), solids: valleySolids() },
-  { world: 'snow', kind: 'grid', terrain: hillTerrain(SNOW_HILLS), solids: snowSolids() },
-  { world: 'desert', kind: 'grid', terrain: hillTerrain(DESERT_DUNES), solids: desertSolids() },
+  {
+    world: 'valley',
+    kind: 'valley',
+    terrain: valleyTerrainHeight,
+    solids: valleyLayoutSolids(buildValleyLayout())
+  },
+  {
+    world: 'snow',
+    kind: 'snow',
+    terrain: snowTerrainHeight,
+    solids: snowLayoutSolids(buildSnowLayout())
+  },
+  {
+    world: 'desert',
+    kind: 'desert',
+    terrain: desertTerrainHeight,
+    solids: desertLayoutSolids(buildDesertLayout())
+  },
   {
     world: 'mountains',
     kind: 'mountains',
@@ -202,11 +164,11 @@ for (const w of WORLD_CAR) {
 
 // ---- flight tours ----
 const WORLD_FLIGHT = [
-  { world: 'valley', terrain: hillTerrain(VALLEY_HILLS), rainbow: true },
+  { world: 'valley', terrain: valleyTerrainHeight, rainbow: true },
   { world: 'mountains', terrain: mountainTerrainHeight, rainbow: true },
   { world: 'island', terrain: islandTerrainHeight, rainbow: false },
-  { world: 'snow', terrain: hillTerrain(SNOW_HILLS), rainbow: true },
-  { world: 'desert', terrain: hillTerrain(DESERT_DUNES), rainbow: true }
+  { world: 'snow', terrain: snowTerrainHeight, rainbow: true },
+  { world: 'desert', terrain: desertTerrainHeight, rainbow: true }
 ];
 
 for (const w of WORLD_FLIGHT) {

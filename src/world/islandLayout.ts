@@ -180,7 +180,9 @@ export const ISLAND_LAMPS: [number, number][] = [
   [2.8, 36],
   [-2.8, 36],
   [2.8, 28],
-  [-2.8, 28]
+  [-2.8, 28],
+  [2.8, 48], // campo sul, perto do decolagem do carro
+  [24, 13.5] // margem da lagoa
 ];
 
 export interface PlacedBench {
@@ -227,15 +229,20 @@ export const ISLAND_ANIMALS: PlacedAnimal[] = [
   { type: 'chicken', x: -43, z: 17, wanderR: 2 },
   { type: 'sheep', x: -36, z: 18, wanderR: 2.5 },
   { type: 'sheep', x: -44, z: 11, wanderR: 2.5 },
-  // Farm: outside — cow grazing, dog by the barn
+  { type: 'sheep', x: -41, z: 14, wanderR: 2 },
+  // Farm: outside — cows grazing, dogs by the barn and the beach
   { type: 'cow', x: -28, z: 28, wanderR: 4 },
+  { type: 'cow', x: -20, z: 44, wanderR: 4 },
   { type: 'dog', x: -52, z: 34, wanderR: 3 },
+  { type: 'dog', x: -8, z: 52, wanderR: 3 },
   // Village
   { type: 'cat', x: -14, z: 28, wanderR: 3 },
   { type: 'dog', x: -18, z: 18, wanderR: 3 },
+  { type: 'cat', x: -6, z: 32, wanderR: 3 }, // campo sul
   // Ducks at the lagoon's edge (shore, not open water)
   { type: 'duck', x: 30, z: 27, wanderR: 1.5 },
-  { type: 'duck', x: 34, z: 30, wanderR: 1.5 }
+  { type: 'duck', x: 34, z: 30, wanderR: 1.5 },
+  { type: 'duck', x: 47, z: 26, wanderR: 1.5 }
 ];
 
 // ---------- L3: vegetation ----------

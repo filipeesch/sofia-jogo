@@ -81,6 +81,14 @@ export class Game {
   private startX = 0;
   private startY = 0;
 
+  // The browser can keep a page running while the Android screen is locked
+  // (or the tab is hidden / the app backgrounded): we stop the whole
+  // simulation — rAF loop, clock and audio — and resume it when the
+  // document is visible again. `disposed` stops late lifecycle events from
+  // restarting a disposed game.
+  private paused = false;
+  private disposed = false;
+
   // "Sobre trilhos": on-rails mode. Default ON — the car drives a closed
   // tour through every road of the level; the airplane loops over the
   // points of interest. The HUD toggle (or the T key) switches modes.
@@ -217,6 +225,12 @@ export class Game {
           total: this.rail.total,
           pos: [this.vehicle.position.x, this.vehicle.position.y, this.vehicle.position.z]
         });
+        // Pause state and manual pause/resume (capture tooling and tests,
+        // e.g. simulating the Android screen-lock via visibilitychange).
+        dbg.isPaused = () => this.paused;
+        dbg.pause = () => this.pause();
+        dbg.resume = () => this.resume();
+        dbg.audio = () => this.audio;
         // Renderer stats (draw calls / triangles / GPU memory) for profiling.
         dbg.stats = () => {
           const info = this.renderer.info;
@@ -277,8 +291,28 @@ export class Game {
     this.ui.setStars(0);
 
     this.bindInput();
+    this.bindVisibility();
     window.addEventListener('resize', this.onResize);
   }
+
+  // Android: locking the screen (or backgrounding the app) must not leave
+  // the game running. The document hides, the page can also be frozen or
+  // navigated away from — stop on all of those, resume when visible again.
+  private bindVisibility(): void {
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    document.addEventListener('freeze', this.onFreeze);
+    document.addEventListener('resume', this.onResume);
+    window.addEventListener('pagehide', this.onPageHide);
+  }
+
+  private onVisibilityChange = (): void => {
+    if (document.visibilityState === 'hidden') this.pause();
+    else this.resume();
+  };
+
+  private onFreeze = (): void => this.pause();
+  private onResume = (): void => this.resume();
+  private onPageHide = (): void => this.pause();
 
   private bindInput(): void {
     window.addEventListener('pointermove', this.onPointerMoveMouse);
@@ -303,6 +337,9 @@ export class Game {
   };
 
   private onPointerDown = (e: PointerEvent): void => {
+    // Safety net: if some Android browser missed the resume event, the
+    // first touch brings the game back.
+    this.resume();
     this.audio.resume();
     if (e.pointerType === 'touch' && this.activePointer === null) {
       this.activePointer = e.pointerId;
@@ -333,6 +370,7 @@ export class Game {
   };
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    this.resume();
     this.audio.resume();
     if (e.code === 'Space') {
       e.preventDefault();
@@ -599,16 +637,50 @@ export class Game {
     this.debugCapture?.postRender();
   };
 
+  // Stop the whole simulation (render loop, clock and audio). Called when
+  // the document is hidden — on Android that happens when the screen is
+  // locked — so the game doesn't keep running (and draining the battery)
+  // in the background.
+  pause(): void {
+    if (this.paused || this.disposed) return;
+    this.paused = true;
+    this.renderer.setAnimationLoop(null);
+    this.clock.stop();
+    this.audio.suspend();
+  }
+
+  // Resume after the document is visible again. The clock restarts, so no
+  // background time is applied to the simulation.
+  resume(): void {
+    if (!this.paused || this.disposed) return;
+    this.paused = false;
+    this.clock.start();
+    this.audio.startMusic(this.musicTrack); // no-op if already running
+    this.audio.resume();
+    this.renderer.setAnimationLoop(this.tick);
+  }
+
   start(): void {
+    if (document.visibilityState === 'hidden') {
+      // The level loaded while the screen was already locked: keep the
+      // simulation stopped until the document is visible again.
+      this.paused = true;
+      return;
+    }
     this.clock.start();
     this.renderer.setAnimationLoop(this.tick);
     this.audio.startMusic(this.musicTrack);
   }
 
   dispose(): void {
+    this.disposed = true;
     this.renderer.setAnimationLoop(null);
     this.debugCapture?.dispose();
 
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    document.removeEventListener('freeze', this.onFreeze);
+    document.removeEventListener('resume', this.onResume);
+    window.removeEventListener('pagehide', this.onPageHide);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointermove', this.onPointerMoveMouse);
     window.removeEventListener('mouseleave', this.onMouseLeave);

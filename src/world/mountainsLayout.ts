@@ -171,7 +171,9 @@ export const MOUNTAINS_LAMPS: [number, number][] = [
   [3.2, 12],
   [-10, 30],
   [8, -10],
-  [-5, 1]
+  [-5, 1],
+  [40, 22.5], // clareira do pinheiral
+  [-44, -18] // encosta da beira do lago
 ];
 
 // Benches: one at the lake shore, one at the north overlook, one in the
@@ -225,14 +227,19 @@ export const MOUNTAINS_ANIMALS: PlacedAnimal[] = [
   { type: 'sheep', x: -28, z: 21, wanderR: 2 },
   { type: 'chicken', x: -31, z: 18, wanderR: 1.5 },
   { type: 'chicken', x: -27, z: 18, wanderR: 1.5 },
-  // Farm: outside — dog near the barn, cows grazing
+  { type: 'chicken', x: -33, z: 21, wanderR: 1.5 },
+  // Farm: outside — dogs near the barn, cows grazing
   { type: 'cow', x: -10, z: 36, wanderR: 4 },
   { type: 'cow', x: -50, z: 40, wanderR: 4 },
+  { type: 'cow', x: -52, z: -12, wanderR: 4 },
   { type: 'dog', x: -8, z: 54, wanderR: 3 },
+  { type: 'dog', x: -20, z: 54, wanderR: 3 },
   // Village / meadow
   { type: 'cat', x: 12, z: 24, wanderR: 4 },
+  { type: 'cat', x: -10, z: -26, wanderR: 4 },
   { type: 'sheep', x: -8, z: -14, wanderR: 5 },
   { type: 'sheep', x: 22, z: -24, wanderR: 5 },
+  { type: 'sheep', x: 34, z: -34, wanderR: 4 },
   { type: 'cow', x: 24, z: -14, wanderR: 5 },
   // Ducks at the water's edge (rule 14 — shore, not open water)
   { type: 'duck', x: -30, z: -39, wanderR: 1.5 },

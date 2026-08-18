@@ -15,7 +15,7 @@ export class Roads extends THREE.Group {
 
   private static readonly _m = new THREE.Matrix4();
 
-  constructor(terrainHeight: (x: number, z: number) => number, readonly kind: RoadKind = 'grid') {
+  constructor(terrainHeight: (x: number, z: number) => number, readonly kind: RoadKind) {
     super();
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x48515c, roughness: 0.95 });
     const lineMat = new THREE.MeshStandardMaterial({ color: 0xf0e6a8, roughness: 0.9 });

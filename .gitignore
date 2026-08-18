@@ -8,3 +8,5 @@ dist
 _shots/
 .npm-cache-pw/
 .pw-browsers/
+*.blend1
+__pycache__/

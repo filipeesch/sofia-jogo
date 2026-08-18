@@ -7,6 +7,10 @@ body {
   background: linear-gradient(180deg, #54b3f0 0%, #cfeffb 100%);
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
+  /* No text selection / long-press callout anywhere (kid game). */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 

@@ -16,18 +16,17 @@ import type { WorldType } from '../levels';
 const RAINBOW: [number, number, number] = [24, 10, -24];
 
 const WAYPOINTS: Record<WorldType, [number, number, number][]> = {
-  // Vale Vivo / Vale à Noite: vila → mirante NW → arco-íris → lago →
-  // floresta → campo sul → fazenda (closed loop).
+  // Vale Vivo / Vale à Noite: vila → arco-íris → lago → floresta → campo sul
+  // → fazenda → campo oeste (closed loop).
   valley: [
     [0, 13, 42], // takeoff over the southern meadow (near spawn)
     [0, 11, 2], // village
-    [-28, 15, -14], // meadow hill NW
     RAINBOW,
-    [50, 16, -28], // over the lake
-    [62, 15, 38], // over the forest
-    [14, 13, 52], // southern meadow
-    [-44, 15, 44], // over the farm
-    [-62, 14, 28] // farm animals
+    [50, 14, -30], // over the lake
+    [56, 14, 48], // over the forest
+    [6, 12, 54], // southern meadow
+    [-64, 14, 34], // over the farm
+    [-30, 13, 0] // western meadow, back to the vila
   ],
   // Vale das Montanhas / Noite Estrelada: vila → arco-íris → anel alto
   // entre os picos (E→NE→N→NW→W, clearing the outer slopes of the NE and
@@ -61,29 +60,27 @@ const WAYPOINTS: Record<WorldType, [number, number, number][]> = {
     [-16, 24, -42], // over the big rocky mountain
     [-62, 9, -50] // north-west coast
   ],
-  // Mundo da Neve: bonecos de neve → lago congelado → arco-íris → pinheiros
-  // → cabana (closed loop).
+  // Mundo da Neve: vila → lago congelado → arco-íris → pinheiral → anel
+  // leste (closed loop).
   snow: [
-    [0, 12, 40], // takeoff over the snow (near spawn)
-    [2, 10, 6], // south snowmen
-    [-14, 11, -4], // west snowman
-    [-8, 9, -10], // over the frozen lake
+    [0, 13, 42], // takeoff over the southern drifts (near spawn)
+    [0, 11, 6], // village
+    [-20, 12, -14], // west drifts / ice path
+    [-26, 9, -20], // over the frozen lake
     RAINBOW,
-    [26, 10, -8], // east pines
-    [16, 10, 16], // south-east pines
-    [4, 9, -16] // over the cabin
+    [38, 11, -6], // over the pine grove
+    [20, 10, 14] // east ring + village snowmen
   ],
-  // Deserto: oásis → adobe house → pirâmide → cactos N → arco-íris →
-  // cactos E (closed loop).
+  // Deserto: vila → pirâmides → arco-íris → alameda → oásis → cactos sul
+  // (closed loop).
   desert: [
-    [0, 12, 40], // takeoff over the dunes (near spawn)
-    [-18, 10, 14], // west cacti
-    [-10, 9, 12], // over the oasis
-    [8, 9, 6], // over the adobe house
-    [16, 14, -12], // over the pyramid
-    [-6, 10, -18], // north cacti
+    [0, 13, 42], // takeoff over the southern dunes (near spawn)
+    [-2, 12, 4], // village hub
+    [-38, 16, -24], // pyramid cluster
     RAINBOW,
-    [24, 10, 16] // east cacti
+    [12, 14, -20], // rainbow alameda
+    [30, 11, 26], // over the oasis
+    [40, 14, 36] // south cactus alameda
   ]
 };
 

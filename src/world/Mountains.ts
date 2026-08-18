@@ -26,6 +26,7 @@ export class Mountains extends THREE.Group {
   private layout: MountainsLayout;
   private treeInsts: InstancedProps[] = [];
   private lamps: { mat: THREE.MeshStandardMaterial }[] = [];
+  private lampLights: THREE.PointLight[] = [];
   private peaks: PeakPos[] = [];
   private hills = MOUNTAINS_HILLS;
   // Visual-only PRNG (sway phase/speed, initial animal facing) — positions
@@ -115,6 +116,13 @@ export class Mountains extends THREE.Group {
       const placements: InstancePlacement[] = this.layout.lamps.map((l) => ({ x: l.x, y: l.y, z: l.z }));
       const inst = instanceProps(models.lamp, placements, { castShadow: false });
       this.add(inst.group);
+      // Real light: one warm point light per lamp head, on only at night.
+      for (const l of this.layout.lamps) {
+        const pl = new THREE.PointLight(0xffd97a, 0, 14, 2);
+        pl.position.set(l.x, l.y + 3.3, l.z);
+        this.add(pl);
+        this.lampLights.push(pl);
+      }
     }
 
     if (models.bench) {
@@ -227,6 +235,7 @@ export class Mountains extends THREE.Group {
 
   setNightLamps(on: boolean): void {
     for (const l of this.lamps) l.mat.emissiveIntensity = on ? 1.6 : 0;
+    for (const p of this.lampLights) p.intensity = on ? 2.6 : 0;
   }
 
   update(dt: number, tGlobal: number): void {

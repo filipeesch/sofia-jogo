@@ -30,6 +30,15 @@ export class AudioManager {
     if (ctx && ctx.state === 'suspended') void ctx.resume();
   }
 
+  // Freeze the context (engine + music) without losing its position: used
+  // when the screen is locked on Android so the procedural audio doesn't
+  // keep running in the background. ctx.currentTime doesn't advance while
+  // suspended, so the music resumes exactly where it stopped.
+  suspend(): void {
+    const ctx = this.ctx;
+    if (ctx && ctx.state === 'running') void ctx.suspend();
+  }
+
   toggle(): boolean {
     this.resume();
     this.muted = !this.muted;
