@@ -20,8 +20,10 @@ const ANIMALS: AnimalDef[] = [
   { emoji: '🐓', name: 'Galo', sound: crow, file: 'sounds/rooster.mp3' },
 ];
 
-// Generous tolerance around each slot (fraction of slot size), for toddler fingers.
-const HIT_MARGIN = 0.3;
+// How far (as a fraction of the slot size) the drop point may be from the
+// CENTER OF THE PIECE'S OWN SLOT and still snap. Deliberately very generous:
+// a toddler aims at the silhouette of the animal she holds, not at a slot.
+const SNAP_RADIUS = 1.05;
 // Movement below this (px) counts as a tap, not a drag (tap never plays a sound).
 const TAP_THRESHOLD = 10;
 
@@ -49,6 +51,7 @@ export class AnimalsApp {
 
     this.board = document.createElement('div');
     this.board.className = 'puzzle-board';
+    this.board.style.gridTemplateColumns = 'repeat(' + (ANIMALS.length > 12 ? 5 : 4) + ', auto)';
     this.board.setAttribute('aria-label', 'Quadro do quebra-cabeça');
     for (const a of ANIMALS) {
       const slot = document.createElement('div');
@@ -110,14 +113,25 @@ export class AnimalsApp {
     this.root.remove();
   }
 
-  // Fisher-Yates shuffle of the tray pieces.
+  // Fisher-Yates shuffle of the tray pieces; repeats until the resulting
+  // order visibly differs from the current one (kids notice when
+  // "Jogar de novo" leaves every piece where it was).
   private shuffleTray(): void {
+    const current = Array.from(this.tray.children).map((el) => (el as HTMLElement).dataset.animal).join('|');
+    let order = this.fisherYates();
+    for (let tries = 0; tries < 8 && order.map((p) => p.dataset.animal).join('|') === current; tries++) {
+      order = this.fisherYates();
+    }
+    for (const p of order) this.tray.append(p);
+  }
+
+  private fisherYates(): HTMLButtonElement[] {
     const order = [...this.pieces];
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [order[i], order[j]] = [order[j], order[i]];
     }
-    for (const p of order) this.tray.append(p);
+    return order;
   }
 
   private startDrag(e: PointerEvent, piece: HTMLButtonElement): void {
@@ -151,8 +165,13 @@ export class AnimalsApp {
       piece.classList.remove('held');
       return;
     }
-    const slot = this.hitSlot(e.clientX, e.clientY);
-    if (slot && slot.dataset.animal === piece.dataset.animal) {
+    // Simplified rule: snap if the drop point is close to the piece's OWN
+    // slot — no "nearest slot" comparison, so an adjacent slot can never
+    // steal a nearly-correct drop.
+    const slot = this.slots.find((s) => s.dataset.animal === piece.dataset.animal)!;
+    const r = slot.getBoundingClientRect();
+    const dist = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+    if (dist <= Math.max(r.width, r.height) * SNAP_RADIUS) {
       this.place(piece, slot, clone);
     } else {
       thump();
@@ -169,23 +188,7 @@ export class AnimalsApp {
   }
 
   private positionClone(clone: HTMLDivElement, x: number, y: number): void {
-    clone.style.transform = 'translate(' + x + 'px, ' + y + 'px) scale(1.12)';
-  }
-
-  private hitSlot(x: number, y: number): HTMLDivElement | null {
-    let best: HTMLDivElement | null = null;
-    let bestDist = Infinity;
-    for (const slot of this.slots) {
-      if (slot.classList.contains('filled')) continue;
-      const r = slot.getBoundingClientRect();
-      const m = Math.max(r.width, r.height) * HIT_MARGIN;
-      if (x < r.left - m || x > r.right + m || y < r.top - m || y > r.bottom + m) continue;
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      const dist = Math.hypot(x - cx, y - cy);
-      if (dist < bestDist) { bestDist = dist; best = slot; }
-    }
-    return best;
+    clone.style.transform = 'translate(calc(' + x + 'px - 50%), calc(' + y + 'px - 50%)) scale(1.12)';
   }
 
   private place(piece: HTMLButtonElement, slot: HTMLDivElement, clone: HTMLDivElement): void {
