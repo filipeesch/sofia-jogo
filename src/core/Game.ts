@@ -207,6 +207,8 @@ export class Game {
           this.world.clouds
             .map((c) => ({ kind: 'cloud', p: [c.position.x, c.position.y, c.position.z] }))
             .concat(this.world.balloons.map((b) => ({ kind: 'balloon', p: [b.position.x, b.position.y, b.position.z], s: b.scale.x })));
+        // Live positions of the collectible stars.
+        dbg.stars = () => this.collectibles.sprites().map((s) => [s.position.x, s.position.y, s.position.z]);
         // On-rails mode state (capture tooling and tests).
         dbg.toggleRail = () => this.setRailMode(!this.railMode);
         dbg.rail = () => ({

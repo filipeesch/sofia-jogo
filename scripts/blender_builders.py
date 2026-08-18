@@ -553,3 +553,37 @@ def build_flower():
     _export(root, BASE + "/flower.glb")
     _frame(root)
 
+# ================================================================ CLOUD
+def build_cloud():
+    """Big fluffy toy cloud, ~9.3 m wide. Two materials (white body + blue
+    belly shade), flat-shaded, root EMPTY 'Cloud' at origin."""
+    root = _root("Cloud")
+    white = _mat("CloudWhite", "#ffffff", 0.9)
+    shade = _mat("CloudShade", "#cfe2f7", 0.95)
+    puffs = [
+        (2.10, 0.0, 0.10, 0.00),   # center big
+        (1.60, -2.10, -0.15, 0.10), # left
+        (1.70, 2.00, -0.05, -0.10), # right
+        (1.25, -3.40, -0.50, 0.15), # far left
+        (1.25, 3.40, -0.45, 0.00),  # far right
+        (1.45, -0.50, 1.15, 0.05),  # top
+        (1.05, 0.90, 1.00, -0.25),  # top right
+    ]
+    whites = []
+    for i, (r, x, y, z) in enumerate(puffs):
+        whites.append(_sphere("ClPuff%d" % i, r, x, y, z, mat=white, seg=14, ring=10))
+    white_j = _join(whites, "CloudBody")
+    belly = [
+        (1.15, 0.90, -1.00, 0.45),
+        (1.00, -1.30, -0.90, 0.35),
+        (0.90, 2.60, -0.95, 0.20),
+        (0.85, -2.70, -0.85, 0.25),
+    ]
+    shades = []
+    for i, (r, x, y, z) in enumerate(belly):
+        shades.append(_sphere("ClBelly%d" % i, r, x, y, z, mat=shade, seg=12, ring=9))
+    shade_j = _join(shades, "CloudShade")
+    _parent_all(root, [white_j, shade_j])
+    _export(root, BASE + "/cloud.glb")
+    _frame(root)
+

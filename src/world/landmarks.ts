@@ -230,13 +230,25 @@ export class Bird extends THREE.Group {
   }
 }
 
-// A fluffy cloud made of a few spheres that drifts across the sky.
+// A fluffy cloud that drifts across the sky. Uses the GLB model when
+// available (clouds are sky objects, so their meshes never cast shadows);
+// falls back to the procedural puff spheres otherwise.
 export class Cloud extends THREE.Group {
   private speed: number;
   private range: number;
 
-  constructor() {
+  constructor(model?: THREE.Group) {
     super();
+    if (model) {
+      model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) m.castShadow = false;
+      });
+      this.add(model);
+      this.speed = rand(0.6, 1.4);
+      this.range = rand(60, 90);
+      return;
+    }
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const puffs: [number, number, number, number][] = [
       [0, 0, 0, 1.6],

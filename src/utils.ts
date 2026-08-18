@@ -46,6 +46,8 @@ export function dampVector(
 }
 
 // Procedural 5-point star texture used by collectible sprites.
+// The glow halo is kept tight and faint so the 5-point silhouette stays
+// crisp against the bright daytime sky, while still sparkling at night.
 export function makeStarTexture(): THREE.Texture {
   const size = 128;
   const canvas = document.createElement('canvas');
@@ -54,16 +56,16 @@ export function makeStarTexture(): THREE.Texture {
   const ctx = canvas.getContext('2d')!;
   const cx = size / 2;
   const cy = size / 2;
-  const outer = size / 2 - 8;
+  const outer = size / 2 - 4;
   const inner = outer * 0.45;
 
-  const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, outer + 14);
-  glow.addColorStop(0, 'rgba(255,240,150,1)');
-  glow.addColorStop(0.6, 'rgba(255,200,60,0.35)');
+  const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, outer + 10);
+  glow.addColorStop(0, 'rgba(255,235,130,0.9)');
+  glow.addColorStop(0.72, 'rgba(255,210,80,0.25)');
   glow.addColorStop(1, 'rgba(255,200,60,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(cx, cy, outer + 14, 0, TAU);
+  ctx.arc(cx, cy, outer + 10, 0, TAU);
   ctx.fill();
 
   ctx.beginPath();
@@ -81,7 +83,7 @@ export function makeStarTexture(): THREE.Texture {
   ctx.closePath();
   ctx.fillStyle = '#ffd54a';
   ctx.fill();
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 5;
   ctx.strokeStyle = '#fff3c4';
   ctx.stroke();
 

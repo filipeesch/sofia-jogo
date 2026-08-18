@@ -80,7 +80,9 @@ export class World {
     });
 
     for (let i = 0; i < config.cloudCount; i++) {
-      const c = new Cloud();
+      const c = new Cloud(models.cloud ? models.cloud.clone() : undefined);
+      c.scale.setScalar(rand(0.9, 1.5));
+      c.rotation.y = rand(0, TAU);
       c.position.set(rand(-70, 70), rand(12, 26), rand(-70, 70));
       this.clouds.push(c);
     }

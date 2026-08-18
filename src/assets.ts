@@ -97,7 +97,8 @@ export async function loadWorldModels(worldType: string): Promise<WorldModels> {
     { name: 'chicken', url: 'models/chicken.glb' },
     { name: 'sheep', url: 'models/sheep.glb' },
     { name: 'appletree', url: 'models/appletree.glb' },
-    { name: 'car', url: 'models/car.glb' }
+    { name: 'car', url: 'models/car.glb' },
+    { name: 'cloud', url: 'models/cloud.glb' }
   ];
   const list = [...(WORLD_MODELS[worldType] ?? []), ...ALWAYS];
   const out: WorldModels = {};
