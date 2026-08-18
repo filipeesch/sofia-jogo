@@ -4,7 +4,9 @@ import { Launcher } from './ui/Launcher';
 import { HomeScreen } from './ui/HomeScreen';
 import { PaintApp } from './apps/PaintApp';
 import { BubblesApp } from './apps/BubblesApp';
-import { AnimalsApp } from './apps/AnimalsApp';
+import { PuzzleApp } from './apps/PuzzleApp';
+import { ANIMALS } from './apps/puzzleAnimals';
+import { VEHICLES } from './apps/puzzleVehicles';
 import { Airplane } from './entities/Airplane';
 import { Car } from './entities/Car';
 import { FlightController } from './controllers/FlightController';
@@ -23,7 +25,8 @@ const launcher = new Launcher([
   { id: 'carro', emoji: '🚗', name: 'Carro', color: 'linear-gradient(135deg,#ff6f91,#ff3d6e)', onOpen: () => openLevelSelect('car') },
   { id: 'pintura', emoji: '🎨', name: 'Pintura', color: 'linear-gradient(135deg,#7ae07a,#3cbf5a)', onOpen: openPaint },
   { id: 'bolhas', emoji: '🫧', name: 'Bolhas', color: 'linear-gradient(135deg,#4fc3f7,#0288d1)', onOpen: openBubbles },
-  { id: 'sons', emoji: '🐶', name: 'Quebra-Cabeça', color: 'linear-gradient(135deg,#d1a6ff,#9c27b0)', onOpen: openAnimals }
+  { id: 'sons', emoji: '🐶', name: 'Quebra-Cabeça', color: 'linear-gradient(135deg,#d1a6ff,#9c27b0)', onOpen: openAnimals },
+  { id: 'veiculos', emoji: '🚕', name: 'Transportes', color: 'linear-gradient(135deg,#4fc3f7,#1565c0)', onOpen: openVehicles }
 ]);
 
 function clearAll(): void {
@@ -61,7 +64,14 @@ function openBubbles(): void {
 
 function openAnimals(): void {
   clearAll();
-  const a = new AnimalsApp(() => { clearAll(); launcher.show(); });
+  const a = new PuzzleApp({ title: 'Quebra-Cabeça dos Animais', items: ANIMALS, onBack: () => { clearAll(); launcher.show(); } });
+  currentApp = a;
+  a.mount();
+}
+
+function openVehicles(): void {
+  clearAll();
+  const a = new PuzzleApp({ title: 'Meios de Transporte', items: VEHICLES, onBack: () => { clearAll(); launcher.show(); } });
   currentApp = a;
   a.mount();
 }

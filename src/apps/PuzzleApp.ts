@@ -1,36 +1,35 @@
-import { bark, meow, cluck, baa, moo, quack, oink, neigh, roar, ribbit, hoot, crow, thump, ding, win, resume } from '../ui/sfx';
+import { thump, ding, win, resume } from '../ui/sfx';
 import { preloadSound, playSound } from '../ui/sounds';
 
-interface AnimalDef { emoji: string; name: string; sound: () => void; file: string }
+// One puzzle item: emoji face, pt-BR name, procedural fallback sound and the
+// real MP3 (public/sounds/). 'maxDur' optionally caps the real recording's
+// length (seconds) at decode time.
+export interface PuzzleItem {
+  emoji: string;
+  name: string;
+  sound: () => void;
+  file: string;
+  maxDur?: number;
+}
 
-// 'file' is a real recorded sound (public/sounds/); 'sound' is the
-// procedural fallback used only if the file fails to load.
-const ANIMALS: AnimalDef[] = [
-  { emoji: '🐶', name: 'Cachorro', sound: bark, file: 'sounds/dog.mp3' },
-  { emoji: '🐱', name: 'Gato', sound: meow, file: 'sounds/cat.mp3' },
-  { emoji: '🐔', name: 'Galinha', sound: cluck, file: 'sounds/chicken.mp3' },
-  { emoji: '🐑', name: 'Ovelha', sound: baa, file: 'sounds/sheep.mp3' },
-  { emoji: '🐮', name: 'Vaca', sound: moo, file: 'sounds/cow.mp3' },
-  { emoji: '🦆', name: 'Pato', sound: quack, file: 'sounds/duck.mp3' },
-  { emoji: '🐷', name: 'Porco', sound: oink, file: 'sounds/pig.mp3' },
-  { emoji: '🐴', name: 'Cavalo', sound: neigh, file: 'sounds/horse.mp3' },
-  { emoji: '🦁', name: 'Leão', sound: roar, file: 'sounds/lion.mp3' },
-  { emoji: '🐸', name: 'Sapo', sound: ribbit, file: 'sounds/frog.mp3' },
-  { emoji: '🦉', name: 'Coruja', sound: hoot, file: 'sounds/owl.mp3' },
-  { emoji: '🐓', name: 'Galo', sound: crow, file: 'sounds/rooster.mp3' },
-];
+export interface PuzzleOptions {
+  title: string;
+  items: PuzzleItem[];
+  onBack: () => void;
+}
 
 // How far (as a fraction of the slot size) the drop point may be from the
 // CENTER OF THE PIECE'S OWN SLOT and still snap. Deliberately very generous:
-// a toddler aims at the silhouette of the animal she holds, not at a slot.
+// a toddler aims at the silhouette of the item she holds, not at a slot.
 const SNAP_RADIUS = 1.05;
 // Movement below this (px) counts as a tap, not a drag (tap never plays a sound).
 const TAP_THRESHOLD = 10;
 
-// Drag-and-drop matching puzzle: drag each animal from the tray onto its
-// silhouette slot; the animal's sound plays only when it snaps into place.
+// Generic drag-and-drop matching puzzle: drag each piece from the tray onto
+// its silhouette slot; the item's sound plays only when it snaps into place.
 // No score, no timer, no fail state (kid-friendly: there is no way to lose).
-export class AnimalsApp {
+// Shared by the animals puzzle and the vehicles puzzle.
+export class PuzzleApp {
   private root: HTMLDivElement;
   private board: HTMLDivElement;
   private tray: HTMLDivElement;
@@ -41,19 +40,19 @@ export class AnimalsApp {
   private drag: { piece: HTMLButtonElement; clone: HTMLDivElement; startX: number; startY: number; moved: boolean } | null = null;
   private timeouts: number[] = [];
 
-  constructor(private onBack: () => void) {
+  constructor(private opts: PuzzleOptions) {
     this.root = document.createElement('div');
     this.root.className = 'animals';
 
     const title = document.createElement('h1');
     title.className = 'launcher-title';
-    title.textContent = 'Quebra-Cabeça dos Animais';
+    title.textContent = opts.title;
 
     this.board = document.createElement('div');
     this.board.className = 'puzzle-board';
-    this.board.style.gridTemplateColumns = 'repeat(' + (ANIMALS.length > 12 ? 5 : 4) + ', auto)';
+    this.board.style.gridTemplateColumns = 'repeat(' + (opts.items.length > 12 ? 5 : 4) + ', auto)';
     this.board.setAttribute('aria-label', 'Quadro do quebra-cabeça');
-    for (const a of ANIMALS) {
+    for (const a of opts.items) {
       const slot = document.createElement('div');
       slot.className = 'puzzle-slot';
       slot.dataset.animal = a.name;
@@ -69,8 +68,8 @@ export class AnimalsApp {
 
     this.tray = document.createElement('div');
     this.tray.className = 'puzzle-tray';
-    this.tray.setAttribute('aria-label', 'Bandeja de animais');
-    for (const a of ANIMALS) {
+    this.tray.setAttribute('aria-label', 'Bandeja de peças');
+    for (const a of opts.items) {
       const piece = document.createElement('button');
       piece.className = 'puzzle-piece';
       piece.dataset.animal = a.name;
@@ -94,7 +93,7 @@ export class AnimalsApp {
     back.className = 'btn back-btn';
     back.textContent = '🏠';
     back.setAttribute('aria-label', 'Voltar');
-    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.onBack(); });
+    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.opts.onBack(); });
 
     this.root.append(title, this.board, this.againBtn, this.tray, back);
     this.shuffleTray();
@@ -104,7 +103,7 @@ export class AnimalsApp {
     const ui = document.getElementById('ui')!;
     ui.innerHTML = '';
     ui.append(this.root);
-    for (const a of ANIMALS) void preloadSound(a.file);
+    for (const a of this.opts.items) void preloadSound(a.file, a.maxDur);
   }
 
   destroy(): void {
@@ -197,12 +196,12 @@ export class AnimalsApp {
     piece.classList.remove('held');
     piece.classList.add('placed');
     slot.classList.add('filled');
-    const a = ANIMALS.find((x) => x.name === piece.dataset.animal)!;
+    const a = this.opts.items.find((x) => x.name === piece.dataset.animal)!;
     playSound(a.file, () => a.sound());
     ding();
     this.starburst(slot);
     this.filled++;
-    if (this.filled === ANIMALS.length) this.celebrate();
+    if (this.filled === this.opts.items.length) this.celebrate();
   }
 
   private returnPiece(piece: HTMLButtonElement, clone: HTMLDivElement): void {

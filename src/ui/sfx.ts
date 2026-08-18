@@ -49,6 +49,24 @@ export function hoot(): void { tone(400, 0.18, 'sine', 0.2, 320); tone(380, 0.22
 export function crow(): void { tone(880, 0.12, 'square', 0.15); tone(700, 0.1, 'square', 0.14, 600, 0.14); tone(950, 0.2, 'square', 0.15, 800, 0.28); }
 export function popSound(): void { tone(600, 0.08, 'triangle', 0.22, 300); }
 
+// Procedural fallbacks for the vehicles puzzle (used only when the real
+// MP3 cannot be loaded).
+export function carHorn(): void { tone(400, 0.09, 'square', 0.16); tone(400, 0.1, 'square', 0.16, undefined, 0.17); }
+export function taxiDing(): void { tone(1320, 0.1, 'sine', 0.2); tone(1760, 0.16, 'sine', 0.15, undefined, 0.07); }
+export function policeSiren(): void { tone(700, 0.13, 'sine', 0.2, 950); tone(950, 0.13, 'sine', 0.2, 700, 0.14); }
+export function ambulanceSiren(): void { tone(520, 0.18, 'sine', 0.2, 1000); tone(1000, 0.18, 'sine', 0.2, 520, 0.2); }
+export function fireSiren(): void { tone(600, 0.24, 'sawtooth', 0.11, 900); tone(900, 0.24, 'sawtooth', 0.11, 600, 0.26); }
+export function truckHorn(): void { tone(110, 0.5, 'square', 0.22, 105); }
+export function busHorn(): void { tone(165, 0.35, 'square', 0.2, 150); }
+export function bikeBell(): void { tone(1560, 0.08, 'sine', 0.24); tone(1560, 0.14, 'sine', 0.2, undefined, 0.13); }
+export function motorcycleRev(): void { tone(150, 0.35, 'sawtooth', 0.15, 430); }
+export function trainWhistle(): void { tone(620, 0.7, 'sine', 0.2); tone(748, 0.7, 'sine', 0.13, undefined, 0.02); }
+export function airplaneEngine(): void { tone(90, 0.9, 'sawtooth', 0.13, 260); }
+export function helicopterWhup(): void { for (let i = 0; i < 4; i++) tone(85, 0.07, 'sine', 0.24, 60, i * 0.11); }
+export function rocketLaunch(): void { tone(100, 0.8, 'sawtooth', 0.18, 700); tone(55, 0.8, 'square', 0.1, 120); }
+export function boatHorn(): void { tone(105, 0.55, 'sine', 0.24, 100); }
+export function tractorRumble(): void { tone(58, 0.8, 'sawtooth', 0.16, 85); tone(40, 0.8, 'square', 0.1, 60, 0.05); }
+
 // Puzzle feedback (animal-puzzle): miss, hit and win.
 export function thump(): void { tone(150, 0.2, 'sine', 0.1, 90); }
 export function ding(): void { tone(660, 0.1, 'triangle', 0.14); tone(990, 0.14, 'triangle', 0.14, undefined, 0.09); }

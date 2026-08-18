@@ -9,7 +9,7 @@ import { audioCtx } from './sfx';
 const buffers = new Map<string, AudioBuffer>();
 const pending = new Map<string, Promise<AudioBuffer | null>>();
 
-export function preloadSound(url: string): Promise<AudioBuffer | null> {
+export function preloadSound(url: string, maxDur?: number): Promise<AudioBuffer | null> {
   const hit = buffers.get(url);
   if (hit) return Promise.resolve(hit);
   const queued = pending.get(url);
@@ -20,7 +20,16 @@ export function preloadSound(url: string): Promise<AudioBuffer | null> {
       if (!c) return null;
       const res = await fetch(url);
       if (!res.ok) throw new Error('http ' + res.status);
-      const buf = await c.decodeAudioData(await res.arrayBuffer());
+      let buf = await c.decodeAudioData(await res.arrayBuffer());
+      if (maxDur !== undefined && buf.duration > maxDur) {
+        // Kid-friendly cap: keep only the first `maxDur` seconds.
+        const frames = Math.floor(maxDur * buf.sampleRate);
+        const trimmed = c.createBuffer(buf.numberOfChannels, frames, buf.sampleRate);
+        for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+          trimmed.copyToChannel(buf.getChannelData(ch).subarray(0, frames), ch);
+        }
+        buf = trimmed;
+      }
       buffers.set(url, buf);
       return buf;
     } catch {
