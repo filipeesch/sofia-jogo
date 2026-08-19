@@ -139,7 +139,7 @@ export class Island extends THREE.Group {
     }
 
     const { barn, fencePosts } = this.layout;
-    if (models.barn) {
+    if (barn && models.barn) { // barn optional in data-driven levels
       const barnMesh = models.barn.clone();
       barnMesh.position.set(barn.x, barn.y, barn.z);
       this.add(barnMesh);

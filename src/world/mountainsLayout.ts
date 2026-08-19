@@ -332,7 +332,7 @@ export interface MountainsLayout {
   houses: (PlacedHouse & PlacedPoint)[];
   lamps: PlacedPoint[];
   benches: (PlacedBench & PlacedPoint)[];
-  barn: PlacedPoint;
+  barn?: PlacedPoint; // optional: data-driven levels (editor) may omit the barn
   fencePosts: (PlacedPoint & { rotY: number })[];
   animals: (PlacedAnimal & PlacedPoint)[];
   trees: PlacedTree[];
@@ -559,7 +559,7 @@ export function layoutSolids(layout: MountainsLayout): LayoutSolid[] {
   const out: LayoutSolid[] = [];
   for (const p of layout.peaks) out.push({ x: p.x, z: p.z, r: p.rad, clearance: 0.2, kind: 'peak' });
   for (const h of layout.houses) out.push({ x: h.x, z: h.z, r: 1.9, clearance: 0.8, kind: 'house' });
-  out.push({ x: layout.barn.x, z: layout.barn.z, r: 2.3, clearance: 0.8, kind: 'barn' });
+  if (layout.barn) out.push({ x: layout.barn.x, z: layout.barn.z, r: 2.3, clearance: 0.8, kind: 'barn' });
   for (const f of layout.fencePosts) out.push({ x: f.x, z: f.z, r: 0.4, clearance: 0.4, kind: 'fence' });
   for (const b of layout.benches) out.push({ x: b.x, z: b.z, r: 1.0, clearance: 0.3, kind: 'bench' });
   for (const l of layout.lamps) out.push({ x: l.x, z: l.z, r: 0.5, clearance: 0.2, kind: 'lamp' });

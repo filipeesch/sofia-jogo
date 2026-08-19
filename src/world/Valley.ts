@@ -122,9 +122,10 @@ export class Valley extends THREE.Group {
       this.add(inst.group);
     }
 
-    // Farm: barn + fence (instanced).
+    // Farm: barn + fence (instanced). The barn is optional in data-driven
+    // levels (the editor may delete it).
     const { barn, fencePosts } = this.layout;
-    if (models.barn) {
+    if (barn && models.barn) {
       const barnMesh = models.barn.clone();
       barnMesh.position.set(barn.x, barn.y, barn.z);
       this.add(barnMesh);

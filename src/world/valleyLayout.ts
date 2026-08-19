@@ -315,7 +315,7 @@ export interface ValleyLayout {
   lamps: PlacedPoint[];
   benches: (PlacedBench & PlacedPoint)[];
   farm: typeof VALLEY_FARM;
-  barn: PlacedPoint;
+  barn?: PlacedPoint; // optional: data-driven levels (editor) may omit the barn
   fencePosts: (PlacedPoint & { rotY: number })[];
   animals: (PlacedAnimal & PlacedPoint)[];
   trees: PlacedTree[];
@@ -502,7 +502,7 @@ export interface LayoutSolid extends Solid {
 export function layoutSolids(layout: ValleyLayout): LayoutSolid[] {
   const out: LayoutSolid[] = [];
   for (const h of layout.houses) out.push({ x: h.x, y: h.y + 1.6, z: h.z, r: 1.9, h: 3.2, kind: 'house' });
-  out.push({ x: layout.barn.x, y: layout.barn.y + 2, z: layout.barn.z, r: 2.3, h: 4, kind: 'barn' });
+  if (layout.barn) out.push({ x: layout.barn.x, y: layout.barn.y + 2, z: layout.barn.z, r: 2.3, h: 4, kind: 'barn' });
   for (const f of layout.fencePosts) out.push({ x: f.x, y: f.y + 0.5, z: f.z, r: 0.4, h: 1, kind: 'fence' });
   for (const b of layout.benches) out.push({ x: b.x, y: b.y + 0.5, z: b.z, r: 1.0, h: 1.0, kind: 'bench' });
   for (const a of layout.animals) {
