@@ -1,15 +1,24 @@
 import { thump, ding, win, resume } from '../ui/sfx';
 import { preloadSound, playSound } from '../ui/sounds';
+import { speakName } from '../ui/speech';
 
-// One puzzle item: emoji face, pt-BR name, procedural fallback sound and the
-// real MP3 (public/sounds/). 'maxDur' optionally caps the real recording's
-// length (seconds) at decode time.
+// One puzzle item: emoji face, pt-BR name, optional procedural fallback sound
+// and optional real MP3 (public/sounds/). 'maxDur' caps the recording length
+// (seconds) at decode time.
+//
+// Audio behaviour (kid-friendly, set per puzzle):
+//   speak      – say the item's name out loud (Web Speech API, pt-BR)
+//   soundAfter – play the item's recorded sound *after* the name finishes
+// Animals use both (name, then animal sound); vehicles and fruits speak the
+// name only (no recorded sound).
 export interface PuzzleItem {
   emoji: string;
   name: string;
-  sound: () => void;
-  file: string;
+  sound?: () => void;
+  file?: string;
   maxDur?: number;
+  speak?: boolean;
+  soundAfter?: boolean;
 }
 
 export interface PuzzleOptions {
@@ -96,6 +105,7 @@ export class PuzzleApp {
     back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.opts.onBack(); });
 
     this.root.append(title, this.board, this.againBtn, this.tray, back);
+    this.shuffleSlots();
     this.shuffleTray();
   }
 
@@ -103,7 +113,9 @@ export class PuzzleApp {
     const ui = document.getElementById('ui')!;
     ui.innerHTML = '';
     ui.append(this.root);
-    for (const a of this.opts.items) void preloadSound(a.file, a.maxDur);
+    for (const a of this.opts.items) {
+      if (a.file) void preloadSound(a.file, a.maxDur);
+    }
   }
 
   destroy(): void {
@@ -112,20 +124,32 @@ export class PuzzleApp {
     this.root.remove();
   }
 
-  // Fisher-Yates shuffle of the tray pieces; repeats until the resulting
+  // Fisher-Yates shuffle of the TRAY pieces; repeats until the resulting
   // order visibly differs from the current one (kids notice when
   // "Jogar de novo" leaves every piece where it was).
   private shuffleTray(): void {
     const current = Array.from(this.tray.children).map((el) => (el as HTMLElement).dataset.animal).join('|');
-    let order = this.fisherYates();
+    let order = this.fisherYates(this.pieces);
     for (let tries = 0; tries < 8 && order.map((p) => p.dataset.animal).join('|') === current; tries++) {
-      order = this.fisherYates();
+      order = this.fisherYates(this.pieces);
     }
     for (const p of order) this.tray.append(p);
   }
 
-  private fisherYates(): HTMLButtonElement[] {
-    const order = [...this.pieces];
+  // Fisher-Yates shuffle of the BOARD SLOTS: the top grid (where pieces snap
+  // in) is rearranged too, so the silhouettes are never in a fixed order —
+  // each round the kid has to scan the whole board to find each home.
+  private shuffleSlots(): void {
+    const current = this.slots.map((s) => s.dataset.animal).join('|');
+    let order = this.fisherYates(this.slots);
+    for (let tries = 0; tries < 8 && order.map((s) => s.dataset.animal).join('|') === current; tries++) {
+      order = this.fisherYates(this.slots);
+    }
+    for (const s of order) this.board.append(s);
+  }
+
+  private fisherYates<T>(arr: T[]): T[] {
+    const order = [...arr];
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [order[i], order[j]] = [order[j], order[i]];
@@ -197,11 +221,28 @@ export class PuzzleApp {
     piece.classList.add('placed');
     slot.classList.add('filled');
     const a = this.opts.items.find((x) => x.name === piece.dataset.animal)!;
-    playSound(a.file, () => a.sound());
     ding();
     this.starburst(slot);
     this.filled++;
+    this.playItemSound(a);
     if (this.filled === this.opts.items.length) this.celebrate();
+  }
+
+  // Item audio when a piece snaps in:
+  //   - 'speak':      the name is said out loud in pt-BR (Web Speech API)
+  //   - 'soundAfter': the recorded MP3 plays right after the name ends
+  // Animals: name + animal sound. Vehicles / fruits: name only.
+  private playItemSound(a: PuzzleItem): void {
+    const playFile = (): void => {
+      if (a.file) playSound(a.file, () => { a.sound?.(); });
+    };
+    if (a.speak) {
+      speakName(a.name, () => {
+        if (a.soundAfter) playFile();
+      });
+    } else {
+      playFile();
+    }
   }
 
   private returnPiece(piece: HTMLButtonElement, clone: HTMLDivElement): void {
@@ -272,6 +313,7 @@ export class PuzzleApp {
       p.classList.remove('placed');
       this.tray.append(p);
     }
+    this.shuffleSlots();
     this.shuffleTray();
     ding();
   }
