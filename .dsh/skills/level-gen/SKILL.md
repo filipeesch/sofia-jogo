@@ -77,7 +77,7 @@ casas ao lado da estrada, sem colisão).
 ```
 L0 terreno/zona   → zonas { centro, raio, tema, objetos:{tipo:contagem} } + chão
 L1 estradas       → rede em laço (união de anéis fechados, sem beco sem saída)
-                   ligando os centros das zonas; curvas suaves (deflexão ≤ 60°)
+                    ligando os centros das zonas; curvas suaves (deflexão ≤ 40°, raio ≥ 4.0 m — ver regra 7)
 L2 âncoras        → casas/celeiro/coreto encaixados AO LADO das estradas
 L3 preenchimento  → árvores/arbustos/flores/bancos/postes/animais (densidade, rejeição)
 L4 decoração      → estrelas/nuvens/arco-íris (não colidem, só enfeitam)
@@ -102,9 +102,19 @@ Cada camada valida contra as anteriores. **Estrada antes de casa; casa antes de 
    anéis/laços fechados. Nada termina no nada: a estrada "sempre dá em algum
    lugar". O tour on-rails faz 0 U-turns.
    (O checker valida: nenhum nó de grau 1 — extremos não compartilhados.)
-7. **Curvas suaves, sem 90°**: a deflexão entre segmentos consecutivos dos
-   pontos de controle deve ser ≤ 60° (ângulo interno ≥ 120°). A via lida como
-   curva fluida (a spline centripetal de 70 amostras cuida do resto).
+7. **Curvas suaves, sem cotovelo** (padrão de curva suave): a deflexão entre
+    segmentos consecutivos dos pontos de controle deve ser ≤ 40° (ângulo
+    interno ≥ 140°) — a via lida como curva fluida, nunca um "V". E o raio da
+    curva, medido no spline *amostrado* (70 pts), deve ser ≥ 4.0 m em todos os
+    pontos: para cada trio de pontos amostrados consecutivos, o raio da
+    circunferência circunscrita `R = (a·b·c)/(4·área)` (Heron) ≥ 4.0 m, o que
+    impede "curvas de cotovelo" (giro num trecho curto) — a curva só se resolve
+    ao longo de ≥ ~5.6 m de corda. O checker valida as duas: deflexão ≤ 40°
+    (regra 5a) E raio mínimo ≥ 4.0 m (regra 5b) sobre a spline amostrada.
+    **Nota (legado)**: vale/ilha/montanhas/neve ainda seguem o padrão antigo
+    (60° / sem raio mínimo; medidos: vale 55.4°/4.78 m, ilha 59.6°/5.76 m,
+    montanhas 53.1°/3.41 m, neve 45.0°/4.66 m). Só o **deserto** foi refeito no
+    padrão novo; re-fazer os demais é trabalho futuro.
 8. **Estrada segue o terreno**: o ribbon tem pitch por segmento sobre o
    perfil suavizado — em ladeiras, rampa contínua, nunca degraus. Ao desenhar,
    prefira pontos de controle espaçados ao longo de vertentes (evitar subida
@@ -240,7 +250,7 @@ mcp__game__*  →  scripts/game-mcp.mjs (MCP stdio)  →  POST /cmd no capture s
 ## 10. Definition of Done (uma fase está pronta quando)
 
 1. `npm run typecheck` passa.
-2. Auto-check estrutural passa: `solids` sem sobreposição (dist ≥ r1+r2+folga), **rede de estradas em laço (nenhum nó de grau 1 / beco sem saída)**, deflexão entre pontos de controle ≤ 60°, **animais ≥ 30**, todo `y` = `terrainHeight(x,z)`; tour on-rails com **0 U-turns**.
+2. Auto-check estrutural passa: `solids` sem sobreposição (dist ≥ r1+r2+folga), **rede de estradas em laço (nenhum nó de grau 1 / beco sem saída)**, **curvas suaves (deflexão ≤ 40° E raio mínimo da spline amostrada ≥ 4.0 m — regra 7)**, **animais ≥ 30**, todo `y` = `terrainHeight(x,z)`; tour on-rails com **0 U-turns**.
 3. Render pass de evidência salvo em `_shots/` (top-down + 4 vistas + flythrough + noite), e **você olhou** cada imagem e não viu erro.
 4. `LevelConfig` novo em `src/levels.ts` (+ world/sistemas/GLBs se for fase elaborada), e doc de design atualizado em `docs/`.
 

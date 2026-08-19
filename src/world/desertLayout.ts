@@ -23,11 +23,17 @@
 //     content ring (r 34..70).
 //   - ARCO-ÍRIS: global fixed arch at x 11..37, z=-24; ring B passes under it.
 //
-// Roads (4 polylines, 2 closed rings sharing the village hub (-2,2)):
-//   Ring A (oásis): A1 hub → spawn side (2,20) → margem S/E do oásis → (44,34);
-//                   A2 (44,34) → margem N/O → hub (handle compartilhado).
-//   Ring B (pirâmides): B1 hub → cluster (E → N → W → S) → arco-íris (24,-24);
-//                       B2 arco-íris → hub. Nenhuma estrada cruza o oásis nem
+// Roads (4 polylines, 2 closed rings — smooth-curve standard, skill rule 7):
+// control deflection ≤ 40° and sampled-spline curvature radius ≥ 4.0 m
+// (every turn unfolds over ≥ ~5.6 m of chord — no "elbow" corners).
+//   Ring A (oásis): A1 hub → spawn handle (0,12)/(3,20) → margem N do oásis →
+//                   east node (44,34); A2 (44,34) → margem N/O → handle → hub.
+//   Ring B (pirâmides): B1 hub → cauda suave → arco N (volta da pirâmide
+//                   média, raio largo) → face O → face S → alameda E →
+//                   arco-íris (24,-24) → face leste → nó (10,-1);
+//                       B2 nó (10,-1) → hub. O hub é um cruzamento suave:
+//                       A1/A2 passam tangentes (N–S) e B1/B2 se encontram com
+//                       deflexão ≤ 24°. Nenhuma estrada cruza o oásis nem
 //                       toca as pirâmides.
 
 import type { Solid } from '../utils';
@@ -50,64 +56,86 @@ export function mulberry32(seed: number): () => number {
 export const DESERT_SEED = 20240815;
 
 export const DESERT_ROADS: [number, number][][] = [
-  // A1: hub → handle (perto do spawn 0,20) → margem S/E do oásis → (44,34).
+  // A1: hub → handle (passa a ~2,7 m do spawn 0,20) → margem N do oásis →
+  // east node (44,34). Deflexões máx 31°; raio de curvatura mínimo 4,8 m.
   [
     [-2, 2],
     [0, 12],
-    [2, 20],
-    [10, 24],
-    [16, 32],
-    [26, 40],
-    [36, 42],
-    [42, 38],
+    [3, 20],
+    [9, 27],
+    [17, 33],
+    [26, 38],
+    [36, 40],
+    [40, 39],
+    [43, 36],
     [44, 34]
   ],
-  // A2: (44,34) → margem N/O do oásis → handle → hub (fecha o anel A).
+  // A2: (44,34) → margem N/O do oásis → handle compartilhado → hub
+  // (fecha o anel A; tangente ao A1 nos nós (44,34) e hub).
   [
     [44, 34],
-    [42, 40],
-    [36, 46],
-    [28, 48],
-    [20, 44],
-    [12, 36],
-    [4, 24],
-    [2, 20],
+    [43, 36],
+    [41, 41],
+    [38, 45],
+    [32, 48],
+    [24, 48],
+    [16, 44],
+    [9, 37],
+    [5, 30],
+    [3, 20],
     [0, 12],
     [-2, 2]
   ],
-  // B1: hub → cluster de pirâmides (E → N → W → S) → arco-íris (24,-24).
+  // B1: hub → cauda (arco suave p/ SW) → volta N larga da pirâmide média
+  // (raio ~9-10 m) → face O → face S → alameda E sob o arco-íris → face
+  // leste → nó (10,-1). Deflexões máx 39°; raio de curvatura mínimo 4,4 m.
   [
     [-2, 2],
-    [-12, -5],
-    [-22, -15],
-    [-32, -24],
-    [-42, -26],
-    [-45, -24],
-    [-48, -18],
-    [-56, -16],
-    [-60, -19],
-    [-62, -24],
-    [-60, -30],
-    [-52, -38],
-    [-48, -46],
-    [-46, -52],
-    [-42, -54],
+    [-8, 1],
+    [-16, 0],
+    [-24, -1],
+    [-30, -4],
+    [-35, -9],
+    [-38, -15],
+    [-43, -18],
+    [-46, -18],
+    [-50, -17],
+    [-52, -15],
+    [-55, -14],
+    [-58, -15],
+    [-60, -17],
+    [-62, -21],
+    [-63, -26],
+    [-63, -32],
+    [-61, -38],
+    [-57, -42],
+    [-52, -45],
+    [-47, -48],
+    [-43, -52],
     [-38, -54],
-    [-30, -52],
-    [-28, -48],
-    [-26, -42],
-    [-22, -34],
-    [-18, -26],
-    [-8, -24],
+    [-32, -53],
+    [-27, -49],
+    [-23, -43],
+    [-20, -36],
+    [-18, -30],
+    [-15, -26],
+    [-11, -25],
+    [-4, -24],
     [4, -24],
-    [16, -24],
-    [24, -24]
+    [12, -24],
+    [18, -23],
+    [22, -20],
+    [24, -16],
+    [23, -11],
+    [19, -7],
+    [14, -3],
+    [10, -1]
   ],
-  // B2: arco-íris → hub (fecha o anel B).
+  // B2: nó (10,-1) → hub (fecha o anel B; continuação tangente do B1).
   [
-    [24, -24],
-    [16, -14],
-    [8, -6],
+    [10, -1],
+    [6, 0],
+    [2, 1],
     [-2, 2]
   ]
 ];
@@ -183,12 +211,12 @@ export interface PlacedHouse {
   colorIndex: number;
 }
 
-// Three adobe houses, all in the band [5.1..8.1] of ring A, facing their
-// street (toward the road centerline).
+// Three adobe houses, all in the band [5.1..8.1] of the ring-A roads, facing
+// their street (toward the road centerline).
 export const DESERT_HOUSES: PlacedHouse[] = [
-  { x: -8, z: 8, rotY: faceToward(-8, 8, -1, 7), colorIndex: 0 }, // oeste do handle
-  { x: 7, z: 14, rotY: faceToward(7, 14, 1, 15), colorIndex: 1 }, // leste do handle
-  { x: 2, z: 32, rotY: faceToward(2, 32, 7, 27), colorIndex: 2 } // norte do handle
+  { x: -8, z: 8, rotY: faceToward(-8, 8, -8, 1), colorIndex: 0 }, // ao lado da cauda do anel B
+  { x: 7, z: 14, rotY: faceToward(7, 14, 2, 14), colorIndex: 1 }, // leste do handle
+  { x: -1, z: 34, rotY: faceToward(-1, 34, 5, 31), colorIndex: 2 } // norte do handle (anel A2)
 ];
 
 // Pyramids: hand-placed cluster NW (visual y-rotation jitter uses seed+1).
@@ -209,15 +237,15 @@ export const DESERT_PYRAMIDS: PlacedPyramid[] = [
 // house, so the house solid's 0.8 m clearance band stays free), on the oasis
 // ring, at the pyramid POI, and on the rainbow alameda.
 export const DESERT_LAMPS: [number, number][] = [
-  [-4, 7], // A1: handle, L da rua
-  [-3, 16], // A1: handle, R da rua
-  [9, 18], // A1: entrada do oásis
+  [-6, 5], // B1: cauda, N da rua
+  [-3, 16], // A1: handle, L da rua
+  [9, 21], // A1: entrada do oásis
   [30, 51], // A2: norte do oásis
   [38, 50], // A2: NE do oásis
   [20, 30], // A1/A2: sudeste do oásis
-  [-26, -14], // B1: aproximação das pirâmides
+  [-28, -6], // B1: cauda, aproximação das pirâmides
   [10, -20], // B1: alameda do arco-íris
-  [20, -28] // B1: sob o arco
+  [20, -26.5] // B1: sob o arco
 ];
 
 // ---------- L2/L3: animals ----------
@@ -236,15 +264,15 @@ export interface PlacedAnimal {
 
 export const DESERT_ANIMALS: PlacedAnimal[] = [
   // Vila / handle (meadow between the houses and the roads)
-  { type: 'dog', x: 8, z: 4, wanderR: 4 },
-  { type: 'cat', x: -12, z: 2, wanderR: 3 },
+  { type: 'dog', x: 10, z: 8, wanderR: 4 },
+  { type: 'cat', x: -14, z: 6, wanderR: 3 },
   { type: 'chicken', x: -16, z: 6, wanderR: 3 },
   { type: 'sheep', x: 12, z: 10, wanderR: 4 },
   { type: 'sheep', x: 16, z: 6, wanderR: 5 },
-  // South field (entre o handle e as dunas do sul)
+  // South field (entre o handle e as dunas do norte)
   { type: 'sheep', x: 52, z: 10, wanderR: 5 },
-  { type: 'sheep', x: -2, z: 40, wanderR: 5 },
-  { type: 'chicken', x: 8, z: 40, wanderR: 3 },
+  { type: 'sheep', x: -14, z: 48, wanderR: 5 },
+  { type: 'chicken', x: 12, z: 48, wanderR: 3 },
   { type: 'sheep', x: 22, z: 14, wanderR: 4 },
   { type: 'dog', x: 24, z: 14, wanderR: 3 },
   // Oasis meadow (inside ring A, entre a água e a estrada)
@@ -255,18 +283,18 @@ export const DESERT_ANIMALS: PlacedAnimal[] = [
   { type: 'chicken', x: 46, z: 48, wanderR: 3 },
   { type: 'cat', x: 26, z: 12, wanderR: 3 },
   { type: 'sheep', x: 18, z: 18, wanderR: 4 },
-  // Pyramid meadow (campo ao redor do cluster)
-  { type: 'sheep', x: -26, z: -6, wanderR: 4 },
-  { type: 'sheep', x: -34, z: -12, wanderR: 4 },
-  { type: 'chicken', x: -44, z: -14, wanderR: 3 },
-  { type: 'dog', x: -56, z: -10, wanderR: 4 },
-  { type: 'cat', x: -68, z: -34, wanderR: 3 },
+  // Pyramid meadow (campo entre a cauda do anel B e a volta N do cluster)
+  { type: 'sheep', x: -28, z: -14, wanderR: 4 },
+  { type: 'sheep', x: -46, z: -11, wanderR: 4 },
+  { type: 'chicken', x: -44, z: -11, wanderR: 3 },
+  { type: 'dog', x: -48, z: -8, wanderR: 4 },
+  { type: 'cat', x: -70, z: -36, wanderR: 3 },
   // Arco-íris / campo norte
   { type: 'sheep', x: 0, z: -12, wanderR: 4 },
   { type: 'chicken', x: -6, z: -14, wanderR: 3 },
-  { type: 'sheep', x: 14, z: -2, wanderR: 4 },
-  { type: 'sheep', x: 22, z: -8, wanderR: 4 },
-  { type: 'cat', x: 26, z: -18, wanderR: 3 },
+  { type: 'sheep', x: 16, z: 4, wanderR: 4 },
+  { type: 'sheep', x: 28, z: -2, wanderR: 4 },
+  { type: 'cat', x: 34, z: -14, wanderR: 3 },
   { type: 'sheep', x: 30, z: -40, wanderR: 5 },
   // Sudoeste (campo aberto entre a vila e as dunas)
   { type: 'sheep', x: -30, z: 20, wanderR: 5 },

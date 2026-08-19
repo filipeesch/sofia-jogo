@@ -11,7 +11,10 @@
 //  4. roads: 4 polylines; network is a union of closed rings — every road
 //     endpoint is shared with another road within 0.8 m (no degree-1 nodes,
 //     skill rule 6); none crosses the oasis
-//  5. control deflection between consecutive segments ≤ 60° (skill rule 7)
+//  5. control deflection between consecutive segments ≤ 40° (skill rule 7,
+//     smooth-curve standard) AND every sampled spline point has a curvature
+//     radius ≥ 4.0 m — a turn must unfold over ≥ ~5.6 m of chord, so no
+//     "elbow" corners (a 90° turn on R=4 m covers ~5.66 m of chord)
 //  6. every road spline sample (CatmullRom centripetal, 70 samples — same math
 //     as src/rails/roadTour.ts, reimplemented locally) ≥ 2.0 m from every solid
 //  7. spawn (0,20) ≤ 3 m from a road; POIs within 8 m of some road
@@ -172,7 +175,11 @@ for (const [x, z] of allRoadPts) {
   }
 }
 
-// ---- 5. deflection between consecutive control segments ≤ 60° ----
+// ---- 5. smooth-curve standard (skill rule 7) ----
+// 5a: deflection between consecutive control segments ≤ 40°.
+// 5b: curvature radius of the rendered spline (3-point circle on the
+//     sampled points) ≥ 4.0 m everywhere — turns unfold over distance,
+//     no tight "elbow" corners.
 for (let i = 0; i < DESERT_ROADS.length; i++) {
   const pts = DESERT_ROADS[i];
   for (let k = 1; k < pts.length - 1; k++) {
@@ -188,7 +195,22 @@ for (let i = 0; i < DESERT_ROADS.length; i++) {
     if (l1 < 1e-9 || l2 < 1e-9) continue;
     const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1z * v2z) / (l1 * l2)));
     const ang = (Math.acos(dot) * 180) / Math.PI;
-    if (ang > 60) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 60° at control point (${bx},${bz})`);
+    if (ang > 40) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 40° at control point (${bx},${bz})`);
+  }
+}
+for (let i = 0; i < sampled.length; i++) {
+  const s = sampled[i];
+  for (let k = 1; k < s.length - 1; k++) {
+    const p0 = s[k - 1];
+    const p1 = s[k];
+    const p2 = s[k + 1];
+    const a = Math.hypot(p0[0] - p1[0], p0[1] - p1[1]);
+    const b = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
+    const c = Math.hypot(p0[0] - p2[0], p0[1] - p2[1]);
+    const area = 0.5 * Math.abs((p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]));
+    if (area < 1e-9) continue; // collinear samples: radius is "infinite"
+    const R = (a * b * c) / (4 * area);
+    if (R < 4.0) issues.push(`road ${i}: curve radius ${R.toFixed(2)} m < 4.0 m at sample (${p1[0].toFixed(1)},${p1[1].toFixed(1)})`);
   }
 }
 
@@ -210,7 +232,7 @@ if (spawnD > 3.0) issues.push(`road ${spawnD.toFixed(2)} m from car spawn (0,20)
 const pois = [
   { name: 'vila', x: -2, z: 2 },
   { name: 'oasis', x: 26, z: 36 }, // margem NE do oásis (perto da estrada)
-  { name: 'pyramids', x: -40, z: -30 }, // borda do cluster (aproximação da estrada)
+  { name: 'pyramids', x: -44, z: -20 }, // borda E do cluster (volta N do anel B)
   { name: 'cactus alameda', x: 42, z: 36 } // alameda de cactos sul
 ];
 for (const p of pois) {

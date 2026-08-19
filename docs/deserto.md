@@ -7,10 +7,19 @@ cluster de pirâmides ao NW, alameda de cactos ao longo das estradas e o
 arco-íris cruzado por uma estrada. Sem texto, sem punição, sem nada
 assustador — para crianças de 2–3 anos.
 
-Rework de 2025-08 (regras novas da skill `level-gen`): a rede de estradas agora
-é **fechada em laços** (união de 2 anéis, sem beira-morte), as curvas têm
-deflexão ≤ 60°, e o mundo tem **32 animais**. O tour de trilhos do carro faz
-**0 U-turns** (validado pelo `check-rail-tour`).
+Rework de 2025-08 (regras novas da skill `level-gen`): a rede de estradas é
+**fechada em laços** (união de 2 anéis, sem beira-morte) e o mundo tem
+**32 animais**. O tour de trilhos do carro faz **0 U-turns** (validado pelo
+`check-rail-tour`).
+
+**Rework de curvas suaves de 2025-08-19** (skill regra 7, padrão novo): os
+ângulos das estradas foram reduzidos de 60° para **deflexão máx ≤ 40°** e foi
+adicionado um **raio de curvatura mínimo ≥ 4.0 m** (medido na spline amostrada),
+para eliminar "curvas de cotovelo" — cada giro agora se desenvolve ao longo de
+≥ ~5.6 m de corda. O anel B foi redesenhado inteiro: a volta N ao redor da
+pirâmide média usa raio largo (~9–10 m), a cauda e a alameda do arco-íris
+ficaram mais longas e suaves. O hub da vila é um **cruzamento tangente**: o
+anel A atravessa em N–S e o anel B chega/segue com deflexão ≤ 24°.
 
 ## 1. Tema
 Um deserto grande e aberto com:
@@ -33,11 +42,12 @@ Um deserto grande e aberto com:
 ## 2. Mapa (zona por zona, coordenadas x/z; piso em y=0; hub da vila em (-2,2))
 - **Vila** (hub `-2,2`): 3 casas adobe, todas na faixa `[5,1..8,1]` do anel A,
   viradas para a rua:
-  - `(-8,8)` — oeste do handle, cor 0
-  - `(7,14)` — leste do handle, cor 1
-  - `(2,32)` — norte do handle, cor 2
-- **Handle / spawn**: a A1 passa por `(2,20)`, a 2 m do spawn do carro
-  `(0,20)` — o veículo "glide" até o anel.
+  - `(-8,8)` — oeste da cauda do anel B (face `-8,1`), cor 0
+  - `(7,14)` — leste do handle (face `2,14`), cor 1
+  - `(-1,34)` — norte do handle, no anel A2 (face `5,31`), cor 2
+- **Handle / spawn**: o handle compartilhado do anel A vai do hub `-2,2` até
+  `(3,20)` passando por `(0,12)`; passa a ~2,7 m do spawn do carro `(0,20)` —
+  o veículo "glide" até o anel.
 - **Oásis** (`30,26`, raio 9): disco de água `y=0,06`; o anel A passa a ~5 m
   da margem (centerline ≥ 14,6 m do centro); 14 cactos no anel interno + 10
   no externo (a "alameda de cactos", com abertura na beira da estrada).
@@ -48,53 +58,60 @@ Um deserto grande e aberto com:
   no oásis + espalhados no anel de conteúdo r 34..70); a A1 termina em
   `(44,34)`, perto da alameda sul.
 - **Arco-íris** (`24,10,-24`): arco global fixo; a B1 cruza `z=-24` em
-  `(24,-24)`, sob o centro do arco.
-- **Postes de luz** (9): `[-4,7]`, `[-3,16]`, `[9,18]`, `[30,51]`, `[38,50]`,
-  `[20,30]`, `[-26,-14]`, `[10,-20]`, `[20,-28]` — todos na faixa
+  `(24,-24)`, sob o centro do arco (trecho quase reto da alameda E).
+- **Postes de luz** (9): `[-6,5]`, `[-3,16]`, `[9,21]`, `[30,51]`, `[38,50]`,
+  `[20,30]`, `[-28,-6]`, `[10,-20]`, `[20,-26,5]` — todos na faixa
   `[2,5..5,0]` da spline amostrada.
 
-## 3. Estradas (2 anéis fechados, sem beira-morte)
-Malha de **4 polilinhas** formando **dois anéis que compartilham o nó da vila**
+## 3. Estradas (2 anéis fechados, padrão de curva suave)
+Malha de **4 polilinhas** formando **dois anéis que se encontram no hub da vila**
 `(-2,2)` — todo ponto final de estrada é compartilhado com outra estrada,
-então o passeio completo não precisa de meia-volta (0 U-turn no tour):
+então o passeio completo não precisa de meia-volta (0 U-turn no tour). As
+curvas seguem o **padrão de curva suave** (skill regra 7): deflexão entre
+pontos de controle **≤ 40°** E raio de curvatura da spline amostrada **≥ 4.0 m**
+(validado pelo auto-check, regras 5a/5b):
 
 | Trecho | Pontos de controle | No anel |
 |---|---|---|
-| A1 | `-2,2 → 0,12 → 2,20 → 10,24 → 16,32 → 26,40 → 36,42 → 42,38 → 44,34` | A (oásis): vila → handle/spawn → margem S/E do oásis |
-| A2 | `44,34 → 42,40 → 36,46 → 28,48 → 20,44 → 12,36 → 4,24 → 2,20 → 0,12 → -2,2` | A: margem N/O do oásis → handle → vila |
-| B1 | `-2,2 → -12,-5 → -22,-15 → -32,-24 → -42,-26 → -45,-24 → -48,-18 → -56,-16 → -60,-19 → -62,-24 → -60,-30 → -52,-38 → -48,-46 → -46,-52 → -42,-54 → -38,-54 → -30,-52 → -28,-48 → -26,-42 → -22,-34 → -18,-26 → -8,-24 → 4,-24 → 16,-24 → 24,-24` | B (pirâmides): vila → cluster (E → N → W → S) → arco-íris |
-| B2 | `24,-24 → 16,-14 → 8,-6 → -2,2` | B: arco-íris → vila |
+| A1 | `-2,2 → 0,12 → 3,20 → 9,27 → 17,33 → 26,38 → 36,40 → 40,39 → 43,36 → 44,34` | A (oásis): hub → handle/spawn → margem N do oásis → nó leste (deflex máx 31°, raio mín 4,8 m) |
+| A2 | `44,34 → 43,36 → 41,41 → 38,45 → 32,48 → 24,48 → 16,44 → 9,37 → 5,30 → 3,20 → 0,12 → -2,2` | A: margem N/O do oásis → handle → hub (deflex máx 26,6°, raio mín 9,0 m) |
+| B1 | `-2,2 → -8,1 → -16,0 → -24,-1 → -30,-4 → -35,-9 → -38,-15 → -43,-18 → -46,-18 → -50,-17 → -52,-15 → -55,-14 → -58,-15 → -60,-17 → -62,-21 → -63,-26 → -63,-32 → -61,-38 → -57,-42 → -52,-45 → -47,-48 → -43,-52 → -38,-54 → -32,-53 → -27,-49 → -23,-43 → -20,-36 → -18,-30 → -15,-26 → -11,-25 → -4,-24 → 4,-24 → 12,-24 → 18,-23 → 22,-20 → 24,-16 → 23,-11 → 19,-7 → 14,-3 → 10,-1` | B (pirâmides): hub → cauda suave → volta N larga da pirâmide média → face O → face S → alameda E sob o arco-íris → face leste → nó 1 (41 ctrls; deflex máx 39,1°, raio mín 4,43 m) |
+| B2 | `10,-1 → 6,0 → 2,1 → -2,2` | B: nó 1 → hub (diagonal reta; continuação tangente do B1) |
 
-Nós compartilhados: vila `-2,2` (grau 4, onde os dois anéis se encontram),
-`44,34` (grau 2, NE do oásis) e `24,-24` (grau 2, sob o arco-íris). Deflexão
-máxima entre segmentos de controle: **≤ 60°** (validado pelo auto-check; a
-spline Catmull-Rom suaviza ainda mais). Nenhuma estrada cruza o oásis (a A1/A2
-fica a ≥ 4,6 m da margem) nem toca as pirâmides (≥ 7 m dos centros). A passagem
-N do cluster faz um "S" gentil ao redor da pirâmide média; o canto NE do anel
-A sobe uma rampa suave (~1,4 m) sobre a duna `(58,42)` — regra 8 (a faixa
-acompanha o terreno).
+Nós compartilhados: **hub `-2,2` (grau 4)**, **nó leste `44,34` (grau 2, NE do
+oásis)** e **nó 1 `10,-1` (grau 2, leste da alameda, sob o arco-íris)**.
+O **hub é um cruzamento tangente suave**: o anel A atravessa em N–S (A1 sai
+para N em `0,12`; A2 chega de N) e o anel B chega do leste (B2, do nó 1) e
+segue para o oeste (B1, rumo às pirâmides) com deflexão de apenas **23,5°** —
+um canto de vila gentil, não um "V" (o antigo 74° foi eliminado). Deflexão
+máxima entre segmentos de controle da rede inteira: **≤ 40°**; raio de
+curvatura mínimo da spline amostrada: **≥ 4,0 m** em todos os pontos.
+Nenhuma estrada cruza o oásis (a A1/A2 fica a ≥ 4,6 m da margem) nem toca as
+pirâmides (≥ 7 m dos centros). A volta N do anel B ao redor da pirâmide média
+`(-54,-24)` usa raio largo (~9–10 m); o canto NE do anel A sobe uma rampa
+suave (~1,4 m) sobre a duna `(58,42)` — regra 8 (a faixa acompanha o terreno).
 
 ## 4. História de descoberta
 A criança nasce com o carro/avião perto de `(0,20)` e entra no **anel A** pelo
 handle: primeiro a **vila** (casinhas + luzes), depois a estrada corre ao lado
 do **oásis** — a água azul com cactos em volta — e contorna o campo leste. Pelo
-**anel B** ela visita as **pirâmides** (a estrada envolve o cluster) e depois
-cruza **por baixo do arco-íris** antes de voltar à vila. Um passeio de 3–4 min
-toca as paradas; a rede fechada garante que qualquer caminho volta à vila. À
-noite, o mesmo deserto acende (janelas + 9 postes com luz real) — recompensa
-de voltar.
+**anel B** ela visita as **pirâmides** (a estrada envolve o cluster em curva
+larga) e depois cruza **por baixo do arco-íris** antes de voltar à vila. Um
+passeio de 3–4 min toca as paradas; a rede fechada garante que qualquer caminho
+volta à vila. À noite, o mesmo deserto acende (janelas + 9 postes com luz real)
+— recompensa de voltar.
 
 ## 5. Animais (32, cada um no seu habitat)
-- **Vila / handle** (5): 1 cachorro `(8,4)`; 1 gato `(-12,2)`; 1 galinha
+- **Vila / handle** (5): 1 cachorro `(10,8)`; 1 gato `(-14,6)`; 1 galinha
   `(-16,6)`; 2 ovelhas `(12,10)`, `(16,6)`.
-- **Campo sul** (5): 3 ovelhas `(52,10)`, `(-2,40)`, `(22,14)`; 1 galinha
-  `(8,40)`; 1 cachorro `(24,14)`.
+- **Campo sul** (5): 3 ovelhas `(52,10)`, `(-14,48)`, `(22,14)`; 1 galinha
+  `(12,48)`; 1 cachorro `(24,14)`.
 - **Prado do oásis** (7): 3 ovelhas `(40,16)`, `(44,14)`, `(50,32)`;
   2 galinhas `(34,12)`, `(46,48)`; 1 gato `(26,12)`; 1 ovelha `(18,18)`.
-- **Pirâmides** (5): 2 ovelhas `(-26,-6)`, `(-34,-12)`; 1 galinha `(-44,-14)`;
-  1 cachorro `(-56,-10)`; 1 gato `(-68,-34)`.
-- **Arco-íris / campo norte** (6): 4 ovelhas `(0,-12)`, `(14,-2)`, `(22,-8)`,
-  `(30,-40)`; 1 galinha `(-6,-14)`; 1 gato `(26,-18)`.
+- **Pirâmides** (5): 2 ovelhas `(-28,-14)`, `(-46,-11)`; 1 galinha `(-44,-11)`;
+  1 cachorro `(-48,-8)`; 1 gato `(-70,-36)`.
+- **Arco-íris / campo norte** (6): 4 ovelhas `(0,-12)`, `(16,4)`, `(28,-2)`,
+  `(30,-40)`; 1 galinha `(-6,-14)`; 1 gato `(34,-14)`.
 - **Sudoeste** (4): 2 ovelhas `(-30,20)`, `(-44,14)`; 1 galinha `(-36,8)`;
   1 cachorro `(-48,4)`.
 Regra: nenhum animal nasce em picos, no meio da água ou na estrada; os
@@ -133,18 +150,20 @@ A fase funciona nos dois estados:
 1. `npx tsc --noEmit` verde.
 2. Auto-check estrutural: `node scripts/check-desert-level.mjs` — verifica:
    determinismo; conteúdo ≤ r≈80; casas na faixa `[5,1..8,1]`; **rede em
-   anéis fechados (todo endpoint compartilhado ≤ 0,8 m)**; **deflexão ≤ 60°**;
-   nenhuma estrada cruza o oásis (tolerância de segurança de 4 m); amostras da
-   spline (CatmullRom centripetal, 70 amostras) a ≥ 2,0 m de todo sólido;
-   spawn `(0,20)` ≤ 3 m da estrada; POIs (vila, oásis, pirâmides, alameda) a
-   ≤ 8 m; **postes na faixa [2,5..5,0]** da spline; **≥ 30 animais** (32) com
-   wander livre de estradas/oásis/sólidos; tour de voo (240 pts)
-   `3,2 ≤ y ≤ 26`, clareza ≥ 1,5 m, arco-íris `[24,10,-24]` presente; sem
-   `Math.random`/`rand()` para posição no layout puro.
+   anéis fechados (todo endpoint compartilhado ≤ 0,8 m)**; **deflexão entre
+   pontos de controle ≤ 40° (regra 5a) E raio de curvatura da spline amostrada
+   ≥ 4,0 m (regra 5b)**; nenhuma estrada cruza o oásis (tolerância de
+   segurança de 4 m); amostras da spline (CatmullRom centripetal, 70 amostras)
+   a ≥ 2,0 m de todo sólido; spawn `(0,20)` ≤ 3 m da estrada; POIs (vila,
+   oásis, pirâmides, alameda) a ≤ 8 m; **postes na faixa [2,5..5,0]** da
+   spline; **≥ 30 animais** (32) com wander livre de estradas/oásis/sólidos;
+   tour de voo (240 pts) `3,2 ≤ y ≤ 26`, clareza ≥ 1,5 m, arco-íris
+   `[24,10,-24]` presente; sem `Math.random`/`rand()` para posição no layout
+   puro.
 3. Tour de trilhos: `node scripts/check-rail-tour.mjs` — car desert com
    **0 U-turns**, cobertura total da rede (x1,00), off-road 0,00.
-4. Evidência visual em `_shots/` (`qa5-deserto-*.png`: topdown, vila, oásis,
-   pirâmides, arco, cactos, estrada, carro, noite).
+4. Evidência visual em `_shots/` (`qa6-pw-*.png`: topdown, pirâmides, hub,
+   sul; e `qa5-deserto-*.png` do rework anterior).
 5. Este documento.
 
 ## 9. Invariantes do jogo (2–3 anos)
@@ -164,15 +183,30 @@ descobrir pirâmides e arco-íris.
 
 ## 11. Desvios / decisões
 - **Spawn perto, não sobre o anel**: o antigo R1 (spawn → vila, beira-morte)
-  virou o handle do anel A; o spawn `(0,20)` fica a 2 m da estrada (a A1 passa
-  em `(2,20)`) — o veículo "glide" até o tour.
-- **Casa `(6,28)→(2,32)`**: a primeira versão colocou a casa sobre a spline
-  (o spline "estufa" além do polígono de controle); o auto-check com amostras
-  pegou e a casa foi recuada.
-- **Passagem N do cluster em "S"**: a pirâmide média `(-54,-24)` obriga um
-  desvio gentil (deflexões até ~57°) entre `(-42,-26)` e `(-60,-19)`; a
-  estrada passa a ≥ 7 m do centro dela.
+  virou o handle do anel A; o spawn `(0,20)` fica a ~2,7 m da estrada (o
+  handle passa em `(3,20)` via `(0,12)`) — o veículo "glide" até o tour.
+- **Padrão de curva suave (2025-08-19)**: o usuário pediu ângulos menores
+  (40°) e um "distância mínima para a curva" para evitar cotovelos. Solução:
+  deflexão de controle ≤ 40° E raio mínimo da spline amostrada ≥ 4,0 m
+  (regras 5a/5b do checker). O anel B foi redesenhado inteiro para cumprir.
+- **Canto NE (cap) achatado**: a primeira tentativa de volta N da pirâmide
+  média (`-50,-17 → -53,-15 → -56,-15 → -59,-16`) deu raio 3,79 m (< 4,0).
+  Achatando para `[-52,-15] [-55,-14] [-58,-15]` o raio subiu para 4,43 m.
+- **Hub tangente (nó compartilhado com cuidado)**: o anel B é aberto em 2
+  polilinhas que se encontram no hub `(-2,2)` e no nó 1 `(10,-1)` (B1 termina
+  no nó 1, não volta ao hub) — 2 nós distintos, sem aresta de tour zerada.
+  No hub, A1/A2 passam em N–S e B1/B2 se encontram com deflexão de 23,5°
+  (canto de vila), em vez do antigo 74° em "V".
+- **Casa `(-1,34)` (ex-`(2,32)`)**: a `(2,32)` antiga ficava a 3,6 m da nova
+  faixa A2 (dentro do anel); recuada para `(-1,34)` na faixa `[5,1..8,1]`.
+- **Postes reposicionados**: `[-4,7]→[-6,5]`, `[9,18]→[9,21]`, `[-26,-14]→
+  [-28,-6]`, `[20,-28]→[20,-26,5]` para ficarem na faixa `[2,5..5,0]` da
+  spline nova.
+- **Animais ajustados à rede nova**: ex.: ovelha `(-2,40)→(-14,48)` (wander
+  tocava a casa nova `(-1,34)`), galinha `(8,40)→(12,48)` (ficava a 2,75 m da
+  A2), e 8 outros pequenos ajustes de distância às estradas/sólidos.
 - **Rampa na duna NE**: o canto NE do anel A sobe a duna `(58,42)` (~1,4 m) —
   a faixa acompanha o terreno com pitch por segmento (regra 8), sem degraus.
-- **POI pirâmides** = `(-40,-30)` (aproximação da estrada, 4 m dela): o anel B
-  envolve o cluster a ~8–10 m dos centros — ver de longe, sem encostar.
+- **POI pirâmides** = `(-44,-20)` (aproximação da estrada, ~4 m dela; era
+  `(-40,-30)` no rework de 2025-08): o anel B envolve o cluster a ~8–10 m dos
+  centros — ver de longe, sem encostar.
