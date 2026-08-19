@@ -9,14 +9,19 @@
 // Content lives within r≈80; six soft snow drifts frame the ring.
 //
 // Zones (x/z; +x east, +z south; village hub at (0,-6)):
-//   - MAIN ROAD (R1): spawn (0,26) -> village hub (0,-6).
 //   - VILA: 3 cozy houses around the hub, in the [5.1, 8.1] road band.
-//   - LAGO CONGELADO: (-26,-20) r 11 — R3's scenic spur ends on its shore.
-//   - PINHEIRAL: pine cluster around (40,-4); R2's ring ends near its edge.
-//   - ARCO-ÍRIS: the global arch (x 11..37, z=-24) — R4 passes under it.
+//   - LAGO CONGELADO: (-26,-20) r 11 — ring B loops AROUND it (never crosses).
+//   - PINHEIRAL: pine cluster around (40,-4); ring A passes its west edge.
+//   - ARCO-ÍRIS: the global arch (x 11..37, z=-24) — ring A passes under it.
 //   - BONECOS: 5 by the village, 5 along the north alameda.
 //   - 8 street lamps with real point lights (night mode).
-//   - Animals: sheep, cows, chickens, dogs and cats (no ducks — frozen lake).
+//   - 32 animals: sheep, cows, chickens, dogs and cats (no ducks — frozen lake).
+//
+// Roads (skill rule 6: union of closed rings — no dead ends, 0 U-turns):
+//   Ring A (leste): A1 vila (0,-6) → arco-íris (24,-24) → pinheiral (44,-4) →
+//                   spawn (0,20); A2 spawn → vila (west edge x=0).
+//   Ring B (oeste): B1 vila → volta do lago congelado (sul → oeste → norte);
+//                   B2 (-12,-24) → vila. Both rings share the hub node (0,-6).
 
 export const TAU = Math.PI * 2;
 
@@ -61,16 +66,28 @@ export function snowTerrainHeight(x: number, z: number): number {
 }
 
 // ---------- L1: roads ----------
-// One connected network around the hub (0,-6):
-//   R1 main (spawn -> village), R2 east ring (ends at the pine grove edge),
-//   R3 west spur (ends on the frozen lake shore), R4 north alameda (passes
-//   under the rainbow arch, ends at the pines). Three scenic dead ends —
-//   the on-rails tour U-turns there, exactly like the mountain spokes.
+// Two closed rings sharing the village hub (0,-6) — a union of rings with no
+// dead end (skill rule 6): every polyline endpoint is shared with another
+// road within 0.8 m. Control deflections ≤ 60° (skill rule 7).
+//   Ring A (leste): hub → arco-íris → pinheiral → spawn → hub.
+//   Ring B (oeste): hub → volta do lago congelado → hub (centerline ≥ ~14 m
+//   from the lake center, so the ribbon stays clear of the ice edge).
 export const SNOW_ROADS: [number, number][][] = [
-  [[0, 26], [0, 8], [0, -6]], // R1 main: spawn -> vila
-  [[0, -6], [14, -10], [28, -8], [36, 2], [28, 12], [12, 10], [0, -6]], // R2: anel leste (pinheiral)
-  [[0, -6], [-10, -8], [-17, -12]], // R3: beira do lago congelado
-  [[0, -6], [6, -18], [16, -24], [28, -22], [34, -10]] // R4: alameda do arco-íris
+  [
+    [0, -6], [10, -6], [18, -14], [22, -20], [26, -24], [32, -24],
+    [38, -18], [42, -10], [44, -4], [40, 6], [30, 14], [18, 18],
+    [8, 20], [0, 20]
+  ], // A1: vila → arco-íris → pinheiral → spawn
+  [
+    [0, 20], [0, 12], [0, -6]
+  ], // A2: spawn → vila (borda oeste do anel leste)
+  [
+    [0, -6], [-8, -9], [-16, -9], [-24, -6], [-32, -6], [-38, -9],
+    [-41, -18], [-40, -27], [-34, -33], [-26, -35], [-18, -32], [-12, -24]
+  ], // B1: vila → margem sul → oeste → norte do lago
+  [
+    [-12, -24], [-7, -16], [-3, -10], [0, -6]
+  ] // B2: lago (NE) → vila
 ];
 
 export const ROAD_HALF_WIDTH = 1.7;
@@ -112,45 +129,47 @@ export interface PlacedHouse {
   colorIndex: number;
 }
 
-// Three cozy houses in the [5.1, 8.1] band of R1/R4/R5 roads, facing them.
+// Three cozy houses in the [5.1, 8.1] band of the A2 road (x=0), facing it.
 export const SNOW_HOUSES: PlacedHouse[] = [
-  { x: 7, z: 14, rotY: faceToward(7, 14, 0, 14), colorIndex: 0 }, // L da rua principal
+  { x: 7, z: 14, rotY: faceToward(7, 14, 0, 14), colorIndex: 0 }, // L da rua principal (anel leste)
   { x: -7, z: 14, rotY: faceToward(-7, 14, 0, 14), colorIndex: 1 }, // R da rua principal
   { x: -6, z: 0, rotY: faceToward(-6, 0, 0, 0), colorIndex: 2 } // cabana do hub, lado oeste
 ];
 
 export const SNOW_LAMPS: [number, number][] = [
-  [2.8, 10],
-  [-2.8, 10],
-  [2.8, -2],
-  [-2.8, -2],
-  [10, -16], // R4: alameda
-  [26, -26], // R4: perto do arco
-  [30, 0], // R2: anel leste
-  [-14, -6] // R3: caminho do gelo
+  [2.8, 10], // A2, L da rua
+  [-2.8, 10], // A2, R da rua
+  [2.8, -2], // A2/hub
+  [-2.8, -2], // A2/hub
+  [5, -9], // A1, saída leste da vila
+  [18, -19], // A1, norte do arco-íris
+  [29, -28], // A1, sob o arco
+  [46, -8] // A1, pinheiral
 ];
 
 // Pine cluster center + seeded ring (the "pinheiral").
 export const SNOW_FOREST = { x: 40, z: -4, inner: 8, outer: 16, count: 26 };
 export const SNOW_SCATTER_PINES = 20; // extra pines around the content ring
 
-// Ten snowmen: five by the village, five along the north alameda.
+// Ten snowmen: five by the village (kept as landmarks, shifted only to stay
+// clear of the new ring A), five along the north alameda.
 export const SNOW_SNOWMEN: [number, number][] = [
-  [12, 20],
+  [14, 26],
   [-12, 6],
   [10, 24],
   [-10, 24],
-  [4, 18],
+  [0, 26],
   [10, -30],
-  [24, -18],
-  [36, -16],
+  [22, -10],
+  [40, -22],
   [38, -8],
-  [-4, -16]
+  [-2, -20]
 ];
 
 // ---------- L2/L3: animals ----------
-// 14 animals, each with a free wander circle (road ≥ 3 m, lake rim clear, no
-// solid inside the circle). No ducks — the lake is frozen.
+// 32 animals (skill rule 17: ≥ 30), each with a free wander circle (road
+// ≥ wanderR + 1.7 + 0.2, lake rim clear, no solid inside the circle). No
+// ducks — the lake is frozen.
 export interface PlacedAnimal {
   type: string;
   x: number;
@@ -159,24 +178,43 @@ export interface PlacedAnimal {
 }
 
 export const SNOW_ANIMALS: PlacedAnimal[] = [
-  // Village meadow
-  { type: 'sheep', x: 16, z: 6, wanderR: 4 },
-  { type: 'sheep', x: -16, z: 8, wanderR: 4 },
+  // Vila meadow (inside ring A, around the hub)
   { type: 'chicken', x: 10, z: -14, wanderR: 3 },
-  { type: 'chicken', x: -8, z: -14, wanderR: 3 },
-  { type: 'dog', x: -18, z: 20, wanderR: 4 },
+  { type: 'chicken', x: 16, z: -2, wanderR: 3 },
+  { type: 'sheep', x: 16, z: 6, wanderR: 4 },
+  { type: 'sheep', x: 18, z: -2, wanderR: 4 },
   { type: 'cat', x: -14, z: 16, wanderR: 4 },
+  { type: 'dog', x: -18, z: 20, wanderR: 4 },
+  { type: 'cat', x: 20, z: 26, wanderR: 4 },
+  // South field (between the village and the spawn)
+  { type: 'sheep', x: 6, z: 30, wanderR: 4 },
+  { type: 'sheep', x: 10, z: 32, wanderR: 5 },
+  { type: 'sheep', x: 20, z: 34, wanderR: 5 },
+  { type: 'chicken', x: 6, z: 28, wanderR: 3 },
+  { type: 'chicken', x: -4, z: 30, wanderR: 3 },
+  { type: 'cow', x: -4, z: 34, wanderR: 5 },
   // East meadow, beyond the pine grove
   { type: 'cow', x: 52, z: 20, wanderR: 5 },
   { type: 'sheep', x: 60, z: 4, wanderR: 5 },
-  { type: 'chicken', x: 34, z: 16, wanderR: 3 },
+  { type: 'chicken', x: 40, z: 16, wanderR: 3 },
+  { type: 'sheep', x: 46, z: 28, wanderR: 4 },
+  { type: 'cow', x: 34, z: 26, wanderR: 5 },
+  { type: 'sheep', x: 56, z: 32, wanderR: 5 },
+  { type: 'sheep', x: 62, z: 24, wanderR: 5 },
   // North alameda (rainbow path)
   { type: 'cow', x: 24, z: -34, wanderR: 5 },
-  { type: 'sheep', x: 34, z: -34, wanderR: 4 },
-  // West drifts / ice path
+  { type: 'sheep', x: 34, z: -34, wanderR: 5 },
+  { type: 'sheep', x: 40, z: -30, wanderR: 4 },
+  { type: 'chicken', x: 28, z: -38, wanderR: 3 },
+  { type: 'dog', x: 18, z: -28, wanderR: 4 },
+  { type: 'cat', x: 8, z: -24, wanderR: 3 },
+  // West drifts / lake ring
   { type: 'cow', x: -34, z: 4, wanderR: 5 },
-  { type: 'dog', x: -30, z: -34, wanderR: 4 },
-  { type: 'cat', x: 20, z: 36, wanderR: 4 }
+  { type: 'dog', x: -26, z: -44, wanderR: 4 },
+  { type: 'sheep', x: -14, z: -38, wanderR: 4 },
+  { type: 'chicken', x: -42, z: -4, wanderR: 3 },
+  { type: 'sheep', x: -48, z: -18, wanderR: 4 },
+  { type: 'cat', x: -26, z: 6, wanderR: 4 }
 ];
 
 // ---------- Built layout ----------

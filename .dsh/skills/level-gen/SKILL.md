@@ -29,12 +29,16 @@ casas ao lado da estrada, sem colisão).
 - **Mundos** = `src/world/*.ts` (`Valley, Island, Mountains, Snow, Desert`,
   `World.ts` orquestra). Cada mundo tem `terrainHeight(x,z)` e um array `solids`.
 - **Estradas** = `src/world/Roads.ts` — splines Catmull-Rom; `roads.paths` são
-  polilinhas `[x,z]` prontas para tráfego e medição de distância.
+  polilinhas `[x,z]` prontas para tráfego e medição de distância. O ribbon é
+  **construído segmentado com pitch ao longo do perfil suavizado do terreno**:
+  em ladeiras a via sobe/desce como rampa contínua (nunca degraus/escada).
 - **Colisão** = `src/utils.ts` → `Solid { x, y, z, r, h }` (cilindro de ocupação).
   **Todo objeto ancorado deve registrar um `Solid`.**
 - **Objetos** = `public/models/*.glb` + classes em `src/world/landmarks.ts`
   (`House, Whale, Bird, Cloud, Rainbow, Balloon`), `src/world/Animals.ts`
-  (`Animal` com `wanderR`), `src/world/Traffic.ts` (`TrafficCar` segue `roads.paths`).
+  (`Animal` com `wanderR` + esfera de hit invisível p/ tap).
+  O veículo on-rails (carro/avião) é o **único** veículo da cena — não há
+  tráfego ambiente (`Traffic` foi removido do jogo).
 
 ### Constantes de referência (medidas reais do código)
 
@@ -46,7 +50,7 @@ casas ao lado da estrada, sem colisão).
 | Pirâmide `Solid` | `r:4.5, h:7` |
 | Pico de montanha `Solid` | `r~11–13, h~14–18` |
 | Lagos | círculo `r 6–15` |
-| Animal `wanderR` | 11–14 |
+| Animal `wanderR` | 2–6 (curto e local); curral ≤ 4 |
 | Whale | base `y=-1.2`, pula até `+3.6` (precisa de água) |
 | Rainbow | arco `r~13` |
 
@@ -56,8 +60,8 @@ casas ao lado da estrada, sem colisão).
 |---|---|---|
 | **Ancorado** (tem `Solid`) | house, barn, fence, bench, lamp, snowman, cactus, pyramid, palm, tree, pine, appletree, bush, flower, peak, mountain, balloon(ancorado) | colisão + clearance + encaixe no chão |
 | **Água** | whale | só em oceano (ilha) ou lago |
-| **Estrada** | car (tráfego) | segue `roads.paths`; `count ≤ paths.length` |
-| **Errante** (`wanderR`) | cow, sheep, chicken, dog, cat, duck | base + raio de passeio livre de obstáculo/estrada |
+| **Estrada** | (nenhum) | o carro/avião on-rails é o único veículo; **sem carros de tráfego ambiente** |
+| **Errante** (`wanderR`) | cow, sheep, chicken, dog, cat, duck | base + raio de passeio livre de obstáculo/estrada; **≥ 30 animais por fase** |
 | **Aéreo/ambiente** (sem colisão) | bird, cloud, rainbow, estrelas(sprites), nuvens, balloon(flutuante) | posição livre, com propósito visual |
 
 ## 4. Paleta por mundo (bioma — objeto fora do bioma = erro)
@@ -72,7 +76,8 @@ casas ao lado da estrada, sem colisão).
 
 ```
 L0 terreno/zona   → zonas { centro, raio, tema, objetos:{tipo:contagem} } + chão
-L1 estradas       → grafo conexo de splines ligando os centros das zonas
+L1 estradas       → rede em laço (união de anéis fechados, sem beco sem saída)
+                   ligando os centros das zonas; curvas suaves (deflexão ≤ 60°)
 L2 âncoras        → casas/celeiro/coreto encaixados AO LADO das estradas
 L3 preenchimento  → árvores/arbustos/flores/bancos/postes/animais (densidade, rejeição)
 L4 decoração      → estrelas/nuvens/arco-íris (não colidem, só enfeitam)
@@ -92,40 +97,53 @@ Cada camada valida contra as anteriores. **Estrada antes de casa; casa antes de 
 
 ### Espaciais (evita colisão)
 
-6. **Estrada = grafo conexo**: toda zona alcança o spawn. Estrada morta é proibida.
-7. **Estrada não cruza água**: ponto de controle mantém `dist ≥ raioÁgua + 1.7 + margem`.
-8. **Casa ao lado da estrada** (adjacência):
+6. **Estrada = rede em laço, SEM beco sem saída**: todo extremo de estrada
+   coincide com um ponto de outra estrada (nó compartilhado); a rede é união de
+   anéis/laços fechados. Nada termina no nada: a estrada "sempre dá em algum
+   lugar". O tour on-rails faz 0 U-turns.
+   (O checker valida: nenhum nó de grau 1 — extremos não compartilhados.)
+7. **Curvas suaves, sem 90°**: a deflexão entre segmentos consecutivos dos
+   pontos de controle deve ser ≤ 60° (ângulo interno ≥ 120°). A via lida como
+   curva fluida (a spline centripetal de 70 amostras cuida do resto).
+8. **Estrada segue o terreno**: o ribbon tem pitch por segmento sobre o
+   perfil suavizado — em ladeiras, rampa contínua, nunca degraus. Ao desenhar,
+   prefira pontos de controle espaçados ao longo de vertentes (evitar subida
+   íngreme dentro de 10–20 m).
+9. **Estrada não cruza água**: ponto de controle mantém `dist ≥ raioÁgua + 1.7 + margem`.
+10. **Casa ao lado da estrada** (adjacência):
    ```
    dist(ponto, estrada) ∈ [1.7 + 1.9 + 1.5, 1.7 + 1.9 + 1.5 + 3.0]
    orientação = atan2(tangente da estrada)   // porta/janela virada pra rua
    ```
    `dist < 1.7 + 1.9` = dentro da via = erro.
-9. **Colisão = teste contra `Solid`** (regra-mãe):
+11. **Colisão = teste contra `Solid`** (regra-mãe):
    ```
    ∀ s ∈ solids: dist2D(novo, s) ≥ novo.r + s.r + folga(classe)
    ```
    folga: casa/celeiro/pirâmide → grande; árvore/arbusto → média; flor → pequena (>0).
    Use grid hash (célula ~5) pra não virar O(n²).
-10. **Aterramento**: `y = terrainHeight(x,z)` sempre; objeto alto empurra o `Solid` pra cima.
-11. **Não bloquear navegação**: nada no leito da estrada; corredor de voo do avião limpo.
-12. **Seed + ordem determinística**: PRNG com seed; ordem L0→L4 fixa. Mesmo seed = mesmo cenário.
+12. **Aterramento**: `y = terrainHeight(x,z)` sempre; objeto alto empurra o `Solid` pra cima.
+13. **Não bloquear navegação**: nada no leito da estrada; corredor de voo do avião limpo.
+14. **Seed + ordem determinística**: PRNG com seed; ordem L0→L4 fixa. Mesmo seed = mesmo cenário.
 
 ### Comportamentais (o posicionamento suporta a animação)
 
-13. **Animal precisa de espaço de passeio**: `wanderR` livre de sólido e de estrada. Cercado pequeno → **reduza `wanderR`**.
-14. **Duck na borda da água**, não no meio do lago.
-15. **Tráfego = estrada longa e limpa**: sem obstáculo no meio do path.
-16. **Bird precisa de céu aberto** (o "fly" de 5s precisa ser visível).
-17. **Rainbow é marco voado**: arco `r~13` com espaço livre, na rota provável do avião.
-18. **Objetos reativos alcançáveis**: clicáveis/proximidade (casa, balão, coreto) ao alcance do avião/carro.
+15. **Animal precisa de espaço de passeio**: `wanderR` livre de sólido e de estrada. Cercado pequeno → **reduza `wanderR`** (curral: `wanderR` ≤ 4 e âncora ≥ 5 m da cerca).
+16. **Duck na borda da água**, não no meio do lago.
+17. **≥ 30 animais por fase**: vida abundante e variada (ovelhas, galinhas, vacas, cães, gatos, patos) espalhada pelas zonas (curral, campos, vila, praia, margem da água). O auto-check valida a contagem.
+18. **Hitbox generosa de toque**: cada `Animal` leva uma esfera de hit invisível (`r ≈ 1.5`, `visible = false` — o raycast do `Clickables` ignora invisível). Tap no tablet precisa funcionar mesmo fora do modelinho.
+19. **Somente o nosso veículo**: o carro/avião on-rails é o único veículo da cena; não há carros de tráfego ambiente (o sistema `Traffic` foi removido).
+20. **Bird precisa de céu aberto** (o "fly" de 5s precisa ser visível).
+21. **Rainbow é marco voado**: arco `r~13` com espaço livre, na rota provável do avião.
+22. **Objetos reativos alcançáveis**: clicáveis/proximidade (casa, balão, coreto) ao alcance do avião/carro.
 
 ### Composição (coerência visual)
 
-19. **Cluster, não ruído uniforme**: densidade por zona (vila rala, floresta densa, campo médio).
-20. **Áreas de respiro**: prado aberto entre zonas — a criança enxerga o horizonte e distingue zonas.
-21. **Silhueta legível**: cada objeto contrasta com o fundo (nada escuro sobre escuro, nada da mesma cor encostado).
-22. **Proporção de brinquedo**: casa ~3, árvore ~4, pirâmide ~7, pico ~15. Nada minúsculo perdido, nada gigante.
-23. **Rota de descoberta**: estrelas em trilha seguindo a estrada ou circundando POIs.
+23. **Cluster, não ruído uniforme**: densidade por zona (vila rala, floresta densa, campo médio).
+24. **Áreas de respiro**: prado aberto entre zonas — a criança enxerga o horizonte e distingue zonas.
+25. **Silhueta legível**: cada objeto contrasta com o fundo (nada escuro sobre escuro, nada da mesma cor encostado).
+26. **Proporção de brinquedo**: casa ~3, árvore ~4, pirâmide ~7, pico ~15. Nada minúsculo perdido, nada gigante.
+27. **Rota de descoberta**: estrelas em trilha seguindo a estrada ou circundando POIs.
 
 ## 7. Drafts com primitivos
 
@@ -222,7 +240,7 @@ mcp__game__*  →  scripts/game-mcp.mjs (MCP stdio)  →  POST /cmd no capture s
 ## 10. Definition of Done (uma fase está pronta quando)
 
 1. `npm run typecheck` passa.
-2. Auto-check estrutural passa: `solids` sem sobreposição (dist ≥ r1+r2+folga), estradas conectadas, todo `y` = `terrainHeight(x,z)`.
+2. Auto-check estrutural passa: `solids` sem sobreposição (dist ≥ r1+r2+folga), **rede de estradas em laço (nenhum nó de grau 1 / beco sem saída)**, deflexão entre pontos de controle ≤ 60°, **animais ≥ 30**, todo `y` = `terrainHeight(x,z)`; tour on-rails com **0 U-turns**.
 3. Render pass de evidência salvo em `_shots/` (top-down + 4 vistas + flythrough + noite), e **você olhou** cada imagem e não viu erro.
 4. `LevelConfig` novo em `src/levels.ts` (+ world/sistemas/GLBs se for fase elaborada), e doc de design atualizado em `docs/`.
 

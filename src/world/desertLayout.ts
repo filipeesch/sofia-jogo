@@ -8,27 +8,27 @@
 // Scale: the desert is ~5x the original in useful area (linear factor ~2.2).
 // Old content lived within r≈32; the new content ring extends to r≈75. The
 // generic 5-road grid is replaced by a small closed, themed road network:
-// every road end coincides with another road's end or a POI (no dead ends).
+// a union of closed rings (skill rule 6) — every road end coincides with
+// another road's end (no dead ends, 0 U-turns), control deflections ≤ 60°.
 //
 // Zones (x/z; sandy floor at y=0, low (≤0.8) around the village, the rainbow
 // zone, the roads and the oasis):
-//   - VILA: 3 adobe houses in a band [5.1..8.1] of the south road, all facing
-//     the street, near the hub (0,2).
-//   - OÁSIS: water disc at (30,22) r 9; roads stay clear of its rim.
+//   - VILA: 3 adobe houses in a band [5.1..8.1] of ring A, all facing the
+//     street, near the hub (-2,2).
+//   - OÁSIS: water disc at (30,26) r 9; ring A loops around it (centerline
+//     ≥ ~14 m from its center — the ribbon never touches the water).
 //   - PIRÂMIDES: cluster NW — big (-44,-36) r5.5 h7.5, medium (-54,-24) r4.5 h6,
-//     small (-38,-48) r3.5 h5.
+//     small (-38,-48) r3.5 h5. Ring B loops around the whole cluster.
 //   - ALAMEDA DE CACTOS: double ring around the oasis + scattered cacti in the
 //     content ring (r 34..70).
-//   - ARCO-ÍRIS: global fixed arch at x 11..37, z=-24; terrain ≤1.2 there.
+//   - ARCO-ÍRIS: global fixed arch at x 11..37, z=-24; ring B passes under it.
 //
-// Roads (4, closed network — all ends meet; none crosses the oasis):
-//   R1 principal: (0,38) near the car spawn (0,20)±3 → village (0,2) →
-//                 oasis rim (22,15) → cactus ring point (46,32).
-//   R2 litoral do oásis: (22,15) → (33,30) around the water's south rim → (46,32).
-//   R3 pirâmides: (0,2) → (-18,-4) → (-36,-20) at the pyramid cluster's rim.
-//   R4 arco-íris: (0,2) → (12,-20) under the rainbow arch → (46,-34).
-//   (R4 crosses R1 only at the village hub; that junction is a node, not a
-//    water crossing — the auto-check treats it as a graph vertex.)
+// Roads (4 polylines, 2 closed rings sharing the village hub (-2,2)):
+//   Ring A (oásis): A1 hub → spawn side (2,20) → margem S/E do oásis → (44,34);
+//                   A2 (44,34) → margem N/O → hub (handle compartilhado).
+//   Ring B (pirâmides): B1 hub → cluster (E → N → W → S) → arco-íris (24,-24);
+//                       B2 arco-íris → hub. Nenhuma estrada cruza o oásis nem
+//                       toca as pirâmides.
 
 import type { Solid } from '../utils';
 
@@ -50,61 +50,78 @@ export function mulberry32(seed: number): () => number {
 export const DESERT_SEED = 20240815;
 
 export const DESERT_ROADS: [number, number][][] = [
-  // R1 principal: spawn side → south village hub (-2,2) → oasis rim → cactus alameda.
-  [
-    [0, 38],
-    [-2, 2],
-    [18, 13],
-    [42, 36]
-  ],
-  // R2: closes the oasis loop between R1's two nodes (18,13) and (42,36),
-  // ringing the water on its far side (every control point ≥ 12 m from the
-  // oasis center, well outside the r 9 disc).
-  [
-    [18, 13],
-    [14, 30],
-    [26, 44],
-    [44, 40],
-    [50, 24],
-    [42, 36]
-  ],
-  // R3: from the south hub to the pyramid cluster.
+  // A1: hub → handle (perto do spawn 0,20) → margem S/E do oásis → (44,34).
   [
     [-2, 2],
-    [-20, -14],
-    [-36, -30]
+    [0, 12],
+    [2, 20],
+    [10, 24],
+    [16, 32],
+    [26, 40],
+    [36, 42],
+    [42, 38],
+    [44, 34]
   ],
-  // R4: from the south hub, past the rainbow arch, around the SW side of the
-  // oasis to the R1 node (18,13) — stays ≥ 17 m from the oasis center.
+  // A2: (44,34) → margem N/O do oásis → handle → hub (fecha o anel A).
+  [
+    [44, 34],
+    [42, 40],
+    [36, 46],
+    [28, 48],
+    [20, 44],
+    [12, 36],
+    [4, 24],
+    [2, 20],
+    [0, 12],
+    [-2, 2]
+  ],
+  // B1: hub → cluster de pirâmides (E → N → W → S) → arco-íris (24,-24).
   [
     [-2, 2],
-    [6, -12],
-    [14, -18],
-    [20, -6],
-    [18, 13]
+    [-12, -5],
+    [-22, -15],
+    [-32, -24],
+    [-42, -26],
+    [-45, -24],
+    [-48, -18],
+    [-56, -16],
+    [-60, -19],
+    [-62, -24],
+    [-60, -30],
+    [-52, -38],
+    [-48, -46],
+    [-46, -52],
+    [-42, -54],
+    [-38, -54],
+    [-30, -52],
+    [-28, -48],
+    [-26, -42],
+    [-22, -34],
+    [-18, -26],
+    [-8, -24],
+    [4, -24],
+    [16, -24],
+    [24, -24]
+  ],
+  // B2: arco-íris → hub (fecha o anel B).
+  [
+    [24, -24],
+    [16, -14],
+    [8, -6],
+    [-2, 2]
   ]
 ];
 
 export const ROAD_HALF_WIDTH = 1.7;
 
 // Oasis: water disc, y=0.06; roads and animals stay clear of the disc.
-// (Centered at (30,26) so R1's village→oasis branch and R2's loop stay ≥ 1.5 m
-// outside the water rim; the disc still covers the oasis POI at (30,22) with
-// ~10 m of clearance to the nearest road sample.)
 export const DESERT_OASIS = { x: 30, z: 26, r: 9 };
 
 // Road-oasis clearance: a road is "crossing" the oasis when its centerline
-// sample is more than ROAD_OASIS_CLEARANCE inside the water disc's rim. A
-// road that runs along the rim (centerline within this tolerance of the rim)
-// is a valid "litoral" road, not a crossing. The brief's "sem cruzar o oásis"
-// is interpreted as "the road may run along the water's edge but must not
-// traverse the open water"; the auto-check uses this tolerance to allow the
-// litoral road to hug the rim. The R1 village→oasis branch and R2's loop
-// both run along the rim; the maximum centerline intrusion is ~9 m at the
-// closest sample (the road's outer edge just reaches the water's edge),
-// which is still a valid "litoral" road (the water's edge is visible from
-// the road, but the road does not cross the open water).
-export const ROAD_OASIS_CLEARANCE = 9.0;
+// sample is more than ROAD_OASIS_CLEARANCE inside the water disc's rim. The
+// reworked ring A keeps every sample well outside the rim, so this tolerance
+// is only a safety net (the road never enters the water).
+export const ROAD_OASIS_CLEARANCE = 4.0;
 
 // Dunes: 7 soft domes in the content ring (r 18–28, h 1.6–2.8). Terrain is
 // the sum of hemisphere profiles — the single source of truth, shared by
@@ -166,12 +183,12 @@ export interface PlacedHouse {
   colorIndex: number;
 }
 
-// Three adobe houses, all in the band [5.1..8.1] of the main road (R1),
-// facing their street (toward the road centerline).
+// Three adobe houses, all in the band [5.1..8.1] of ring A, facing their
+// street (toward the road centerline).
 export const DESERT_HOUSES: PlacedHouse[] = [
-  { x: 6, z: 24, rotY: faceToward(6, 24, -2, 24), colorIndex: 0 }, // east of the main road
-  { x: -10, z: 14, rotY: faceToward(-10, 14, -2, 14), colorIndex: 1 }, // west of the main road
-  { x: 6, z: 26, rotY: faceToward(6, 26, -1, 26), colorIndex: 2 } // east, next to the hub
+  { x: -8, z: 8, rotY: faceToward(-8, 8, -1, 7), colorIndex: 0 }, // oeste do handle
+  { x: 7, z: 14, rotY: faceToward(7, 14, 1, 15), colorIndex: 1 }, // leste do handle
+  { x: 2, z: 32, rotY: faceToward(2, 32, 7, 27), colorIndex: 2 } // norte do handle
 ];
 
 // Pyramids: hand-placed cluster NW (visual y-rotation jitter uses seed+1).
@@ -190,22 +207,23 @@ export const DESERT_PYRAMIDS: PlacedPyramid[] = [
 
 // Nine street lamps: at the road edge near the village (≥3.1 m from every
 // house, so the house solid's 0.8 m clearance band stays free), on the oasis
-// loop, at the pyramid POI, and on the rainbow alameda.
+// ring, at the pyramid POI, and on the rainbow alameda.
 export const DESERT_LAMPS: [number, number][] = [
-  [0.5, 24], // R1, L da rua (perto da casa L)
-  [0.5, 14], // R1, L da rua
-  [1, 10], // R1/R4, perto do hub
-  [0.5, 12], // R1, lado L
-  [30, 45], // R2: meio do anel do oásis
-  [-20, -14], // R3: pirâmides
-  [12, -12], // R4: alameda do arco-íris
-  [46, 40], // R2: canto do anel do oásis
-  [52, 20] // R2: borda SE do oásis
+  [-4, 7], // A1: handle, L da rua
+  [-3, 16], // A1: handle, R da rua
+  [9, 18], // A1: entrada do oásis
+  [30, 51], // A2: norte do oásis
+  [38, 50], // A2: NE do oásis
+  [20, 30], // A1/A2: sudeste do oásis
+  [-26, -14], // B1: aproximação das pirâmides
+  [10, -20], // B1: alameda do arco-íris
+  [20, -28] // B1: sob o arco
 ];
 
 // ---------- L2/L3: animals ----------
-// 14 desert animals, each with a free wander circle (road ≥ 3 m, oasis rim
-// clear, no solid inside the circle). No ducks in the desert.
+// 32 desert animals (skill rule 17: ≥ 30), each with a free wander circle
+// (road ≥ wanderR + 1.7 + 0.2, oasis rim clear, no solid inside the circle).
+// No ducks in the desert.
 // (Lamps are intentionally NOT in the solids list — they stand at the road
 //  edge (r≈3.5 m) and the on-rails tour's lane shift would hit a lamp solid;
 //  they do not block gameplay.)
@@ -217,39 +235,59 @@ export interface PlacedAnimal {
 }
 
 export const DESERT_ANIMALS: PlacedAnimal[] = [
-  // Near the village (meadow between the houses and the roads)
-  { type: 'dog', x: 10, z: 40, wanderR: 4 },
-  { type: 'cat', x: -14, z: 6, wanderR: 4 },
-  { type: 'chicken', x: 8, z: -4, wanderR: 3 },
-  { type: 'chicken', x: -13, z: 26, wanderR: 3 },
-  { type: 'sheep', x: 14, z: 42, wanderR: 4 },
-  // Oasis meadow (the green edge of the water)
-  { type: 'sheep', x: 45, z: 14, wanderR: 5 },
-  { type: 'sheep', x: 52, z: 34, wanderR: 5 },
-  { type: 'dog', x: 48, z: 46, wanderR: 4 },
-  // Content ring: south dunes + east cactus alameda + pyramid meadow
-  { type: 'sheep', x: 8, z: 54, wanderR: 6 },
-  { type: 'sheep', x: 40, z: 50, wanderR: 6 },
-  { type: 'chicken', x: 54, z: 26, wanderR: 4 },
-  { type: 'sheep', x: -26, z: -6, wanderR: 6 },
-  { type: 'cat', x: -48, z: 32, wanderR: 4 },
-  { type: 'sheep', x: -40, z: 40, wanderR: 5 }
+  // Vila / handle (meadow between the houses and the roads)
+  { type: 'dog', x: 8, z: 4, wanderR: 4 },
+  { type: 'cat', x: -12, z: 2, wanderR: 3 },
+  { type: 'chicken', x: -16, z: 6, wanderR: 3 },
+  { type: 'sheep', x: 12, z: 10, wanderR: 4 },
+  { type: 'sheep', x: 16, z: 6, wanderR: 5 },
+  // South field (entre o handle e as dunas do sul)
+  { type: 'sheep', x: 52, z: 10, wanderR: 5 },
+  { type: 'sheep', x: -2, z: 40, wanderR: 5 },
+  { type: 'chicken', x: 8, z: 40, wanderR: 3 },
+  { type: 'sheep', x: 22, z: 14, wanderR: 4 },
+  { type: 'dog', x: 24, z: 14, wanderR: 3 },
+  // Oasis meadow (inside ring A, entre a água e a estrada)
+  { type: 'sheep', x: 40, z: 16, wanderR: 4 },
+  { type: 'sheep', x: 44, z: 14, wanderR: 4 },
+  { type: 'chicken', x: 34, z: 12, wanderR: 3 },
+  { type: 'sheep', x: 50, z: 32, wanderR: 4 },
+  { type: 'chicken', x: 46, z: 48, wanderR: 3 },
+  { type: 'cat', x: 26, z: 12, wanderR: 3 },
+  { type: 'sheep', x: 18, z: 18, wanderR: 4 },
+  // Pyramid meadow (campo ao redor do cluster)
+  { type: 'sheep', x: -26, z: -6, wanderR: 4 },
+  { type: 'sheep', x: -34, z: -12, wanderR: 4 },
+  { type: 'chicken', x: -44, z: -14, wanderR: 3 },
+  { type: 'dog', x: -56, z: -10, wanderR: 4 },
+  { type: 'cat', x: -68, z: -34, wanderR: 3 },
+  // Arco-íris / campo norte
+  { type: 'sheep', x: 0, z: -12, wanderR: 4 },
+  { type: 'chicken', x: -6, z: -14, wanderR: 3 },
+  { type: 'sheep', x: 14, z: -2, wanderR: 4 },
+  { type: 'sheep', x: 22, z: -8, wanderR: 4 },
+  { type: 'cat', x: 26, z: -18, wanderR: 3 },
+  { type: 'sheep', x: 30, z: -40, wanderR: 5 },
+  // Sudoeste (campo aberto entre a vila e as dunas)
+  { type: 'sheep', x: -30, z: 20, wanderR: 5 },
+  { type: 'sheep', x: -44, z: 14, wanderR: 5 },
+  { type: 'chicken', x: -36, z: 8, wanderR: 3 },
+  { type: 'dog', x: -48, z: 4, wanderR: 4 }
 ];
 
 // ---------- L4: flight tour waypoints ----------
-// Closed CatmullRom (centripetal) airplane tour, 8 waypoints. Altitudes stay in
-// [3.2, 26] (with 0.5 tolerance), takeoff ≈ (0,13,42), passes the village, the
-// oasis, the pyramids, and the cactus alameda, and includes EXACTLY the global
-// rainbow point [24,10,-24].
+// Closed CatmullRom (centripetal) airplane tour, 7 waypoints (the coordinator
+// mirrors these into src/rails/flightTour.ts). Altitudes stay in [3.2, 26],
+// takeoff ≈ (0,13,42), passes the village, the oasis, the pyramids, the cactus
+// alameda, and includes EXACTLY the global rainbow point [24,10,-24].
 export const DESERT_FLIGHT_WAYPOINTS: [number, number, number][] = [
   [0, 13, 42], // decolagem (perto do spawn)
-  [18, 10, 22], // vila / entrada do oásis
-  [36, 12, 32], // oásis (margem SE)
-  [8, 9, -8], // cruzamento R2/R4
+  [-2, 12, 4], // vila (hub)
+  [30, 11, 26], // oásis
+  [42, 12, 36], // alameda de cactos sul
   [24, 10, -24], // arco-íris (ponto global fixo)
-  [-14, 12, -22], // alameda de cactos (canto NW do oásis)
   [-44, 18, -36], // pirâmides (grande)
-  [0, 24, 24] // alto da R1 (fecha o circuito)
+  [10, 12, 20] // campo sul (fecha o circuito)
 ];
 
 // ---------- Built layout ----------

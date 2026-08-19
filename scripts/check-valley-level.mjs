@@ -8,18 +8,22 @@
 //  1. determinism (build twice → deep equal)
 //  2. content within r≈95 (hill centers ≤ r≈85)
 //  3. houses in the beside-the-road band [5.1, 8.1] on spline samples
-//  4. roads: 5 roads, connected network, none crosses the lake, R4 ends on
+//  4. roads: 8 roads, connected network, none crosses the lake, R4 ends on
 //     the east fence line at the farm gate
 //  5. every road spline sample (CatmullRom centripetal, 70 samples — same math
 //     as src/rails/roadTour.ts) ≥ solid.r + 2.0 m from every solid
 //  6. spawn (0,20) on R1; POIs within 8 m of some road
 //  7. animals: ≥ 3 m from roads, out of the water, 6 inside the fenced pen
-//  8. ducks in the lake shore band [r, r+1.6]
+//  8. ducks (animals of type 'duck') in the lake shore band [r, r+1.6]
 //  9. lamps: beside a road (2..5 m), clear of solids
 // 10. flight tour (closed centripetal CatmullRom, 240 pts): 3.2≤y≤26 (tol 0.5),
 //     clearance above terrain ≥ 1.5, waypoint/POI consistency, rainbow pass
 // 11. no Math.random / rand() used for placement in the pure layout module
 // 12. solid-solid sanity (animal-animal skipped)
+// 13. no dead ends: every road endpoint is shared with another road
+//     (skill rule 6 — the network is a union of closed rings)
+// 14. control deflection between consecutive segments ≤ 60° (skill rule 7)
+// 15. animals ≥ 30 (skill rule 17)
 import * as THREE from 'three';
 import {
   buildValleyLayout,
@@ -109,7 +113,6 @@ for (const b of layout.benches) radiusCheck('bench', b.x, b.z);
 for (const b of layout.bushes) radiusCheck('bush', b.x, b.z);
 for (const f of layout.flowers) radiusCheck('flower', f.x, f.z);
 for (const p of layout.fencePosts) radiusCheck('fence', p.x, p.z);
-for (const d of layout.ducks) radiusCheck('duck', d.x, d.z);
 radiusCheck('barn', layout.barn.x, layout.barn.z);
 for (const hill of VALLEY_HILLS) radiusCheck('hill center', hill.x, hill.z, 85);
 
@@ -122,7 +125,7 @@ for (const h of layout.houses) {
 }
 
 // ---- 4. roads: count, connectivity, lake clearance, farm gate ----
-if (VALLEY_ROADS.length !== 5) issues.push(`expected 5 roads, got ${VALLEY_ROADS.length}`);
+if (VALLEY_ROADS.length !== 8) issues.push(`expected 8 roads, got ${VALLEY_ROADS.length}`);
 {
   const meets = (i, j, pt) => {
     if (i === j) return false;
@@ -193,9 +196,9 @@ for (const p of pois) {
   if (d > 8) issues.push(`POI ${p.name} (${p.x},${p.z}) is ${d.toFixed(2)} m from the nearest road (need ≤ 8)`);
 }
 
-// ---- 7. animals: roads, water, pen ----
+// ---- 7. animals: roads, water, pen (ducks are checked in #8) ----
 const pen = VALLEY_FARM;
-for (const a of layout.animals) {
+for (const a of layout.animals.filter((a) => a.type !== 'duck')) {
   const dRoad = distToRoad(a.x, a.z, allRoadPts);
   if (dRoad < 3.0) issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): ${dRoad.toFixed(2)} m from road (need ≥ 3)`);
   const dLake = Math.hypot(a.x - VALLEY_LAKE.x, a.z - VALLEY_LAKE.z);
@@ -209,7 +212,7 @@ for (const a of layout.animals) {
 }
 
 // ---- 8. ducks: lake shore band [r, r+1.6] ----
-for (const d of layout.ducks) {
+for (const d of layout.animals.filter((a) => a.type === 'duck')) {
   const dist = Math.hypot(d.x - VALLEY_LAKE.x, d.z - VALLEY_LAKE.z);
   if (dist < VALLEY_LAKE.r || dist > VALLEY_LAKE.r + 1.6) {
     issues.push(`duck(${d.x.toFixed(1)},${d.z.toFixed(1)}): ${dist.toFixed(2)} from lake center — need shore band [${VALLEY_LAKE.r}, ${VALLEY_LAKE.r + 1.6}]`);
@@ -276,6 +279,42 @@ for (let i = 0; i < solids.length; i++) {
     if (d < need - 1e-9) issues.push(`solids overlap at (${a.x.toFixed(1)},${a.z.toFixed(1)})/(${b.x.toFixed(1)},${b.z.toFixed(1)}): dist ${d.toFixed(2)} < ${need.toFixed(2)}`);
   }
 }
+
+// ---- 13. no dead ends: every road endpoint shared with another road (rule 6) ----
+const roadEnds = VALLEY_ROADS.map((r) => [r[0], r[r.length - 1]]);
+for (let i = 0; i < VALLEY_ROADS.length; i++) {
+  for (const [ex, ez] of roadEnds[i]) {
+    let shared = false;
+    for (let j = 0; j < VALLEY_ROADS.length; j++) {
+      if (j === i) continue;
+      for (const [sx, sz] of roadEnds[j]) {
+        if (Math.hypot(ex - sx, ez - sz) < 0.8) shared = true;
+      }
+      if (shared) break;
+    }
+    if (!shared) issues.push(`road ${i}: dead end at (${ex},${ez}) — no other road shares this endpoint`);
+  }
+}
+
+// ---- 14. deflection between consecutive control segments ≤ 60° (rule 7) ----
+for (let i = 0; i < VALLEY_ROADS.length; i++) {
+  const pts = VALLEY_ROADS[i];
+  for (let k = 1; k < pts.length - 1; k++) {
+    const [ax, az] = pts[k - 1];
+    const [bx, bz] = pts[k];
+    const [cx, cz] = pts[k + 1];
+    const v1x = bx - ax, v1z = bz - az;
+    const v2x = cx - bx, v2z = cz - bz;
+    const l1 = Math.hypot(v1x, v1z), l2 = Math.hypot(v2x, v2z);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;
+    const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1z * v2z) / (l1 * l2)));
+    const ang = (Math.acos(dot) * 180) / Math.PI;
+    if (ang > 60) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 60° at control point (${bx},${bz})`);
+  }
+}
+
+// ---- 15. at least 30 animals (skill rule 17) ----
+if (layout.animals.length < 30) issues.push(`only ${layout.animals.length} animals — need ≥ 30`);
 
 // summary
 const animalCount = {};

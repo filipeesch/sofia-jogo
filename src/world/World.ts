@@ -8,7 +8,6 @@ import { Valley } from './Valley';
 import { Sky } from './Sky';
 import { House, Whale, Bird, Cloud, Rainbow, Balloon } from './landmarks';
 import { Roads } from './Roads';
-import { Traffic } from './Traffic';
 import { Animal } from './Animals';
 import type { LevelConfig } from '../levels';
 import type { WorldModels } from '../assets';
@@ -30,7 +29,6 @@ export class World {
   readonly houses: House[] = [];
   readonly solids: Solid[] = [];
   readonly roads?: Roads;
-  readonly traffic?: Traffic;
   readonly creatures: Animal[] = [];
 
   private tGlobal = 0;
@@ -40,25 +38,21 @@ export class World {
       const mountains = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
       this.terrain = mountains;
       this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'mountains');
-      this.traffic = new Traffic(models.car, this.roads, 6);
       this.creatures.push(...mountains.animals);
     } else if (config.worldType === 'snow') {
       const snow = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
       this.terrain = snow;
       this.roads = new Roads((x, z) => snow.terrainHeight(x, z), 'snow');
-      this.traffic = new Traffic(models.car, this.roads);
       this.creatures.push(...snow.animals);
     } else if (config.worldType === 'desert') {
       const desert = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors }, models);
       this.terrain = desert;
       this.roads = new Roads((x, z) => desert.terrainHeight(x, z), 'desert');
-      this.traffic = new Traffic(models.car, this.roads);
       this.creatures.push(...desert.animals);
     } else if (config.worldType === 'valley') {
       const valley = new Valley({ grass: config.groundColor, houseColors: config.houseColors }, models);
       this.terrain = valley;
       this.roads = new Roads((x, z) => valley.terrainHeight(x, z), 'valley');
-      this.traffic = new Traffic(models.car, this.roads);
       this.creatures.push(...valley.animals);
     } else {
       const island = new Island({ grass: config.groundColor, houseColors: config.houseColors }, models);
@@ -67,7 +61,6 @@ export class World {
       this.whale = new Whale(models.whale);
       this.whale.position.set(-88, -1.2, 56); // open sea, outside the beach ring
       this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'island');
-      this.traffic = new Traffic(models.car, this.roads, 3);
       this.creatures.push(...island.animals);
     }
 
@@ -126,7 +119,6 @@ export class World {
     this.balloons.forEach((b) => scene.add(b));
     this.creatures.forEach((c) => scene.add(c));
     if (this.roads) scene.add(this.roads);
-    if (this.traffic) this.traffic.addToScene(scene);
   }
 
   terrainHeight(x: number, z: number): number {
@@ -145,7 +137,6 @@ export class World {
     this.balloons.forEach((b) => b.update(dt, this.tGlobal));
     this.houses.forEach((h) => h.update(dt));
     for (const a of this.creatures) a.update(dt, (x, z) => this.terrainHeight(x, z));
-    this.traffic?.update(dt, (x, z) => this.terrainHeight(x, z));
   }
 
   setNight(night: number): void {

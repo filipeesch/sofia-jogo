@@ -12,6 +12,10 @@
 //  5. y = terrainHeight for every placed object
 //  6. houses sit in the "beside the road" band [5.1, 8.1]
 //  7. car spawn (0,20) is on the main road
+//  8. no dead ends: every road endpoint is shared with another road
+//     (skill rule 6 — the network is a union of closed rings)
+//  9. control deflection between consecutive segments ≤ 60° (skill rule 7)
+// 10. at least 30 animals (skill rule 17)
 import * as THREE from 'three';
 import {
   buildMountainsLayout,
@@ -168,6 +172,48 @@ for (const h of layout.houses) {
 // 7. car spawn on the main road
 const spawnD = distToRoad(0, 20);
 if (spawnD > ROAD_HALF_WIDTH) issues.push(`car spawn (0,20) is ${spawnD.toFixed(2)} from the main road`);
+
+// 8. no dead ends: every road endpoint must be shared (within eps) with at
+// least one other road — the network is a union of closed rings (skill rule 6),
+// so a tour of the whole network needs no U-turn.
+const endpoints = MOUNTAINS_ROADS.map((r) => [r[0], r[r.length - 1]]);
+for (let i = 0; i < MOUNTAINS_ROADS.length; i++) {
+  for (const [ex, ez] of endpoints[i]) {
+    let shared = false;
+    for (let j = 0; j < MOUNTAINS_ROADS.length; j++) {
+      if (j === i) continue;
+      for (const [sx, sz] of endpoints[j]) {
+        if (Math.hypot(ex - sx, ez - sz) < 0.8) shared = true;
+      }
+      if (shared) break;
+    }
+    if (!shared) issues.push(`road ${i}: dead end at (${ex},${ez}) — no other road shares this endpoint`);
+  }
+}
+
+// 9. deflection between consecutive control segments ≤ 60° (no 90° corners;
+// the Catmull-Rom spline smooths the control points further — skill rule 7).
+for (let i = 0; i < MOUNTAINS_ROADS.length; i++) {
+  const pts = MOUNTAINS_ROADS[i];
+  for (let k = 1; k < pts.length - 1; k++) {
+    const [ax, az] = pts[k - 1];
+    const [bx, bz] = pts[k];
+    const [cx, cz] = pts[k + 1];
+    const v1x = bx - ax;
+    const v1z = bz - az;
+    const v2x = cx - bx;
+    const v2z = cz - bz;
+    const l1 = Math.hypot(v1x, v1z);
+    const l2 = Math.hypot(v2x, v2z);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;
+    const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1z * v2z) / (l1 * l2)));
+    const ang = (Math.acos(dot) * 180) / Math.PI;
+    if (ang > 60) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 60° at control point (${bx},${bz})`);
+  }
+}
+
+// 10. at least 30 animals (skill rule 17)
+if (layout.animals.length < 30) issues.push(`only ${layout.animals.length} animals — need ≥ 30`);
 
 // summary
 const nTrees = layout.trees.length;

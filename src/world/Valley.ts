@@ -139,7 +139,8 @@ export class Valley extends THREE.Group {
       this.add(inst.group);
     }
 
-    // Animals (meadow + pen) — all defined by the layout.
+    // Animals (meadow, pen + lake-shore ducks) — all defined by the layout.
+    // Ducks carry no solid (they sit at the water's edge).
     for (const a of this.layout.animals) {
       const src = models[a.type];
       if (!src) continue;
@@ -148,19 +149,7 @@ export class Valley extends THREE.Group {
       animal.rotation.y = this.rng() * TAU;
       this.add(animal);
       this.animals.push(animal);
-      this.solids.push({ x: a.x, y: a.y + 0.7, z: a.z, r: 1.0, h: 1.4 });
-    }
-
-    // Ducks at the lake shore (no solid).
-    if (models.duck) {
-      for (const d of this.layout.ducks) {
-        const animal = new Animal(models.duck.clone(), d.x, d.z, 'duck', 2);
-        animal.position.set(d.x, d.y + 0.15, d.z);
-        animal.rotation.y = this.rng() * TAU;
-        this.add(animal);
-        this.animals.push(animal);
-        // No solid for ducks (they are on the water's edge).
-      }
+      if (a.type !== 'duck') this.solids.push({ x: a.x, y: a.y + 0.7, z: a.z, r: 1.0, h: 1.4 });
     }
 
     // ---- L3: vegetation (forest instanced by kind + bushes + flowers) ----

@@ -15,18 +15,28 @@
 //   - LAGO: (56,-36) r 13.5 — 3 benches at the shore, 4 ducks in the shore
 //     band, animals grazing the near shore.
 //   - FLORESTA: (54,48) annulus 8..18 — 55 targeted trees (mix pine/tree/
-//     appletree), one chicken in the central clearing.
+//     appletree), 2 animals in the central clearing.
 //   - ARCO-ÍRIS: global arch at x 11..37, z = -24; R2 passes under it.
-//   - 18 animals, 18 bushes, 34 flowers, 10 lamps (not solids), 3 benches.
+//   - 33 animals (incl. 4 ducks), 18 bushes, 34 flowers, 13 lamps (not
+//     solids), 3 benches.
 //   - Flight tour: 8 waypoints (see src/rails/flightTour.ts), closed loop.
 //
-// Roads (5, connected; R1 spawn→hub, R2 hub→lake shore under the arch,
-// R3 hub→forest, R4 hub→farm gate, R5 farm gate→forest edge):
-//   R1 [[0,26],[0,14],[0,0]]
-//   R2 [[0,0],[16,-10],[26,-24],[40,-30],[46,-24]]
-//   R3 [[0,0],[18,12],[36,26],[44,34]]
-//   R4 [[0,0],[-16,6],[-34,18],[-48,26],[-55,32]]
-//   R5 [[-55,32],[-28,48],[6,54],[36,26]]
+// Roads (8, union of closed rings — no dead ends; every endpoint is shared
+// with another road; control deflection ≤ 60° between consecutive segments):
+//   R1  hub→spawn [[0,26],[0,14],[0,0]]
+//   R2  hub→lake shore under the arch [[0,0],[16,-10],[26,-24],[36,-30],[43,-27],[46,-24]]
+//   R3  hub→forest edge [[0,0],[18,12],[36,26],[44,34]]
+//   R4  hub→farm gate [[0,0],[-16,6],[-34,18],[-48,26],[-55,32]]
+//   R5  farm gate→N sweep→forest edge [[-55,32],[-28,50],[6,52],[44,34]]
+//   R6a south ring, east half [[0,26],[8,27.3],[13.9,31],[16,36],[13.9,41],[8,44.7],[0,46]]
+//   R6b south ring, west half [[0,46],[-8,44.7],[-13.9,41],[-16,36],[-13.9,31],[-8,27.3],[0,26]]
+//   R7  lake shore→E of the lake→forest edge [[46,-24],[58,-14],[56,8],[48,22],[44,34]]
+// Shared nodes: hub (0,0) deg 4; spawn (0,26) deg 3 (R1+R6a+R6b); ring south
+// (0,46) deg 2; lake shore (46,-24) deg 2; forest edge (44,34) deg 3;
+// farm gate (-55,32) deg 2. Rings: R4+R5+R3, R2+R7+R3, R6a+R6b.
+// NOTE: the south ring is split into R6a/R6b so the ring has a second graph
+// node (0,46) — a closed loop whose both ends snap to the same node would
+// produce zero tour edges and be skipped by the on-rails car tour.
 
 import type { Solid } from '../utils';
 
@@ -73,21 +83,26 @@ export const VALLEY_WATERS = [VALLEY_LAKE];
 export const VALLEY_FOREST = { x: 54, z: 48, inner: 8, outer: 18, count: 55 };
 
 // ---------- L1: roads ----------
-// One connected network of 5 roads around the hub (0,0). Dead ends: the R1
-// spawn end (0,26), the lake shore (46,-24) and the forest edge (44,34) —
-// the on-rails car tour does a U-turn at each (see src/rails/roadTour.ts).
-// No road crosses the lake. R4 ends exactly at the farm gate (-55,32).
+// Union of closed rings around the hub (0,0): no dead ends, so the on-rails
+// car tour needs no U-turn (see src/rails/roadTour.ts). No road crosses the
+// lake. R4 ends exactly at the farm gate (-55,32).
 export const VALLEY_ROADS: [number, number][][] = [
   // R1 main: spawn (0,26) → hub (0,0). Car spawns ON this road at (0,20).
   [[0, 26], [0, 14], [0, 0]],
   // R2: hub → SE under the arco-íris → lake shore.
-  [[0, 0], [16, -10], [26, -24], [40, -30], [46, -24]],
+  [[0, 0], [16, -10], [26, -24], [36, -30], [43, -27], [46, -24]],
   // R3: hub → NE to the forest edge (ends at 44,34).
   [[0, 0], [18, 12], [36, 26], [44, 34]],
   // R4: hub → W to the farm gate (-55,32).
   [[0, 0], [-16, 6], [-34, 18], [-48, 26], [-55, 32]],
-  // R5: farm gate → N sweep → joins R3 at (36,26).
-  [[-55, 32], [-28, 48], [6, 54], [36, 26]]
+  // R5: farm gate → N sweep → forest edge (44,34).
+  [[-55, 32], [-28, 50], [6, 52], [44, 34]],
+  // R6a: south meadow ring, east half (spawn → ring south).
+  [[0, 26], [8, 27.3], [13.9, 31], [16, 36], [13.9, 41], [8, 44.7], [0, 46]],
+  // R6b: south meadow ring, west half (ring south → spawn).
+  [[0, 46], [-8, 44.7], [-13.9, 41], [-16, 36], [-13.9, 31], [-8, 27.3], [0, 26]],
+  // R7: lake shore → E of the lake → forest edge.
+  [[46, -24], [58, -14], [56, 8], [48, 22], [44, 34]]
 ];
 
 export const ROAD_HALF_WIDTH = 1.7;
@@ -132,16 +147,16 @@ function faceToward(x: number, z: number, tx: number, tz: number): number {
 
 // 5 houses, all beside a road (band [5.1, 8.1] m from the centerline).
 // H1: east of R1, faces R3. H2: east of R1 south of the hub. H3/H4: west of
-// R1. H5: west of R1 north of H4.
+// R1 (H4 clear of the south ring R6b). H5: west of R1 between H2 and H3.
 export const VALLEY_HOUSES: PlacedHouse[] = [
   { x: 10, z: 16, rotY: faceToward(10, 16, 13, 9), colorIndex: 0 }, // L da R3
   { x: 7, z: 12, rotY: faceToward(7, 12, 0, 12), colorIndex: 1 }, // L da R1
   { x: -7, z: 10, rotY: faceToward(-7, 10, 0, 10), colorIndex: 2 }, // R da R1
-  { x: -8, z: 22, rotY: faceToward(-8, 22, 0, 22), colorIndex: 3 }, // R da R1 (norte)
+  { x: -14, z: 24, rotY: faceToward(-14, 24, 0, 24), colorIndex: 3 }, // R da R1 (norte, fora do anel)
   { x: -7, z: 16, rotY: faceToward(-7, 16, 0, 16), colorIndex: 4 } // R da R1
 ];
 
-// 10 lamps beside the roads (band ~2..5 m from the centerline). Lamps are NOT
+// 13 lamps beside the roads (band ~2..5 m from the centerline). Lamps are NOT
 // collision solids — the on-rails tour clears real solids only.
 export const VALLEY_LAMPS: [number, number][] = [
   [2.6, 20], // R1 sul
@@ -153,7 +168,10 @@ export const VALLEY_LAMPS: [number, number][] = [
   [38, -26], // R2 perto do lago
   [43, 28], // R3 perto da floresta
   [-26, 10], // R4 campo oeste
-  [-50, 24] // R4 entrada da fazenda
+  [-50, 24], // R4 entrada da fazenda
+  [20.5, 36], // R6a leste do anel sul
+  [-20.5, 36], // R6b oeste do anel sul
+  [0, 50] // sul do anel
 ];
 
 // 3 benches at the lake shore, facing the water.
@@ -197,10 +215,10 @@ export function farmFencePosts(farm: { cx: number; cz: number; half: number; ste
 }
 
 // ---------- L2/L3: animals ----------
-// 18 animals: 4 cows, 4 sheep, 6 chickens, 2 dogs, 2 cats.
+// 33 animals: 5 cows, 8 sheep, 8 chickens, 4 dogs, 4 cats, 4 ducks.
 // 6 live inside the fenced pen; the rest in the meadow (≥3 m from roads,
 // out of the water). Wander radius: 15 for cows/sheep/chickens, 14 for
-// dogs/cats.
+// dogs/cats, 1.5 for ducks (they sit at the water's edge).
 export interface PlacedAnimal {
   type: string;
   x: number;
@@ -223,7 +241,7 @@ export const VALLEY_ANIMALS: PlacedAnimal[] = [
   { type: 'cat', x: -66, z: 46, wanderR: 14 },
   // Village meadow
   { type: 'dog', x: 12, z: 22, wanderR: 14 },
-  { type: 'cat', x: -12, z: 22, wanderR: 14 },
+  { type: 'cat', x: -16, z: 20, wanderR: 14 },
   { type: 'chicken', x: 12, z: -12, wanderR: 15 },
   { type: 'chicken', x: -14, z: -4, wanderR: 15 },
   { type: 'sheep', x: 16, z: 4, wanderR: 15 },
@@ -232,21 +250,27 @@ export const VALLEY_ANIMALS: PlacedAnimal[] = [
   { type: 'sheep', x: 34, z: -40, wanderR: 15 },
   { type: 'cow', x: 28, z: -36, wanderR: 15 },
   { type: 'dog', x: 68, z: -48, wanderR: 14 },
+  // South meadow (inside and around the spawn ring R6a/R6b)
+  { type: 'chicken', x: 4, z: 40, wanderR: 15 },
+  { type: 'chicken', x: -8, z: 38, wanderR: 15 },
+  { type: 'sheep', x: 10, z: 34, wanderR: 15 },
+  { type: 'cat', x: -2, z: 30, wanderR: 14 },
+  { type: 'sheep', x: 0, z: 42, wanderR: 15 },
+  { type: 'dog', x: 0, z: 30, wanderR: 14 },
+  // East of the lake (beyond the R7 ring)
+  { type: 'sheep', x: 66, z: 0, wanderR: 15 },
+  { type: 'chicken', x: 70, z: -6, wanderR: 15 },
   // Forest clearing (center of the annulus)
-  { type: 'chicken', x: 48, z: 52, wanderR: 15 }
-];
-
-// 4 ducks at the lake shore (band [r, r+1.6]). No solid.
-export interface PlacedDuck {
-  x: number;
-  z: number;
-}
-
-export const VALLEY_DUCKS: PlacedDuck[] = [
-  { x: 43.5, z: -30 },
-  { x: 49.5, z: -48.5 },
-  { x: 68, z: -28 },
-  { x: 66, z: -47 }
+  { type: 'chicken', x: 48, z: 52, wanderR: 15 },
+  { type: 'cow', x: 56, z: 54, wanderR: 15 },
+  // NW meadow (between R4 and R5)
+  { type: 'cat', x: -30, z: 10, wanderR: 14 },
+  { type: 'cow', x: -24, z: 2, wanderR: 15 },
+  // Ducks at the lake shore (band [r, r+1.6]). No solid.
+  { type: 'duck', x: 43.5, z: -30, wanderR: 1.5 },
+  { type: 'duck', x: 49.5, z: -48.5, wanderR: 1.5 },
+  { type: 'duck', x: 68, z: -28, wanderR: 1.5 },
+  { type: 'duck', x: 66, z: -47, wanderR: 1.5 }
 ];
 
 // ---------- L3: vegetation ----------
@@ -294,7 +318,6 @@ export interface ValleyLayout {
   barn: PlacedPoint;
   fencePosts: (PlacedPoint & { rotY: number })[];
   animals: (PlacedAnimal & PlacedPoint)[];
-  ducks: (PlacedDuck & PlacedPoint)[];
   trees: PlacedTree[];
   bushes: PlacedPoint[];
   flowers: PlacedPoint[];
@@ -325,7 +348,6 @@ export function buildValleyLayout(): ValleyLayout {
     y: valleyTerrainHeight(p.x, p.z)
   }));
   const animals = VALLEY_ANIMALS.map((a) => ({ ...a, y: valleyTerrainHeight(a.x, a.z) }));
-  const ducks = VALLEY_DUCKS.map((d) => ({ ...d, y: valleyTerrainHeight(d.x, d.z) }));
   const obstacles = vegObstacles();
 
   // L3 trees: forest annulus around (54,48) (rejection sampling).
@@ -462,7 +484,6 @@ export function buildValleyLayout(): ValleyLayout {
     barn,
     fencePosts: fencePostPlacements,
     animals,
-    ducks,
     trees,
     bushes,
     flowers
@@ -484,7 +505,10 @@ export function layoutSolids(layout: ValleyLayout): LayoutSolid[] {
   out.push({ x: layout.barn.x, y: layout.barn.y + 2, z: layout.barn.z, r: 2.3, h: 4, kind: 'barn' });
   for (const f of layout.fencePosts) out.push({ x: f.x, y: f.y + 0.5, z: f.z, r: 0.4, h: 1, kind: 'fence' });
   for (const b of layout.benches) out.push({ x: b.x, y: b.y + 0.5, z: b.z, r: 1.0, h: 1.0, kind: 'bench' });
-  for (const a of layout.animals) out.push({ x: a.x, y: a.y + 0.7, z: a.z, r: 1.0, h: 1.4, kind: 'animal' });
+  for (const a of layout.animals) {
+    if (a.type === 'duck') continue; // ducks sit at the water's edge — no solid
+    out.push({ x: a.x, y: a.y + 0.7, z: a.z, r: 1.0, h: 1.4, kind: 'animal' });
+  }
   for (const t of layout.trees) out.push({ x: t.x, y: t.y + 2 * t.scale, z: t.z, r: 1.2 * t.scale, h: 4 * t.scale, kind: 'tree' });
   return out;
 }

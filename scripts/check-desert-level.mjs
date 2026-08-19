@@ -8,24 +8,27 @@
 //  1. determinism (build twice → deep equal)
 //  2. all content positions ≤ r≈80
 //  3. houses in the beside-the-road band [5.1, 8.1]
-//  4. roads: closed network (endpoints paired), 4 roads, none crosses the oasis
-//  5. every road spline sample (CatmullRom centripetal, 70 samples — same math
+//  4. roads: 4 polylines; network is a union of closed rings — every road
+//     endpoint is shared with another road within 0.8 m (no degree-1 nodes,
+//     skill rule 6); none crosses the oasis
+//  5. control deflection between consecutive segments ≤ 60° (skill rule 7)
+//  6. every road spline sample (CatmullRom centripetal, 70 samples — same math
 //     as src/rails/roadTour.ts, reimplemented locally) ≥ 2.0 m from every solid
-//  6. R1 within 3 m of the car spawn (0,20); POIs within 8 m of some road
-//  7. animals: ≥ 3 m from roads and clear of the oasis
-//  8. flight tour (closed centripetal CatmullRom, 240 pts): 3.2≤y≤26 (tol 0.5),
+//  7. spawn (0,20) ≤ 3 m from a road; POIs within 8 m of some road
+//  8. lamps in the band [2.5, 5.0] from the sampled spline
+//  9. animals ≥ 30 (skill rule 17); bases ≥ 3 m from roads, clear of the oasis,
+//     and every wander circle free of roads / oasis / solids (skill rule 15)
+// 10. flight tour (closed centripetal CatmullRom, 240 pts): 3.2≤y≤26 (tol 0.5),
 //     clearance above terrain ≥ 1.5, waypoints within 8 m of the tour, the
 //     rainbow point [24,10,-24] present in the waypoint list
-//  9. no Math.random / rand() used for placement in the pure layout module
+// 11. no Math.random / rand() used for placement in the pure layout module
 import * as THREE from 'three';
 import {
   buildDesertLayout,
   layoutSolids,
   desertTerrainHeight,
-  DESERT_SEED,
   DESERT_ROADS,
   DESERT_OASIS,
-  DESERT_ANIMALS,
   ROAD_HALF_WIDTH,
   ROAD_OASIS_CLEARANCE
 } from '../src/world/desertLayout.ts';
@@ -37,11 +40,11 @@ const RAINBOW = [24, 10, -24];
 const FLIGHT_WAYPOINTS = [
   [0, 13, 42], // takeoff over the southern dunes (≈ spawn)
   [-2, 12, 4], // village hub
-  [-38, 16, -24], // pyramid cluster
-  RAINBOW, // the global rainbow arch
-  [12, 14, -20], // rainbow alameda
   [30, 11, 26], // over the oasis
-  [40, 14, 36] // south cactus alameda
+  [42, 12, 36], // south cactus alameda
+  RAINBOW, // the global rainbow arch
+  [-44, 18, -36], // pyramid cluster (big)
+  [10, 12, 20] // south field (closes the circuit)
 ];
 
 // ---- helpers ----
@@ -111,14 +114,27 @@ for (const h of layout.houses) {
   if (d < 5.1 || d > 8.1) issues.push(`house(${h.x},${h.z}): dist to road ${d.toFixed(2)} outside band [5.1, 8.1]`);
 }
 
-// ---- 4. roads: count, connectivity, oasis clearance ----
+// ---- 4. roads: count, closed-ring network (every endpoint shared), oasis ----
 if (DESERT_ROADS.length !== 4) issues.push(`expected 4 roads, got ${DESERT_ROADS.length}`);
-// Connectivity: every road must link (via shared endpoints or in-line
-// junctions) to R1. R1 is the main road; a "paired" endpoint is one that
-// coincides (dist < 0.8) with another road's endpoint OR lies within 0.8 m of
-// another road's sampled polyline.
+// No dead ends (skill rule 6): every polyline endpoint must be shared with
+// another polyline's endpoint within 0.8 m — the network is a union of rings.
 {
-  const sampled = DESERT_ROADS.map((def) => sampleRoad(def));
+  const endpoints = DESERT_ROADS.map((r) => [r[0], r[r.length - 1]]);
+  for (let i = 0; i < DESERT_ROADS.length; i++) {
+    for (const [ex, ez] of endpoints[i]) {
+      let shared = false;
+      for (let j = 0; j < DESERT_ROADS.length; j++) {
+        if (j === i) continue;
+        for (const [sx, sz] of endpoints[j]) {
+          if (Math.hypot(ex - sx, ez - sz) < 0.8) shared = true;
+        }
+        if (shared) break;
+      }
+      if (!shared) issues.push(`road ${i}: dead end at (${ex},${ez}) — no other road shares this endpoint`);
+    }
+  }
+  // Connectivity sanity: every road touches the network (all endpoints shared
+  // already implies this, kept as a belt-and-suspenders check).
   const meets = (i, j, pt) => {
     if (i === j) return false;
     for (const [px, pz] of sampled[j]) if (Math.hypot(px - pt[0], pz - pt[1]) < 0.8) return true;
@@ -142,17 +158,12 @@ if (DESERT_ROADS.length !== 4) issues.push(`expected 4 roads, got ${DESERT_ROADS
     }
   }
   for (let i = 0; i < DESERT_ROADS.length; i++) {
-    if (!connected.has(i)) {
-      const [sx, sz] = DESERT_ROADS[i][0];
-      issues.push(`road ${i} starts at (${sx},${sz}) and is not connected to the network`);
-    }
+    if (!connected.has(i)) issues.push(`road ${i} is not connected to the network`);
   }
 }
 // No road crosses the oasis disc: the road's centerline must not enter the
-// water more than ROAD_OASIS_CLEARANCE. The brief's "sem cruzar o oásis" is
-// interpreted as "the road may run along the water's edge but must not
-// traverse the open water"; the auto-check uses this tolerance to allow the
-// litoral road to hug the rim.
+// water more than ROAD_OASIS_CLEARANCE (a safety net — the reworked ring A
+// keeps every sample well outside the rim).
 for (const [x, z] of allRoadPts) {
   const d = Math.hypot(x - DESERT_OASIS.x, z - DESERT_OASIS.z) - DESERT_OASIS.r;
   if (d < -ROAD_OASIS_CLEARANCE) {
@@ -161,7 +172,27 @@ for (const [x, z] of allRoadPts) {
   }
 }
 
-// ---- 5. road samples ≥ 2.0 m from every solid ----
+// ---- 5. deflection between consecutive control segments ≤ 60° ----
+for (let i = 0; i < DESERT_ROADS.length; i++) {
+  const pts = DESERT_ROADS[i];
+  for (let k = 1; k < pts.length - 1; k++) {
+    const [ax, az] = pts[k - 1];
+    const [bx, bz] = pts[k];
+    const [cx, cz] = pts[k + 1];
+    const v1x = bx - ax;
+    const v1z = bz - az;
+    const v2x = cx - bx;
+    const v2z = cz - bz;
+    const l1 = Math.hypot(v1x, v1z);
+    const l2 = Math.hypot(v2x, v2z);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;
+    const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1z * v2z) / (l1 * l2)));
+    const ang = (Math.acos(dot) * 180) / Math.PI;
+    if (ang > 60) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 60° at control point (${bx},${bz})`);
+  }
+}
+
+// ---- 6. road samples ≥ 2.0 m from every solid ----
 // Animal solids are exempt: the on-rails tour's lateral shift (≤1.35 m) keeps
 // the car ≥ 2.0 m from an animal solid (r=1.0) when the animal base is ≥ 3 m
 // from the road; the animal's ±wanderR movement is not modeled as a solid.
@@ -173,29 +204,51 @@ for (const [x, z] of allRoadPts) {
   }
 }
 
-// ---- 6. spawn + POI reachability ----
+// ---- 7. spawn + POI reachability ----
 const spawnD = distToRoad(0, 20, allRoadPts);
-if (spawnD > 3.0) issues.push(`R1 ${spawnD.toFixed(2)} m from car spawn (0,20) — need ≤ 3`);
+if (spawnD > 3.0) issues.push(`road ${spawnD.toFixed(2)} m from car spawn (0,20) — need ≤ 3`);
 const pois = [
   { name: 'vila', x: -2, z: 2 },
-  { name: 'oasis', x: 30, z: 22 },
-  { name: 'pyramids', x: -36, z: -30 },
-  { name: 'cactus alameda', x: 42, z: 36 } // R1 end: south cactus alameda
+  { name: 'oasis', x: 26, z: 36 }, // margem NE do oásis (perto da estrada)
+  { name: 'pyramids', x: -40, z: -30 }, // borda do cluster (aproximação da estrada)
+  { name: 'cactus alameda', x: 42, z: 36 } // alameda de cactos sul
 ];
 for (const p of pois) {
   const d = distToRoad(p.x, p.z, allRoadPts);
   if (d > 8) issues.push(`POI ${p.name} (${p.x},${p.z}) is ${d.toFixed(2)} m from the nearest road (need ≤ 8)`);
 }
 
-// ---- 7. animals: roads and oasis ----
+// ---- 8. lamps: band [2.5, 5.0] from the sampled spline ----
+for (const l of layout.lamps) {
+  const d = distToRoad(l.x, l.z, allRoadPts);
+  if (d < 2.5 || d > 5.0) issues.push(`lamp(${l.x},${l.z}): ${d.toFixed(2)} m from spline (band [2.5, 5.0])`);
+}
+
+// ---- 9. animals: count, roads, oasis, wander circles ----
+if (layout.animals.length < 30) issues.push(`only ${layout.animals.length} animals — need ≥ 30 (skill rule 17)`);
 for (const a of layout.animals) {
   const dRoad = distToRoad(a.x, a.z, allRoadPts);
   if (dRoad < 3.0) issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): ${dRoad.toFixed(2)} m from road (need ≥ 3)`);
   const dOasis = Math.hypot(a.x - DESERT_OASIS.x, a.z - DESERT_OASIS.z);
   if (dOasis < DESERT_OASIS.r + 1.0) issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): inside the oasis rim`);
+  // Wander circle: must not reach the road, the oasis or any solid.
+  if (dRoad < a.wanderR + ROAD_HALF_WIDTH + 0.2) {
+    issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): wander ${a.wanderR} reaches the road (dist ${dRoad.toFixed(2)})`);
+  }
+  const rimClear = dOasis - DESERT_OASIS.r;
+  if (a.wanderR + 0.2 > rimClear) {
+    issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): wander ${a.wanderR} reaches the oasis`);
+  }
+  for (const s of solids) {
+    if (s.kind === 'animal') continue; // animals coexist with each other
+    const d = Math.hypot(a.x - s.x, a.z - s.z);
+    if (d < a.wanderR + s.r + 0.2) {
+      issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): wander ${a.wanderR} hits ${s.kind}(${s.x.toFixed(1)},${s.z.toFixed(1)})`);
+    }
+  }
 }
 
-// ---- 8. flight tour ----
+// ---- 10. flight tour ----
 {
   const tour = sampleFlightTour(FLIGHT_WAYPOINTS);
   let minY = Infinity;
@@ -218,7 +271,7 @@ for (const a of layout.animals) {
   if (!hasRainbow) issues.push('flight tour waypoints do not include the rainbow point [24,10,-24]');
 }
 
-// ---- 9. no Math.random in the pure layout ----
+// ---- 11. no Math.random in the pure layout ----
 {
   const fs = await import('node:fs');
   const src = fs.readFileSync(new URL('../src/world/desertLayout.ts', import.meta.url), 'utf8');
@@ -232,7 +285,7 @@ for (const a of layout.animals) {
 // ---- solid-solid sanity (layout self-consistency) ----
 // Animals coexist with each other (wander overlap is fine), and the cactus
 // ring is a deliberate cluster; only unexpected overlaps are reported.
-const animalSolid = new Set(layout.animals.map((a, i) => i));
+const animalSolid = new Set(layout.animals.map((_, i) => i));
 for (let i = 0; i < solids.length; i++) {
   for (let j = i + 1; j < solids.length; j++) {
     const a = solids[i];

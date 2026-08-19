@@ -8,15 +8,20 @@
 //  1. determinism (build twice → deep equal)
 //  2. all content positions ≤ r≈80
 //  3. houses in the beside-the-road band [5.1, 8.1]
-//  4. roads: connected network, 4 roads, none crosses the frozen lake
-//  5. every road spline sample (CatmullRom centripetal, 70 samples — same math
+//  4. roads: 4 polylines; network is a union of closed rings — every road
+//     endpoint is shared with another road within 0.8 m (no degree-1 nodes,
+//     skill rule 6); none crosses the frozen lake
+//  5. control deflection between consecutive segments ≤ 60° (skill rule 7)
+//  6. every road spline sample (CatmullRom centripetal, 70 samples — same math
 //     as src/rails/roadTour.ts, reimplemented locally) ≥ 2.0 m from every solid
-//  6. R1 within 3 m of the car spawn (0,20); POIs within 8 m of some road
-//  7. animals: ≥ 3 m from roads and clear of the lake
-//  8. flight tour (closed centripetal CatmullRom, 240 pts): 3.2≤y≤26 (tol 0.5),
+//  7. spawn (0,20) ≤ 3 m from a road; POIs within 8 m of some road
+//  8. lamps in the band [2.5, 5.0] from the sampled spline
+//  9. animals ≥ 30 (skill rule 17); bases ≥ 3 m from roads, clear of the lake,
+//     and every wander circle free of roads / lake / solids (skill rule 15)
+// 10. flight tour (closed centripetal CatmullRom, 240 pts): 3.2≤y≤26 (tol 0.5),
 //     clearance above terrain ≥ 1.5, waypoints within 8 m of the tour, the
 //     rainbow point [24,10,-24] present in the waypoint list
-//  9. no Math.random / rand() used for placement in the pure layout module
+// 11. no Math.random / rand() used for placement in the pure layout module
 import * as THREE from 'three';
 import {
   buildSnowLayout,
@@ -24,7 +29,6 @@ import {
   snowTerrainHeight,
   SNOW_LAKE,
   SNOW_ROADS,
-  SNOW_HOUSES,
   ROAD_HALF_WIDTH
 } from '../src/world/snowLayout.ts';
 
@@ -34,12 +38,12 @@ const issues = [];
 const RAINBOW = [24, 10, -24];
 const FLIGHT_WAYPOINTS = [
   [0, 13, 42], // takeoff over the southern drifts (≈ spawn)
-  [0, 11, 6], // village
-  [-20, 12, -14], // west drifts / ice path
-  [-26, 9, -20], // over the frozen lake
+  [0, 10, 20], // spawn → vila
+  [-20, 12, -16], // anel oeste (lago congelado)
   RAINBOW, // the global rainbow arch
   [38, 11, -6], // over the pine grove
-  [20, 10, 14] // east ring + village snowmen
+  [20, 10, 14], // east ring + village snowmen
+  [10, 12, -30] // north alameda
 ];
 
 // ---- helpers ----
@@ -109,9 +113,27 @@ for (const h of layout.houses) {
   if (d < 5.1 || d > 8.1) issues.push(`house(${h.x},${h.z}): dist to road ${d.toFixed(2)} outside band [5.1, 8.1]`);
 }
 
-// ---- 4. roads: count, connectivity, lake clearance ----
+// ---- 4. roads: count, closed-ring network (every endpoint shared), lake ----
 if (SNOW_ROADS.length !== 4) issues.push(`expected 4 roads, got ${SNOW_ROADS.length}`);
+// No dead ends (skill rule 6): every polyline endpoint must be shared with
+// another polyline's endpoint within 0.8 m — the network is a union of rings.
 {
+  const endpoints = SNOW_ROADS.map((r) => [r[0], r[r.length - 1]]);
+  for (let i = 0; i < SNOW_ROADS.length; i++) {
+    for (const [ex, ez] of endpoints[i]) {
+      let shared = false;
+      for (let j = 0; j < SNOW_ROADS.length; j++) {
+        if (j === i) continue;
+        for (const [sx, sz] of endpoints[j]) {
+          if (Math.hypot(ex - sx, ez - sz) < 0.8) shared = true;
+        }
+        if (shared) break;
+      }
+      if (!shared) issues.push(`road ${i}: dead end at (${ex},${ez}) — no other road shares this endpoint`);
+    }
+  }
+  // Connectivity sanity: every road touches the network (all endpoints shared
+  // already implies this, kept as a belt-and-suspenders check).
   const meets = (i, j, pt) => {
     if (i === j) return false;
     for (const [px, pz] of sampled[j]) if (Math.hypot(px - pt[0], pz - pt[1]) < 0.8) return true;
@@ -135,10 +157,7 @@ if (SNOW_ROADS.length !== 4) issues.push(`expected 4 roads, got ${SNOW_ROADS.len
     }
   }
   for (let i = 0; i < SNOW_ROADS.length; i++) {
-    if (!connected.has(i)) {
-      const [sx, sz] = SNOW_ROADS[i][0];
-      issues.push(`road ${i} starts at (${sx},${sz}) and is not connected to the network`);
-    }
+    if (!connected.has(i)) issues.push(`road ${i} is not connected to the network`);
   }
 }
 // No road crosses the frozen lake disc (centerline stays ≥ 0.5 m outside).
@@ -150,7 +169,27 @@ for (const [x, z] of allRoadPts) {
   }
 }
 
-// ---- 5. road samples ≥ 2.0 m from every solid ----
+// ---- 5. deflection between consecutive control segments ≤ 60° ----
+for (let i = 0; i < SNOW_ROADS.length; i++) {
+  const pts = SNOW_ROADS[i];
+  for (let k = 1; k < pts.length - 1; k++) {
+    const [ax, az] = pts[k - 1];
+    const [bx, bz] = pts[k];
+    const [cx, cz] = pts[k + 1];
+    const v1x = bx - ax;
+    const v1z = bz - az;
+    const v2x = cx - bx;
+    const v2z = cz - bz;
+    const l1 = Math.hypot(v1x, v1z);
+    const l2 = Math.hypot(v2x, v2z);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;
+    const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1z * v2z) / (l1 * l2)));
+    const ang = (Math.acos(dot) * 180) / Math.PI;
+    if (ang > 60) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 60° at control point (${bx},${bz})`);
+  }
+}
+
+// ---- 6. road samples ≥ 2.0 m from every solid ----
 for (const [x, z] of allRoadPts) {
   for (const s of solids) {
     if (s.kind === 'animal') continue; // wander movement is not modeled as a solid
@@ -159,12 +198,12 @@ for (const [x, z] of allRoadPts) {
   }
 }
 
-// ---- 6. spawn + POI reachability ----
+// ---- 7. spawn + POI reachability ----
 const spawnD = distToRoad(0, 20, allRoadPts);
-if (spawnD > 3.0) issues.push(`R1 ${spawnD.toFixed(2)} m from car spawn (0,20) — need ≤ 3`);
+if (spawnD > 3.0) issues.push(`road ${spawnD.toFixed(2)} m from car spawn (0,20) — need ≤ 3`);
 const pois = [
   { name: 'vila', x: 0, z: -6 },
-  { name: 'lago', x: -18, z: -13 }, // beira do lago congelado
+  { name: 'lago', x: -24, z: -7 }, // margem sul do lago congelado
   { name: 'pinheiral', x: 40, z: -4 },
   { name: 'arco-íris', x: 24, z: -24 }
 ];
@@ -173,15 +212,37 @@ for (const p of pois) {
   if (d > 8) issues.push(`POI ${p.name} (${p.x},${p.z}) is ${d.toFixed(2)} m from the nearest road (need ≤ 8)`);
 }
 
-// ---- 7. animals: roads and lake ----
+// ---- 8. lamps: band [2.5, 5.0] from the sampled spline ----
+for (const l of layout.lamps) {
+  const d = distToRoad(l.x, l.z, allRoadPts);
+  if (d < 2.5 || d > 5.0) issues.push(`lamp(${l.x},${l.z}): ${d.toFixed(2)} m from spline (band [2.5, 5.0])`);
+}
+
+// ---- 9. animals: count, roads, lake, wander circles ----
+if (layout.animals.length < 30) issues.push(`only ${layout.animals.length} animals — need ≥ 30 (skill rule 17)`);
 for (const a of layout.animals) {
   const dRoad = distToRoad(a.x, a.z, allRoadPts);
   if (dRoad < 3.0) issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): ${dRoad.toFixed(2)} m from road (need ≥ 3)`);
   const dLake = Math.hypot(a.x - SNOW_LAKE.x, a.z - SNOW_LAKE.z);
   if (dLake < SNOW_LAKE.r + 1.0) issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): inside the lake rim`);
+  // Wander circle: must not reach the road, the lake or any solid.
+  if (dRoad < a.wanderR + ROAD_HALF_WIDTH + 0.2) {
+    issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): wander ${a.wanderR} reaches the road (dist ${dRoad.toFixed(2)})`);
+  }
+  const rimClear = dLake - SNOW_LAKE.r;
+  if (a.wanderR + 0.2 > rimClear) {
+    issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): wander ${a.wanderR} reaches the lake`);
+  }
+  for (const s of solids) {
+    if (s.kind === 'animal') continue; // animals coexist with each other
+    const d = Math.hypot(a.x - s.x, a.z - s.z);
+    if (d < a.wanderR + s.r + 0.2) {
+      issues.push(`animal ${a.type}(${a.x.toFixed(1)},${a.z.toFixed(1)}): wander ${a.wanderR} hits ${s.kind}(${s.x.toFixed(1)},${s.z.toFixed(1)})`);
+    }
+  }
 }
 
-// ---- 8. flight tour ----
+// ---- 10. flight tour ----
 {
   const tour = sampleFlightTour(FLIGHT_WAYPOINTS);
   let minY = Infinity;
@@ -204,7 +265,7 @@ for (const a of layout.animals) {
   if (!hasRainbow) issues.push('flight tour waypoints do not include the rainbow point [24,10,-24]');
 }
 
-// ---- 9. no Math.random in the pure layout ----
+// ---- 11. no Math.random in the pure layout ----
 {
   const fs = await import('node:fs');
   const src = fs.readFileSync(new URL('../src/world/snowLayout.ts', import.meta.url), 'utf8');

@@ -10,16 +10,24 @@
 // r≈98, framing a big open valley. Elements are spaced generously.
 //
 // Zones (x/z, valley floor is flat at y=0; hub at (0,6)):
-//   - MAIN ROAD: spawn (0,54) → village hub (0,6).
-//   - VILA: 5 cabins around the hub and along the main road, facing their road.
-//   - LAGO: (-38,-30) r 11 — the west road ends on the NE shore.
-//   - POÇO: (14,-46) r 4.5 — small meadow pond on the north road.
-//   - FAZENDA: pen 14x14 at (-30,20) inside the farm loop (roads R4+R6);
-//     barn (-14,48) south of the pen; dog by the barn, cows grazing.
-//   - PINHEIRAL: pine ring around (56,30), r 14..36; road ends in the clearing.
+//   - VILA: 5 cabins around the hub, facing their road (band 5.1..8.1 m).
+//   - LAGO: (-38,-30) r 11 — ring road passes the NE shore; ducks on the
+//     west/south shore band [r, r+1.6].
+//   - POÇO: (14,-46) r 4.5 — small meadow pond on the north ring; 2 ducks,
+//     a bench on the shore.
+//   - FAZENDA: pen 14x14 at (-30,20) inside the west ring; barn (-14,38)
+//     beside the road; dogs by the barn, cows grazing.
+//   - PINHEIRAL: pine ring around (56,30), r 14..36; the east ring reaches
+//     the clearing (46,22) and curves back north.
 //   - Picos nevados: ring of 8 peaks, r ≈ 96-99 from the center.
 //   - 4 snowmen on peak slopes facing the valley.
 //   - 4 soft hills for a varied horizon.
+//
+// Roads (skill rules 6-8): the network is a union of TWO CLOSED RINGS that
+// share the village hub (0,6) — no dead ends, every endpoint is shared with
+// another road, deflections ≤ 60°:
+//   Ring west (vila → fazenda → lago → vila): R1 + R2.
+//   Ring east (vila → clareira → norte/poço → vila): R3 + R4.
 
 export const TAU = Math.PI * 2;
 
@@ -103,16 +111,21 @@ export function mountainTerrainHeight(x: number, z: number): number {
 }
 
 // ---------- L1: roads ----------
-// One connected network: the main road links the spawn (0,54) to the village
-// hub (0,6); five spokes start at the hub and one loop road (R6) closes the
-// farm circuit between the west and SW branches. No road crosses water.
+// Two closed rings sharing the village hub (0,6) — skill rule 6 (union of
+// closed rings, no dead ends) and rule 7 (deflection ≤ 60°):
+//   * Ring west: vila → fazenda (passes the pen south side) → lago (NE shore)
+//     → vila.
+//   * Ring east: vila → clareira do pinheiral → norte (poço + mirante) → vila.
+// No road crosses the lake or the pond; all stay on the flat valley floor.
 export const MOUNTAINS_ROADS: [number, number][][] = [
-  [[0, 54], [0, 30], [0, 6]], // R1 main: spawn → vila
-  [[0, 6], [16, 10], [32, 16], [46, 22]], // R2 east: clareira do pinheiral
-  [[0, 6], [-14, 0], [-28, -6], [-38, -16]], // R3 west: margem NE do lago
-  [[0, 6], [-8, 20], [-20, 32], [-32, 38]], // R4 SW: entrada da fazenda
-  [[0, 6], [4, -8], [6, -22], [2, -40]], // R5 norte: mirante do vale
-  [[-28, -6], [-44, 4], [-46, 24], [-32, 38]] // R6: anel da fazenda (liga R3 a R4)
+  // R1 (west ring, out): vila → spawn (0,20) → fazenda → lago NE shore
+  [[0, 6], [0, 20], [-10, 28], [-22, 34], [-34, 36], [-44, 30], [-50, 18], [-50, 4], [-46, -8], [-42, -14], [-38, -16]],
+  // R2 (west ring, back): lago NE shore → vila
+  [[-38, -16], [-28, -14], [-18, -10], [-8, -4], [0, 6]],
+  // R3 (east ring, out): vila → clareira do pinheiral
+  [[0, 6], [16, 10], [30, 16], [40, 20], [46, 22]],
+  // R4 (east ring, back): clareira → norte (poço/mirante) → vila
+  [[46, 22], [50, 19], [50, 10], [46, 2], [38, -8], [28, -18], [18, -28], [10, -36], [4, -40], [-3, -39], [-6, -34], [-4, -22], [0, -12], [0, 6]]
 ];
 
 export const ROAD_HALF_WIDTH = 1.7;
@@ -155,29 +168,32 @@ function faceToward(x: number, z: number, tx: number, tz: number): number {
   return Math.atan2(tx - x, tz - z);
 }
 
+// 5 cabins, all beside a road (band [5.1, 8.1] m from the centerline).
+// H1/H2: village hub (rings meet). H3: on the east ring return. H4: on the
+// west ring return. H5: on the west ring near the hub.
 export const MOUNTAINS_HOUSES: PlacedHouse[] = [
-  { x: 7, z: 30, rotY: faceToward(7, 30, 0, 30), colorIndex: 0 }, // L da estrada principal
-  { x: -7, z: 42, rotY: faceToward(-7, 42, 0, 42), colorIndex: 1 }, // R da estrada principal
-  { x: 12, z: 16, rotY: faceToward(12, 16, 14.5, 9.6), colorIndex: 2 }, // ramal do pinheiral
-  { x: -8.3, z: 10.1, rotY: faceToward(-8.3, 10.1, -5.5, 3.6), colorIndex: 3 }, // ramal do lago
-  { x: 10, z: -4, rotY: faceToward(10, -4, 3.4, -2.5), colorIndex: 4 } // ramal norte
+  { x: 12, z: 16, rotY: faceToward(12, 16, 13.6, 9.4), colorIndex: 0 }, // L da R3
+  { x: -7, z: 11, rotY: faceToward(-7, 11, 0, 11), colorIndex: 1 }, // L da R1
+  { x: 7, z: -13, rotY: faceToward(7, -13, 0, -12), colorIndex: 2 }, // R da R4
+  { x: -14, z: -2, rotY: faceToward(-14, -2, -8, -4), colorIndex: 3 }, // R da R2
+  { x: 4, z: 26, rotY: faceToward(4, 26, -0.5, 20.4), colorIndex: 4 } // L da R1
 ];
 
 export const MOUNTAINS_LAMPS: [number, number][] = [
-  [2.8, 48],
-  [-2.8, 48],
-  [2.8, 30],
-  [-2.8, 30],
-  [3.2, 12],
-  [-10, 30],
-  [8, -10],
-  [-5, 1],
-  [40, 22.5], // clareira do pinheiral
-  [-44, -18] // encosta da beira do lago
+  [4, 14], // vila / R1 leste
+  [-3, 14], // vila / R1 oeste
+  [18, 14], // R3 (saída da vila)
+  [2, 22], // R1 (entre a vila e a fazenda)
+  [-28, 31], // R1, perto da fazenda
+  [-46, 32], // R1, campo oeste
+  [-30, -18], // R2, margem NE do lago
+  [-54, 12], // R1, extremo oeste
+  [10, -40], // R4, perto do poço
+  [3, -8] // R4, retorno norte (vila)
 ];
 
-// Benches: one at the lake shore, one at the north overlook, one in the
-// pine clearing — each looking at something worth looking at.
+// Benches: one at the lake shore, one at the north overlook (mirante), one
+// on the pond shore — each looking at something worth looking at.
 export interface PlacedBench {
   x: number;
   z: number;
@@ -185,14 +201,15 @@ export interface PlacedBench {
 }
 
 export const MOUNTAINS_BENCHES: PlacedBench[] = [
-  { x: -26, z: -24, rotY: faceToward(-26, -24, MOUNTAINS_LAKE.x, MOUNTAINS_LAKE.z) },
-  { x: 10, z: -36, rotY: faceToward(10, -36, 8, -80) }, // mirante, olhando os picos
-  { x: 40, z: 16, rotY: faceToward(40, 16, MOUNTAINS_FOREST.x, MOUNTAINS_FOREST.z) }
+  { x: -32, z: -20, rotY: faceToward(-32, -20, MOUNTAINS_LAKE.x, MOUNTAINS_LAKE.z) },
+  { x: 6, z: -34, rotY: faceToward(6, -34, 0, -80) }, // mirante, olhando os picos
+  { x: 10, z: -42, rotY: faceToward(10, -42, MOUNTAINS_POND.x, MOUNTAINS_POND.z) } // poço
 ];
 
-// Farm: pen 14x14 (fence half = 7 around (-30,20)); barn south of the pen.
+// Farm: pen 14x14 (fence half = 7 around (-30,20)); barn south-east of the
+// pen, beside the west ring road.
 export const MOUNTAINS_FENCE = { cx: -30, cz: 20, half: 7, step: 3.5 };
-export const MOUNTAINS_BARN = { x: -14, z: 48 };
+export const MOUNTAINS_BARN = { x: -14, z: 38 };
 
 export function fencePosts(): { x: number; z: number; rotY: number }[] {
   const { cx, cz, half, step } = MOUNTAINS_FENCE;
@@ -211,9 +228,10 @@ export function fencePosts(): { x: number; z: number; rotY: number }[] {
 }
 
 // ---------- L2/L3: animals ----------
-// Every animal lives in the meadow or the farm — never on the peaks, never in
-// the middle of the lake, never on a road. `wanderR` is the radius of its
-// walk area, kept clear of roads/water/solids by the auto-check.
+// 32 animals (skill rule 17: ≥ 30). Every animal lives in its habitat — pen
+// (fenced, wanderR ≤ 4, anchor ≥ 5 m from the fence, grid ≥ 3 m), barn dogs,
+// grazing cows, village cats/chickens, meadow sheep, and ducks on the water's
+// edge band [r, r+1.6]. Wander circles are kept clear of roads/water/solids.
 export interface PlacedAnimal {
   type: string;
   x: number;
@@ -222,30 +240,44 @@ export interface PlacedAnimal {
 }
 
 export const MOUNTAINS_ANIMALS: PlacedAnimal[] = [
-  // Farm: inside the pen (small wander so they stay fenced in)
-  { type: 'sheep', x: -30, z: 20, wanderR: 2.5 },
-  { type: 'sheep', x: -28, z: 21, wanderR: 2 },
-  { type: 'chicken', x: -31, z: 18, wanderR: 1.5 },
-  { type: 'chicken', x: -27, z: 18, wanderR: 1.5 },
-  { type: 'chicken', x: -33, z: 21, wanderR: 1.5 },
-  // Farm: outside — dogs near the barn, cows grazing
-  { type: 'cow', x: -10, z: 36, wanderR: 4 },
-  { type: 'cow', x: -50, z: 40, wanderR: 4 },
-  { type: 'cow', x: -52, z: -12, wanderR: 4 },
-  { type: 'dog', x: -8, z: 54, wanderR: 3 },
-  { type: 'dog', x: -20, z: 54, wanderR: 3 },
-  // Village / meadow
-  { type: 'cat', x: 12, z: 24, wanderR: 4 },
-  { type: 'cat', x: -10, z: -26, wanderR: 4 },
-  { type: 'sheep', x: -8, z: -14, wanderR: 5 },
-  { type: 'sheep', x: 22, z: -24, wanderR: 5 },
-  { type: 'sheep', x: 34, z: -34, wanderR: 4 },
-  { type: 'cow', x: 24, z: -14, wanderR: 5 },
-  // Ducks at the water's edge (rule 14 — shore, not open water)
+  // Curral (fazenda): dentro do cercado (half 7 → âncoras a ≤ 2 do centro,
+  // ≥ 5 m da cerca, grade ≥ 3 m entre animais)
+  { type: 'sheep', x: -31.5, z: 18.5, wanderR: 4 },
+  { type: 'sheep', x: -28.5, z: 21.5, wanderR: 4 },
+  { type: 'chicken', x: -28.5, z: 18.5, wanderR: 3 },
+  { type: 'chicken', x: -31.5, z: 21.5, wanderR: 3 },
+  // Fazenda: cachorros perto do celeiro, vacas pastando fora do cercado
+  { type: 'dog', x: -10, z: 46, wanderR: 3 },
+  { type: 'dog', x: -18, z: 46, wanderR: 3 },
+  { type: 'cow', x: -24, z: 46, wanderR: 4 },
+  { type: 'cow', x: -40, z: 42, wanderR: 4 },
+  { type: 'cow', x: -42, z: 20, wanderR: 4 },
+  // Vila
+  { type: 'cat', x: -6, z: 18, wanderR: 3 },
+  { type: 'cat', x: 16, z: 2, wanderR: 3 },
+  { type: 'chicken', x: 12, z: 26, wanderR: 2.5 },
+  { type: 'chicken', x: 20, z: 22, wanderR: 2.5 },
+  { type: 'chicken', x: 20, z: 4, wanderR: 2.5 },
+  { type: 'chicken', x: -18, z: 24, wanderR: 2.5 },
+  { type: 'chicken', x: 10, z: 30, wanderR: 2.5 },
+  // Campos
+  { type: 'sheep', x: -16, z: 16, wanderR: 5 },
+  { type: 'sheep', x: 26, z: 4, wanderR: 5 },
+  { type: 'sheep', x: 24, z: 22, wanderR: 5 },
+  { type: 'sheep', x: -34, z: 6, wanderR: 5 },
+  { type: 'sheep', x: 36, z: 6, wanderR: 5 },
+  { type: 'cow', x: 32, z: -4, wanderR: 4 },
+  { type: 'cow', x: -38, z: -4, wanderR: 4 },
+  // Norte (mirante / poço)
+  { type: 'sheep', x: 8, z: -24, wanderR: 5 },
+  { type: 'sheep', x: -16, z: -28, wanderR: 5 },
+  // Patos na margem (faixa [r, r+1.6] de uma água; sem solid de colisão)
   { type: 'duck', x: -30, z: -39, wanderR: 1.5 },
-  { type: 'duck', x: -28, z: -37, wanderR: 1.5 },
-  { type: 'duck', x: -32, z: -41, wanderR: 1.5 },
-  { type: 'duck', x: 10, z: -50, wanderR: 1.5 }
+  { type: 'duck', x: -44, z: -40, wanderR: 1.5 },
+  { type: 'duck', x: -49, z: -32, wanderR: 1.5 },
+  { type: 'duck', x: -33, z: -41, wanderR: 1.5 },
+  { type: 'duck', x: 19, z: -46, wanderR: 1.5 },
+  { type: 'duck', x: 17, z: -51, wanderR: 1.5 }
 ];
 
 // ---------- L3: vegetation ----------
@@ -254,12 +286,12 @@ export const MOUNTAINS_ANIMALS: PlacedAnimal[] = [
 export const MOUNTAINS_MEADOW_TREES: { x: number; z: number; pine: boolean }[] = [
   { x: 18, z: -6, pine: true },
   { x: -18, z: -20, pine: false },
-  { x: 16, z: -32, pine: true },
+  { x: 24, z: -36, pine: true }, // norte, longe da R4
   { x: -24, z: -40, pine: false },
-  { x: 34, z: -16, pine: true },
-  { x: -16, z: -34, pine: false },
+  { x: 40, z: -22, pine: true }, // leste, longe da R4
+  { x: -20, z: -36, pine: false },
   { x: 8, z: 36, pine: true },
-  { x: -46, z: -14, pine: false }
+  { x: -52, z: -18, pine: false } // oeste, longe da R1a
 ];
 
 export const MOUNTAINS_BUSH_COUNT = 40;

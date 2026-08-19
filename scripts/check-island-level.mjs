@@ -8,10 +8,13 @@
 //  1. solid-solid clearance (no object overlaps another)
 //  2. animal wander circles stay clear of roads / lagoon / solids
 //  3. roads vs lagoon (no crossing), roads vs solids, roads stay on the island
-//  4. road graph connected (every road links, directly or via others, to R1)
-//  5. y = terrainHeight for every placed object
-//  6. houses sit in the "beside the road" band [5.1, 8.1]
-//  7. airplane spawn (0,42) is over the island, clear of the lagoon
+//  4. no dead ends: every road endpoint is shared with another road
+//     (skill rule 6 — the network is a union of closed rings)
+//  5. control deflection between consecutive segments ≤ 60° (skill rule 7)
+//  6. y = terrainHeight for every placed object
+//  7. houses sit in the "beside the road" band [5.1, 8.1]
+//  8. animals ≥ 30 (skill rule 17)
+//  9. airplane spawn (0,42) is over the island, clear of the lagoon
 import * as THREE from 'three';
 import {
   buildIslandLayout,
@@ -98,39 +101,46 @@ for (const [x, z] of allRoadPts) {
   }
 }
 
-// 4. connectivity: the road graph is one component anchored at R1 (the main
-// road). A road connects to the component when an endpoint lies on a road
-// already in the component (junctions share control points).
-const connected = new Set([0]);
-let changed = true;
-while (changed) {
-  changed = false;
-  for (let i = 0; i < ISLAND_ROADS.length; i++) {
-    if (connected.has(i)) continue;
-    for (const j of connected) {
-      if (i === j) continue;
-      for (const [ex, ez] of [ISLAND_ROADS[i][0], ISLAND_ROADS[i][ISLAND_ROADS[i].length - 1]]) {
-        for (const [sx, sz] of [ISLAND_ROADS[j][0], ISLAND_ROADS[j][ISLAND_ROADS[j].length - 1]]) {
-          if (Math.hypot(ex - sx, ez - sz) < 0.8) {
-            connected.add(i);
-            changed = true;
-            break;
-          }
-        }
-        if (connected.has(i)) break;
-      }
-      if (connected.has(i)) break;
-    }
-  }
-}
+// 4. no dead ends: every road endpoint must be shared (within eps) with at
+// least one other road — the network is a union of closed rings, so a tour
+// of the whole network needs no U-turn.
+const endpoints = ISLAND_ROADS.map((r) => [r[0], r[r.length - 1]]);
 for (let i = 0; i < ISLAND_ROADS.length; i++) {
-  if (!connected.has(i)) {
-    const [sx, sz] = ISLAND_ROADS[i][0];
-    issues.push(`road ${i} starts at (${sx},${sz}) and is not connected to the network`);
+  for (const [ex, ez] of endpoints[i]) {
+    let shared = false;
+    for (let j = 0; j < ISLAND_ROADS.length; j++) {
+      if (j === i) continue;
+      for (const [sx, sz] of endpoints[j]) {
+        if (Math.hypot(ex - sx, ez - sz) < 0.8) shared = true;
+      }
+      if (shared) break;
+    }
+    if (!shared) issues.push(`road ${i}: dead end at (${ex},${ez}) — no other road shares this endpoint`);
   }
 }
 
-// 5. y = terrainHeight for every placed object
+// 5. deflection between consecutive control segments ≤ 60° (no 90° corners;
+// the Catmull-Rom spline smooths the control points further).
+for (let i = 0; i < ISLAND_ROADS.length; i++) {
+  const pts = ISLAND_ROADS[i];
+  for (let k = 1; k < pts.length - 1; k++) {
+    const [ax, az] = pts[k - 1];
+    const [bx, bz] = pts[k];
+    const [cx, cz] = pts[k + 1];
+    const v1x = bx - ax;
+    const v1z = bz - az;
+    const v2x = cx - bx;
+    const v2z = cz - bz;
+    const l1 = Math.hypot(v1x, v1z);
+    const l2 = Math.hypot(v2x, v2z);
+    if (l1 < 1e-9 || l2 < 1e-9) continue;
+    const dot = Math.min(1, Math.max(-1, (v1x * v2x + v1z * v2z) / (l1 * l2)));
+    const ang = (Math.acos(dot) * 180) / Math.PI;
+    if (ang > 60) issues.push(`road ${i}: deflection ${ang.toFixed(1)}° > 60° at control point (${bx},${bz})`);
+  }
+}
+
+// 6. y = terrainHeight for every placed object
 function checkY(name, x, z, y) {
   if (Math.abs(y - islandTerrainHeight(x, z)) > 1e-6) issues.push(`${name}(${x},${z}): y ${y} != terrain ${islandTerrainHeight(x, z)}`);
 }
@@ -144,13 +154,16 @@ for (const t of layout.trees) checkY('tree', t.x, t.z, t.y);
 for (const b of layout.bushes) checkY('bush', b.x, b.z, b.y);
 for (const f of layout.flowers) checkY('flower', f.x, f.z, f.y);
 
-// 6. houses in the beside-the-road band
+// 7. houses in the beside-the-road band
 for (const h of layout.houses) {
   const d = distToRoad(h.x, h.z);
   if (d < 5.1 || d > 8.1) issues.push(`house(${h.x},${h.z}): dist to road ${d.toFixed(2)} outside band [5.1, 8.1]`);
 }
 
-// 7. airplane spawn over the island, clear of the lagoon
+// 8. at least 30 animals (skill rule 17)
+if (layout.animals.length < 30) issues.push(`only ${layout.animals.length} animals — need ≥ 30`);
+
+// 9. airplane spawn over the island, clear of the lagoon
 const spawn = { x: 0, z: 42 };
 if (Math.hypot(spawn.x, spawn.z) > ISLAND_RADIUS - 3) issues.push(`airplane spawn (0,42) is off the island`);
 if (Math.hypot(spawn.x - ISLAND_LAGOON.x, spawn.z - ISLAND_LAGOON.z) < ISLAND_LAGOON.r + 4) {

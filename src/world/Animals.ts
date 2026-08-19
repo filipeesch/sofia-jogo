@@ -13,6 +13,14 @@ export class Animal extends THREE.Group {
     super();
     this.type = type;
     this.add(model);
+    // Generous invisible tap target: the toy models are small and tablet taps
+    // are imprecise, so Clickables raycasts against this sphere instead of
+    // the mesh itself. `visible = false` keeps it out of rendering while the
+    // raycaster still hits it.
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8));
+    hit.visible = false;
+    hit.position.y = 0.9;
+    this.add(hit);
     this.base = new THREE.Vector3(x, 0, z);
     this.wanderR = wanderR;
     this.target = this.pickTarget();

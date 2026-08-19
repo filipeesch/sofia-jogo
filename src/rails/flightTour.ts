@@ -46,41 +46,44 @@ const WAYPOINTS: Record<WorldType, [number, number, number][]> = {
     [-30, 13, 22], // over the farm
     [56, 18, 30] // over the pine forest clearing
   ],
-  // Ilha Feliz: vila → lagoa → costa sul (baixo, sobre a praia) → fazenda →
-  // entre as duas serras → costa NW (closed loop).
+  // Ilha Feliz: vila → lagoa (o anel A dá a volta nela) → costa sul (baixo,
+  // sobre a praia) → fazenda → serra menor → sela (onde o anel B fecha) →
+  // serra grande → costa NW (closed loop).
   island: [
     [0, 11, 44], // takeoff over the southern field (near spawn)
-    [0, 9, 8], // village
-    [38, 12, 20], // over the lagoon
+    [0, 9, 8], // village (shared node of both rings)
+    [38, 12, 20], // over the lagoon (ring A curves around it)
     [58, 7, 58], // south-east coast, low over the beach
     [0, 6, 80], // south coast, over the water
     [-58, 7, 58], // south-west coast
-    [-40, 13, 14], // over the farm
+    [-40, 13, 14], // over the farm (ring A west leg)
     [34, 19, -26], // over the small rocky mountain
+    [0, 13, -30], // the saddle, where roads B1/B2 meet
+    [-10, 22, -38], // above the big mountain's west shoulder
     [-16, 24, -42], // over the big rocky mountain
-    [-62, 9, -50] // north-west coast
+    [-60, 11, -48] // north-west coast
   ],
-  // Mundo da Neve: vila → lago congelado → arco-íris → pinheiral → anel
-  // leste (closed loop).
+  // Mundo da Neve: takeoff → rua da vila → lago congelado → arco-íris →
+  // pinheiral → anel leste → alameda norte (closed loop).
   snow: [
     [0, 13, 42], // takeoff over the southern drifts (near spawn)
-    [0, 11, 6], // village
-    [-20, 12, -14], // west drifts / ice path
-    [-26, 9, -20], // over the frozen lake
+    [0, 11, 12], // village street (houses at z≈14)
+    [-24, 12, -20], // over the frozen lake
     RAINBOW,
-    [38, 11, -6], // over the pine grove
-    [20, 10, 14] // east ring + village snowmen
+    [40, 11, -4], // over the pine grove
+    [20, 10, 14], // east ring, village meadow
+    [10, 12, -30] // north alameda snowmen
   ],
-  // Deserto: vila → pirâmides → arco-íris → alameda → oásis → cactos sul
-  // (closed loop).
+  // Deserto: takeoff → vila → oásis → cactos SE → arco-íris → pirâmides →
+  // handle/sul (closed loop).
   desert: [
     [0, 13, 42], // takeoff over the southern dunes (near spawn)
     [-2, 12, 4], // village hub
-    [-38, 16, -24], // pyramid cluster
-    RAINBOW,
-    [12, 14, -20], // rainbow alameda
     [30, 11, 26], // over the oasis
-    [40, 14, 36] // south cactus alameda
+    [42, 12, 36], // cactus alameda, SE of the oasis
+    RAINBOW,
+    [-44, 18, -36], // pyramid cluster
+    [10, 12, 20] // the handle, back over the southern field
   ]
 };
 
