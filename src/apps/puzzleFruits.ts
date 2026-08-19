@@ -1,7 +1,7 @@
 import type { PuzzleItem } from './PuzzleApp';
 
 // 12 frutas (pelo menos 10), com as mesmas features dos demais quebra-
-// cabeças: arrastar, encaixar, nome falado em pt-BR ao acertar. Frutas não
+// cabeças: arrastar, encaixar, nome falado em pt-PT ao acertar. Frutas não
 // têm som próprio — ao encaixar, só o nome é falado.
 const BASE: Omit<PuzzleItem, 'speak'>[] = [
   { emoji: '🍎', name: 'Maçã' },
@@ -10,7 +10,7 @@ const BASE: Omit<PuzzleItem, 'speak'>[] = [
   { emoji: '🍉', name: 'Melancia' },
   { emoji: '🍇', name: 'Uva' },
   { emoji: '🍓', name: 'Morango' },
-  { emoji: '🍍', name: 'Abacaxi' },
+  { emoji: '🍍', name: 'Ananas' },
   { emoji: '🥭', name: 'Manga' },
   { emoji: '🍐', name: 'Pera' },
   { emoji: '🍒', name: 'Cereja' },

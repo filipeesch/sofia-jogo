@@ -1,4 +1,4 @@
-// Web Speech API helper: fala em voz alta um nome curto (pt-BR) dos itens
+// Web Speech API helper: fala em voz alta um nome curto (pt-PT) dos itens
 // dos quebra-cabeças. Se o speechSynthesis não existir (ou falhar), chama
 // onDone imediatamente, para o chamante seguir (ex.: tocar o som gravado).
 // A mesma filosofia de fallback do resto do app (GLB -> primitivas, MP3 -> sfx).
@@ -9,7 +9,7 @@ function pickPortugueseVoice(): SpeechSynthesisVoice | null {
     if (!voices.length) return null;
     const norm = (l: string) => l.toLowerCase().replace('_', '-');
     return (
-      voices.find((v) => norm(v.lang) === 'pt-br') ??
+      voices.find((v) => norm(v.lang) === 'pt-pt') ??
       voices.find((v) => norm(v.lang).startsWith('pt')) ??
       null
     );
@@ -18,7 +18,7 @@ function pickPortugueseVoice(): SpeechSynthesisVoice | null {
   }
 }
 
-// Fala o nome do item em pt-BR. 'onDone' é chamado quando a fala termina
+// Fala o nome do item em pt-PT. 'onDone' é chamado quando a fala termina
 // (ou imediatamente, se não houver suporte) — os quebra-cabeças usam isso
 // para tocar o som do animal logo depois do nome.
 export function speakName(text: string, onDone?: () => void): void {
@@ -29,7 +29,7 @@ export function speakName(text: string, onDone?: () => void): void {
   }
   try {
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'pt-BR';
+    u.lang = 'pt-PT';
     const v = pickPortugueseVoice();
     if (v) u.voice = v;
     u.rate = 0.9; // um pouco mais devagar: é para criança

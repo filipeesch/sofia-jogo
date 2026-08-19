@@ -7,7 +7,7 @@ import { speakName } from '../ui/speech';
 // (seconds) at decode time.
 //
 // Audio behaviour (kid-friendly, set per puzzle):
-//   speak      – say the item's name out loud (Web Speech API, pt-BR)
+//   speak      – say the item's name out loud (Web Speech API, pt-PT)
 //   soundAfter – play the item's recorded sound *after* the name finishes
 // Animals use both (name, then animal sound); vehicles and fruits speak the
 // name only (no recorded sound).
@@ -229,7 +229,7 @@ export class PuzzleApp {
   }
 
   // Item audio when a piece snaps in:
-  //   - 'speak':      the name is said out loud in pt-BR (Web Speech API)
+  //   - 'speak':      the name is said out loud in pt-PT (Web Speech API)
   //   - 'soundAfter': the recorded MP3 plays right after the name ends
   // Animals: name + animal sound. Vehicles / fruits: name only.
   private playItemSound(a: PuzzleItem): void {
