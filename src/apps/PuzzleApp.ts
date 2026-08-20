@@ -2,18 +2,20 @@ import { thump, ding, win, resume } from '../ui/sfx';
 import { preloadSound, playSound } from '../ui/sounds';
 import { speakName } from '../ui/speech';
 
-// One puzzle item: emoji face, pt-BR name, optional procedural fallback sound
-// and optional real MP3 (public/sounds/). 'maxDur' caps the recording length
-// (seconds) at decode time.
+// One puzzle item: emoji face, pt-PT name, optional procedural fallback
+// sound and optional real recording (public/sounds/, mp3 or wav).
+// 'maxDur' caps the recording length (seconds) at decode time.
+// 'spoken' overrides the spoken form of the name ('name' stays the display).
 //
 // Audio behaviour (kid-friendly, set per puzzle):
 //   speak      – say the item's name out loud (Web Speech API, pt-PT)
 //   soundAfter – play the item's recorded sound *after* the name finishes
-// Animals use both (name, then animal sound); vehicles and fruits speak the
-// name only (no recorded sound).
+// Animals: name + animal sound. Vehicles: name + vehicle sound.
+// Fruits: name only.
 export interface PuzzleItem {
   emoji: string;
   name: string;
+  spoken?: string;
   sound?: () => void;
   file?: string;
   maxDur?: number;
@@ -229,15 +231,17 @@ export class PuzzleApp {
   }
 
   // Item audio when a piece snaps in:
-  //   - 'speak':      the name is said out loud in pt-PT (Web Speech API)
-  //   - 'soundAfter': the recorded MP3 plays right after the name ends
-  // Animals: name + animal sound. Vehicles / fruits: name only.
+  //   - 'speak':      the name is said out loud in pt-PT (Web Speech API);
+  //                   'spoken' (when set) overrides the spoken form
+  //   - 'soundAfter': the recorded sound plays right after the name ends
+  // Animals: name + animal sound. Vehicles: name + vehicle sound.
+  // Fruits: name only.
   private playItemSound(a: PuzzleItem): void {
     const playFile = (): void => {
       if (a.file) playSound(a.file, () => { a.sound?.(); });
     };
     if (a.speak) {
-      speakName(a.name, () => {
+      speakName(a.spoken ?? a.name, () => {
         if (a.soundAfter) playFile();
       });
     } else {
