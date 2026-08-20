@@ -8,6 +8,8 @@ import { PuzzleApp } from './apps/PuzzleApp';
 import { ANIMALS } from './apps/puzzleAnimals';
 import { VEHICLES } from './apps/puzzleVehicles';
 import { FRUITS } from './apps/puzzleFruits';
+import { NUMBERS } from './apps/puzzleNumbers';
+import { LETTERS } from './apps/puzzleLetters';
 import { Airplane } from './entities/Airplane';
 import { Car } from './entities/Car';
 import { FlightController } from './controllers/FlightController';
@@ -37,6 +39,8 @@ const launcher = new Launcher([
   { id: 'sons', emoji: '🐶', name: 'Quebra-Cabeça', color: 'linear-gradient(135deg,#d1a6ff,#9c27b0)', onOpen: openAnimals },
   { id: 'veiculos', emoji: '🚕', name: 'Transportes', color: 'linear-gradient(135deg,#4fc3f7,#1565c0)', onOpen: openVehicles },
   { id: 'frutas', emoji: '🍎', name: 'Frutas', color: 'linear-gradient(135deg,#aed581,#558b2f)', onOpen: openFruits },
+  { id: 'numeros', emoji: '🔢', name: 'Números', color: 'linear-gradient(135deg,#81c784,#2e7d32)', onOpen: openNumbers },
+  { id: 'letras', emoji: '🔤', name: 'Letras', color: 'linear-gradient(135deg,#ba68c8,#6a1b9a)', onOpen: openLetters },
   { id: 'editor', emoji: '🛠️', name: 'Editor', color: 'linear-gradient(135deg,#b0bec5,#546e7a)', onOpen: () => void openEditor() }
 ]);
 
@@ -94,6 +98,20 @@ function openVehicles(): void {
 function openFruits(): void {
   clearAll();
   const a = new PuzzleApp({ title: 'Quebra-Cabeça das Frutas', items: FRUITS, onBack: () => { clearAll(); launcher.show(); } });
+  currentApp = a;
+  a.mount();
+}
+
+function openNumbers(): void {
+  clearAll();
+  const a = new PuzzleApp({ title: 'Quebra-Cabeça dos Números', items: NUMBERS, onBack: () => { clearAll(); launcher.show(); } });
+  currentApp = a;
+  a.mount();
+}
+
+function openLetters(): void {
+  clearAll();
+  const a = new PuzzleApp({ title: 'Quebra-Cabeça das Letras', items: LETTERS, onBack: () => { clearAll(); launcher.show(); } });
   currentApp = a;
   a.mount();
 }

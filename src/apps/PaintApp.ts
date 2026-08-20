@@ -1,4 +1,5 @@
 import { bark, meow, cluck, baa, moo, quack, popSound, tone, resume } from '../ui/sfx';
+import { speakName } from '../ui/speech';
 
 interface Stamp { emoji: string; label: string; sound: () => void }
 
@@ -26,7 +27,20 @@ const FUN_STAMPS: Stamp[] = [
   { emoji: '🎈', label: 'Balão', sound: popSound },
 ];
 
-const COLORS = ['#ff5252', '#ff9800', '#ffd54a', '#66bb6a', '#42a5f5', '#7e57c2', '#ec407a', '#8d6e63', '#000000', '#ffffff', '#26c6da', '#ff6f91'];
+const COLORS: { c: string; label: string }[] = [
+  { c: '#ff5252', label: 'Vermelho' },
+  { c: '#ff9800', label: 'Laranja' },
+  { c: '#ffd54a', label: 'Amarelo' },
+  { c: '#66bb6a', label: 'Verde' },
+  { c: '#42a5f5', label: 'Azul' },
+  { c: '#7e57c2', label: 'Roxo' },
+  { c: '#ec407a', label: 'Rosa' },
+  { c: '#8d6e63', label: 'Castanho' },
+  { c: '#000000', label: 'Preto' },
+  { c: '#ffffff', label: 'Branco' },
+  { c: '#26c6da', label: 'Turquesa' },
+  { c: '#ff6f91', label: 'Rosa claro' },
+];
 const SIZES = [
   { label: 'Fino', w: 6, dot: 6 },
   { label: 'Médio', w: 14, dot: 12 },
@@ -48,9 +62,21 @@ export class PaintApp {
   private buffer = document.createElement('canvas');
   private buf: CanvasRenderingContext2D;
 
-  private drawing = false;
-  private lastX = 0;
-  private lastY = 0;
+  // One active stroke per pointer: several fingers can paint at once, each
+  // with its own line, so multi-touch paints in several places instead of
+  // tangling into one shared line.
+  private strokes = new Map<number, { lastX: number; lastY: number }>();
+  // Window-level listeners keep a stroke alive even when the finger leaves
+  // the canvas (drifting over the toolbar) and comes back.
+  private onWindowMove = (e: PointerEvent): void => {
+    const s = this.strokes.get(e.pointerId);
+    if (!s || this.stamp) return;
+    const p = this.point(e);
+    this.line(s.lastX, s.lastY, p.x, p.y);
+    s.lastX = p.x;
+    s.lastY = p.y;
+  };
+  private onWindowEnd = (e: PointerEvent): void => { this.strokes.delete(e.pointerId); };
 
   private color = '#ff5252';
   private size = 14;
@@ -74,7 +100,11 @@ export class PaintApp {
     const back = document.createElement('button');
     back.className = 'paint-action paint-back';
     back.textContent = '🏠';
-    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.onBack(); });
+    back.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (this.strokeActive()) return;
+      this.onBack();
+    });
 
     const title = document.createElement('div');
     title.className = 'paint-title';
@@ -83,7 +113,11 @@ export class PaintApp {
     const clear = document.createElement('button');
     clear.className = 'paint-action';
     clear.textContent = '🧽';
-    clear.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.clearPage(); });
+    clear.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (this.strokeActive()) return;
+      this.clearPage();
+    });
 
     const papers = document.createElement('div');
     papers.className = 'paint-papers';
@@ -95,11 +129,13 @@ export class PaintApp {
       if (p.c === this.paper) b.classList.add('active');
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
+        if (this.strokeActive()) return;
         this.paper = p.c;
         papers.querySelectorAll('.paint-paper').forEach((x) => x.classList.remove('active'));
         b.classList.add('active');
         this.clearPage();
         tone(500, 0.06, 'sine', 0.12);
+        speakName(p.label);
       });
       papers.append(b);
     }
@@ -114,25 +150,20 @@ export class PaintApp {
 
     this.canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      this.canvas.setPointerCapture(e.pointerId);
+      try { this.canvas.setPointerCapture(e.pointerId); } catch { /* synthetic pointers */ }
+      if (this.strokes.has(e.pointerId)) return;
       const p = this.point(e);
-      this.lastX = p.x;
-      this.lastY = p.y;
       if (this.stamp) {
+        this.strokes.set(e.pointerId, { lastX: p.x, lastY: p.y });
         this.placeStamp(p.x, p.y);
         return;
       }
-      this.drawing = true;
+      this.strokes.set(e.pointerId, { lastX: p.x, lastY: p.y });
       this.dot(p.x, p.y);
     });
-    this.canvas.addEventListener('pointermove', (e) => {
-      if (!this.drawing || this.stamp) return;
-      const p = this.point(e);
-      this.line(p.x, p.y);
-    });
-    const end = () => { this.drawing = false; };
-    this.canvas.addEventListener('pointerup', end);
-    this.canvas.addEventListener('pointercancel', end);
+    window.addEventListener('pointermove', this.onWindowMove);
+    window.addEventListener('pointerup', this.onWindowEnd);
+    window.addEventListener('pointercancel', this.onWindowEnd);
     this.root.append(this.canvas);
 
     // --- stamps ---
@@ -146,9 +177,11 @@ export class PaintApp {
       b.title = s.label;
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
+        if (this.strokeActive()) return;
         resume();
         s.sound();
         this.selectStamp(s, b);
+        speakName(s.label);
       });
       this.stampRow.append(b);
     }
@@ -178,6 +211,7 @@ export class PaintApp {
       if (s.w === this.size) b.classList.add('active');
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
+        if (this.strokeActive()) return;
         this.size = s.w;
         if (this.tool === 'rainbow') this.tool = 'brush';
         sizes.querySelectorAll('.paint-size').forEach((x) => x.classList.remove('active'));
@@ -198,21 +232,23 @@ export class PaintApp {
 
     this.colorRow = document.createElement('div');
     this.colorRow.className = 'paint-colors';
-    for (const c of COLORS) {
+    for (const col of COLORS) {
       const b = document.createElement('button');
       b.className = 'paint-color';
-      b.style.background = c;
-      if (c === '#ffffff') b.style.border = '2px solid #ccc';
-      if (c === this.color) b.classList.add('active');
+      b.style.background = col.c;
+      if (col.c === '#ffffff') b.style.border = '2px solid #ccc';
+      if (col.c === this.color) b.classList.add('active');
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        this.color = c;
+        if (this.strokeActive()) return;
+        this.color = col.c;
         this.tool = 'brush';
         this.stamp = null;
         this.colorRow.querySelectorAll('.paint-color').forEach((x) => x.classList.remove('active'));
         b.classList.add('active');
         this.refreshActive();
         tone(520, 0.05, 'sine', 0.1);
+        speakName(col.label);
       });
       this.colorRow.append(b);
     }
@@ -228,8 +264,20 @@ export class PaintApp {
     b.className = 'paint-tool-btn';
     b.textContent = label;
     b.title = title;
-    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); resume(); onTap(); });
+    b.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (this.strokeActive()) return; // no tool changes mid-stroke
+      resume();
+      onTap();
+    });
     return b;
+  }
+
+  // While any finger is actively drawing, tool/color/object/paper controls
+  // are locked: a second touch (or a finger released over the toolbar) must
+  // not switch the tool, color or stamp mid-stroke.
+  private strokeActive(): boolean {
+    return this.strokes.size > 0;
   }
 
   private selectStamp(s: Stamp, btn: HTMLButtonElement): void {
@@ -249,7 +297,14 @@ export class PaintApp {
 
   private point(e: PointerEvent): { x: number; y: number } {
     const r = this.canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    // Keep the stroke inside the paper even when the pointer drifts over the
+    // toolbars around the canvas.
+    return {
+      x: Math.max(0, Math.min(this.canvas.width, x)),
+      y: Math.max(0, Math.min(this.canvas.height, y)),
+    };
   }
 
   private currentColor(): string {
@@ -269,18 +324,16 @@ export class PaintApp {
     this.commit();
   }
 
-  private line(x: number, y: number): void {
+  private line(x0: number, y0: number, x1: number, y1: number): void {
     this.buf.beginPath();
     this.buf.strokeStyle = this.currentColor();
     this.buf.lineWidth = this.size;
     this.buf.lineCap = 'round';
     this.buf.lineJoin = 'round';
-    this.buf.moveTo(this.lastX, this.lastY);
-    this.buf.lineTo(x, y);
+    this.buf.moveTo(x0, y0);
+    this.buf.lineTo(x1, y1);
     this.buf.stroke();
     this.commit();
-    this.lastX = x;
-    this.lastY = y;
   }
 
   private placeStamp(x: number, y: number): void {
@@ -331,6 +384,10 @@ export class PaintApp {
 
   destroy(): void {
     window.removeEventListener('resize', this.resize);
+    window.removeEventListener('pointermove', this.onWindowMove);
+    window.removeEventListener('pointerup', this.onWindowEnd);
+    window.removeEventListener('pointercancel', this.onWindowEnd);
+    this.strokes.clear();
     this.root.remove();
   }
 }
