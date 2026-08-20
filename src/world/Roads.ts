@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-// Road control polylines live in src/rails/roadDefs.ts (single source of
-// truth shared with the on-rails tour builder, Node-importable).
-import { ROAD_DEFS, type RoadKind } from '../rails/roadDefs';
 
 // Curved roads (splines) that follow the terrain, with paths for the tour.
+// The control polylines come from the caller (World): the procedural
+// ROAD_DEFS (src/rails/roadDefs.ts) for the shipped levels, or a LevelData's
+// roads for data-driven levels (map editor).
 //
 // Performance: instead of one Mesh per segment (previously ~2 meshes × ~70
 // segments × N roads ≈ 560–840 draw calls), every segment box is baked into a
@@ -19,7 +19,7 @@ export class Roads extends THREE.Group {
 
   private static readonly _m = new THREE.Matrix4();
 
-  constructor(terrainHeight: (x: number, z: number) => number, readonly kind: RoadKind) {
+  constructor(terrainHeight: (x: number, z: number) => number, readonly defs: [number, number][][]) {
     super();
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x48515c, roughness: 0.95 });
     const lineMat = new THREE.MeshStandardMaterial({ color: 0xf0e6a8, roughness: 0.9 });
@@ -27,7 +27,6 @@ export class Roads extends THREE.Group {
     const roadGeos: THREE.BufferGeometry[] = [];
     const lineGeos: THREE.BufferGeometry[] = [];
 
-    const defs = ROAD_DEFS[kind];
     for (const def of defs) {
       const pts = this.sample(def);
       const path3 = this.heights(pts, terrainHeight);

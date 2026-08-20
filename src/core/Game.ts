@@ -10,9 +10,8 @@ import { AudioManager } from '../systems/AudioManager';
 import { playSound, preloadSound } from '../ui/sounds';
 import { UI } from '../ui/UI';
 import { buildRoadTour } from '../rails/roadTour';
-import { flightTourPoints } from '../rails/flightTour';
+import { flightTourPoints, flightTourPointsFrom } from '../rails/flightTour';
 import { PathFollower } from '../rails/pathFollower';
-import { ROAD_DEFS } from '../rails/roadDefs';
 import type { CarController } from '../controllers/CarController';
 import type { FlightController } from '../controllers/FlightController';
 import { AmbientPlanes } from '../world/AmbientPlanes';
@@ -21,11 +20,26 @@ import { DebugCapture } from '../debug/DebugCapture';
 import type { LevelConfig } from '../levels';
 import { clamp, damp, dampFactor } from '../utils';
 import type { WorldModels } from '../assets';
+import type { LevelData } from '../editor/levelData';
 
 function wrapAngle(a: number): number {
   a = (a + Math.PI) % (Math.PI * 2);
   if (a < 0) a += Math.PI * 2;
   return a - Math.PI;
+}
+
+// Fallback on-rails loop when the level has no (or too few) roads to build a
+// tour from — a calm circle around the spawn point. Data-driven levels from
+// the map editor may start with zero roads.
+function idleCirclePoints(terrain: (x: number, z: number) => number, cx = 0, cz = 20, r = 14): THREE.Vector3[] {
+  const out: THREE.Vector3[] = [];
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    const x = cx + Math.cos(a) * r;
+    const z = cz + Math.sin(a) * r;
+    out.push(new THREE.Vector3(x, terrain(x, z), z));
+  }
+  return out;
 }
 
 // Collects every texture a material references (direct slots like Sprite.map
@@ -103,7 +117,7 @@ export class Game {
   private rejoinDur = 1;
   private readonly railScratch = new THREE.Vector3();
 
-  constructor(container: HTMLElement, level: LevelConfig, vehicle: Vehicle, controller: VehicleController, models: WorldModels = {}, ambientModel?: THREE.Group, vehicleType: 'airplane' | 'car' = 'airplane') {
+  constructor(container: HTMLElement, level: LevelConfig, vehicle: Vehicle, controller: VehicleController, models: WorldModels = {}, ambientModel?: THREE.Group, vehicleType: 'airplane' | 'car' = 'airplane', data?: LevelData) {
     this.vehicle = vehicle;
     this.controller = controller;
     this.vehicleType = vehicleType;
@@ -150,7 +164,7 @@ export class Game {
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
-    this.world = new World(level, models);
+    this.world = new World(level, models, data);
     this.dayNight = new DayNightCycle({
       cycleSeconds: level.cycleSeconds,
       startNight: level.startNight,
@@ -173,16 +187,23 @@ export class Game {
     this.scene.add(this.vehicle);
 
     // Build the on-rails path. The car tour is computed from the level's road
-    // network (every street is driven; dead ends get a 180° U-turn). The
-    // airplane loops over the world's points of interest instead.
+    // network (every street is driven; dead ends get a 180° U-turn) — for
+    // data-driven levels that network is the LevelData's roads. The airplane
+    // loops over the world's points of interest (or the level's flight
+    // waypoints when the data carries them).
     const railTerrain = (x: number, z: number) => this.world.terrainHeight(x, z);
-    const roadDefs = this.world.roads ? ROAD_DEFS[this.world.roads.kind] : ROAD_DEFS.valley;
-    const tourPoints =
-      this.vehicleType === 'car'
-        ? buildRoadTour(roadDefs, railTerrain, this.vehicle.position.x, this.vehicle.position.z, {
+    const carTour =
+      this.world.roadDefs.length > 0
+        ? buildRoadTour(this.world.roadDefs, railTerrain, this.vehicle.position.x, this.vehicle.position.z, {
             solids: this.world.solids
           }).points
-        : flightTourPoints(level.worldType);
+        : idleCirclePoints(railTerrain);
+    const tourPoints =
+      this.vehicleType === 'car'
+        ? carTour
+        : data?.flightWaypoints
+          ? flightTourPointsFrom(data.flightWaypoints)
+          : flightTourPoints(level.worldType);
     this.rail = new PathFollower(tourPoints);
     this.rail.s =
       this.vehicleType === 'car'

@@ -7,8 +7,6 @@ import { TAU } from '../utils';
 import {
   buildValleyLayout,
   valleyTerrainHeight,
-  VALLEY_HILLS,
-  VALLEY_LAKE,
   mulberry32,
   VALLEY_SEED,
   type ValleyLayout
@@ -27,14 +25,15 @@ export class Valley extends THREE.Group {
   private treeInsts: InstancedProps[] = [];
   private lamps: { mat: THREE.MeshStandardMaterial }[] = [];
   private lampLights: THREE.PointLight[] = [];
-  private hills: { x: number; z: number; r: number; h: number }[] = VALLEY_HILLS;
+  private hills: { x: number; z: number; r: number; h: number }[] = [];
   // Visual-only PRNG (sway phase/speed, initial animal facing) — positions
   // always come from the deterministic layout.
   private rng: () => number;
 
-  constructor(config: { grass?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
+  constructor(config: { grass?: number; houseColors?: number[] } = {}, models: WorldModels = {}, layout?: ValleyLayout) {
     super();
-    this.layout = buildValleyLayout();
+    this.layout = layout ?? buildValleyLayout();
+    this.hills = this.layout.hills;
     this.rng = mulberry32(VALLEY_SEED + 1);
 
     const grass = config.grass ?? 0x7ec850;
@@ -50,14 +49,17 @@ export class Valley extends THREE.Group {
     this.add(ground);
 
     // Lake — also the keep-out zone for benches/ducks/scatter props.
-    const lake = new THREE.Mesh(
-      new THREE.CircleGeometry(VALLEY_LAKE.r, 40),
-      new THREE.MeshStandardMaterial({ color: 0x38b0d8, roughness: 0.2 })
-    );
-    lake.rotation.x = -Math.PI / 2;
-    lake.position.set(VALLEY_LAKE.x, 0.06, VALLEY_LAKE.z);
-    lake.receiveShadow = true;
-    this.add(lake);
+    const lakeDef = this.layout.waters[0];
+    if (lakeDef) {
+      const lake = new THREE.Mesh(
+        new THREE.CircleGeometry(lakeDef.r, 40),
+        new THREE.MeshStandardMaterial({ color: 0x38b0d8, roughness: 0.2 })
+      );
+      lake.rotation.x = -Math.PI / 2;
+      lake.position.set(lakeDef.x, 0.06, lakeDef.z);
+      lake.receiveShadow = true;
+      this.add(lake);
+    }
 
     // Gentle hills (spheres scaled to the hill shape).
     for (const hill of this.hills) {

@@ -89,16 +89,20 @@ const WAYPOINTS: Record<WorldType, [number, number, number][]> = {
 
 const TOUR_SAMPLES = 240;
 
-/** Dense closed polyline of the flight tour for a world (arc-length even). */
-export function flightTourPoints(worldType: WorldType): THREE.Vector3[] {
-  const wp = WAYPOINTS[worldType];
-  const pts = wp.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+/** Dense closed polyline for arbitrary waypoints (arc-length even). */
+export function flightTourPointsFrom(waypoints: [number, number, number][]): THREE.Vector3[] {
+  const pts = waypoints.map(([x, y, z]) => new THREE.Vector3(x, y, z));
   const curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
   const out: THREE.Vector3[] = [];
   for (let i = 0; i < TOUR_SAMPLES; i++) {
     out.push(curve.getPointAt(i / TOUR_SAMPLES).clone());
   }
   return out;
+}
+
+/** Dense closed polyline of the flight tour for a world (arc-length even). */
+export function flightTourPoints(worldType: WorldType): THREE.Vector3[] {
+  return flightTourPointsFrom(WAYPOINTS[worldType]);
 }
 
 /** Raw hand-tuned waypoints (used by the check script and tooling). */

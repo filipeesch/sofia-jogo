@@ -489,3 +489,19 @@ export function loadFromLocalStorage(id: string): LevelData | null {
     return null;
   }
 }
+
+// Level data resolution order: public/levels/<id>.json (editor saves that
+// shipped with the build) -> localStorage (editor saves in this browser) ->
+// null (the caller falls back to the procedural layout).
+export async function resolveLevelData(id: string): Promise<LevelData | null> {
+  try {
+    const res = await fetch(`levels/${encodeURIComponent(id)}.json`, { cache: 'no-store' });
+    if (res.ok) {
+      const d = normalizeLevelData(await res.json());
+      if (d) return d;
+    }
+  } catch {
+    /* no override file — procedural default */
+  }
+  return loadFromLocalStorage(id);
+}

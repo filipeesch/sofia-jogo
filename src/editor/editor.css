@@ -1,0 +1,334 @@
+/* Map editor UI (dark "game engine" panels over the 3D viewport).
+   The root is transparent to the viewport; only the panels capture
+   pointer events. */
+
+.ed-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  color: #eef3f8;
+  font-size: 13px;
+  z-index: 20;
+}
+
+.ed-panel {
+  background: rgba(18, 24, 33, 0.86);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+/* ---------- Top bar ---------- */
+
+.ed-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  flex-wrap: wrap;
+}
+
+.ed-top .ed-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ed-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef3f8;
+  border-radius: 9px;
+  padding: 7px 11px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ed-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.ed-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.ed-btn.danger:hover {
+  background: #b91c1c;
+}
+
+.ed-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ed-top select,
+.ed-panel select,
+.ed-panel input[type='text'],
+.ed-panel input[type='number'] {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #eef3f8;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.ed-top select {
+  max-width: 150px;
+}
+
+.ed-title {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.ed-live {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  border-color: #15803d;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+/* ---------- Left panel (palette + outliner) ---------- */
+
+.ed-left {
+  position: absolute;
+  top: 74px;
+  left: 10px;
+  bottom: 44px;
+  width: 232px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ed-palette {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ed-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ed-pal {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  padding: 6px 2px 4px;
+  text-align: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ed-pal .emo {
+  font-size: 19px;
+  display: block;
+}
+
+.ed-pal .lbl {
+  font-size: 10px;
+  opacity: 0.85;
+  display: block;
+  margin-top: 3px;
+}
+
+.ed-pal.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.ed-pal-sub {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.ed-pal-sub .ed-btn {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.ed-outliner {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px;
+}
+
+.ed-sec {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.75;
+  margin: 10px 2px 4px;
+}
+
+.ed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ed-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ed-item.sel {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: #3b82f6;
+}
+
+.ed-item .ed-del {
+  border: none;
+  background: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 3px;
+  opacity: 0.7;
+}
+
+.ed-item .ed-del:hover {
+  opacity: 1;
+}
+
+/* ---------- Right panel (properties + tour) ---------- */
+
+.ed-right {
+  position: absolute;
+  top: 74px;
+  right: 10px;
+  bottom: 44px;
+  width: 252px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ed-props {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ed-props h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.ed-row label {
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.ed-row input[type='number'] {
+  width: 74px;
+  text-align: right;
+}
+
+.ed-row input[type='text'] {
+  width: 130px;
+}
+
+.ed-row select {
+  width: 110px;
+}
+
+.ed-hint {
+  font-size: 11px;
+  opacity: 0.6;
+  line-height: 1.45;
+  margin-top: 10px;
+}
+
+.ed-tour {
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ed-tour b {
+  font-size: 12px;
+}
+
+/* ---------- Status / toast ---------- */
+
+.ed-status {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.25s;
+  max-width: 70vw;
+  text-align: center;
+}
+
+.ed-status.show {
+  opacity: 1;
+}
+
+.ed-status.ok {
+  background: rgba(20, 83, 45, 0.92);
+}
+
+.ed-status.warn {
+  background: rgba(120, 53, 15, 0.92);
+}
+
+/* ---------- New-level dropdown menu ---------- */
+
+.ed-newmenu {
+  position: absolute;
+  top: 64px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  z-index: 30;
+}
+
+.ed-tour-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}

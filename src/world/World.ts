@@ -9,12 +9,34 @@ import { Sky } from './Sky';
 import { House, Whale, Bird, Cloud, Rainbow, Balloon } from './landmarks';
 import { Roads } from './Roads';
 import { Animal } from './Animals';
+import { ROAD_DEFS } from '../rails/roadDefs';
 import type { LevelConfig } from '../levels';
 import type { WorldModels } from '../assets';
 import type { Solid } from '../utils';
-import { rand, TAU } from '../utils';
+import { TAU } from '../utils';
+import { mulberry32 } from './valleyLayout';
+import {
+  type LevelData,
+  valleyLayoutFrom,
+  islandLayoutFrom,
+  mountainsLayoutFrom,
+  snowLayoutFrom,
+  desertLayoutFrom
+} from '../editor/levelData';
 
 type Terrain = Island | Mountains | Snow | Desert | Valley;
+
+// Deterministic seed for the decorative cloud scatter: the clouds used to be
+// placed with Math.random, which made every rebuild (e.g. the map editor's
+// world rebuilds) scatter them to new spots.
+function seedFromId(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 export class World {
   readonly ocean?: Ocean;
@@ -30,37 +52,63 @@ export class World {
   readonly solids: Solid[] = [];
   readonly roads?: Roads;
   readonly creatures: Animal[] = [];
+  /** Road control polylines actually rendered (procedural defs or LevelData). */
+  readonly roadDefs: [number, number][][];
 
   private tGlobal = 0;
 
-  constructor(config: LevelConfig, models: WorldModels = {}) {
+  constructor(config: LevelConfig, models: WorldModels = {}, data?: LevelData) {
+    // Data-driven levels (map editor / public/levels/*.json) pass a LevelData;
+    // the shipped levels keep their procedural build*Layout() as default.
+    this.roadDefs = data ? data.roads : ROAD_DEFS[config.worldType];
+
     if (config.worldType === 'mountains') {
-      const mountains = new Mountains({ grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+      const mountains = new Mountains(
+        { grass: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors },
+        models,
+        data ? mountainsLayoutFrom(data) : undefined
+      );
       this.terrain = mountains;
-      this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'mountains');
+      this.roads = new Roads((x, z) => this.terrainHeight(x, z), this.roadDefs);
       this.creatures.push(...mountains.animals);
     } else if (config.worldType === 'snow') {
-      const snow = new Snow({ ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors }, models);
+      const snow = new Snow(
+        { ground: config.groundColor, lake: config.oceanShallow, houseColors: config.houseColors },
+        models,
+        data ? snowLayoutFrom(data) : undefined
+      );
       this.terrain = snow;
-      this.roads = new Roads((x, z) => snow.terrainHeight(x, z), 'snow');
+      this.roads = new Roads((x, z) => snow.terrainHeight(x, z), this.roadDefs);
       this.creatures.push(...snow.animals);
     } else if (config.worldType === 'desert') {
-      const desert = new Desert({ ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors }, models);
+      const desert = new Desert(
+        { ground: config.groundColor, oasis: config.oceanShallow, houseColors: config.houseColors },
+        models,
+        data ? desertLayoutFrom(data) : undefined
+      );
       this.terrain = desert;
-      this.roads = new Roads((x, z) => desert.terrainHeight(x, z), 'desert');
+      this.roads = new Roads((x, z) => desert.terrainHeight(x, z), this.roadDefs);
       this.creatures.push(...desert.animals);
     } else if (config.worldType === 'valley') {
-      const valley = new Valley({ grass: config.groundColor, houseColors: config.houseColors }, models);
+      const valley = new Valley(
+        { grass: config.groundColor, houseColors: config.houseColors },
+        models,
+        data ? valleyLayoutFrom(data) : undefined
+      );
       this.terrain = valley;
-      this.roads = new Roads((x, z) => valley.terrainHeight(x, z), 'valley');
+      this.roads = new Roads((x, z) => valley.terrainHeight(x, z), this.roadDefs);
       this.creatures.push(...valley.animals);
     } else {
-      const island = new Island({ grass: config.groundColor, houseColors: config.houseColors }, models);
+      const island = new Island(
+        { grass: config.groundColor, houseColors: config.houseColors },
+        models,
+        data ? islandLayoutFrom(data) : undefined
+      );
       this.terrain = island;
       this.ocean = new Ocean({ deep: config.oceanDeep, shallow: config.oceanShallow });
       this.whale = new Whale(models.whale);
       this.whale.position.set(-88, -1.2, 56); // open sea, outside the beach ring
-      this.roads = new Roads((x, z) => this.terrainHeight(x, z), 'island');
+      this.roads = new Roads((x, z) => this.terrainHeight(x, z), this.roadDefs);
       this.creatures.push(...island.animals);
     }
 
@@ -80,11 +128,12 @@ export class World {
       this.birds.push(b);
     });
 
+    const cloudRng = mulberry32(seedFromId(config.id) ^ (config.cloudCount * 0x9e3779b9));
     for (let i = 0; i < config.cloudCount; i++) {
       const c = new Cloud(models.cloud ? models.cloud.clone() : undefined);
-      c.scale.setScalar(rand(0.9, 1.5));
-      c.rotation.y = rand(0, TAU);
-      c.position.set(rand(-70, 70), rand(12, 26), rand(-70, 70));
+      c.scale.setScalar(0.9 + cloudRng() * 0.6);
+      c.rotation.y = cloudRng() * TAU;
+      c.position.set(-70 + cloudRng() * 140, 12 + cloudRng() * 14, -70 + cloudRng() * 140);
       this.clouds.push(c);
     }
 
@@ -105,20 +154,20 @@ export class World {
     this.houses = this.terrain.houses;
     this.solids = this.terrain.solids;
 
-    // Every world places its own road network (kind matches the world's pure
-    // layout module) and its own animals, so there is no generic fallback.
+    // Every world places its own road network (procedural defs or the
+    // LevelData's roads) and its own animals, so there is no generic fallback.
   }
 
-  addToScene(scene: THREE.Scene): void {
-    scene.add(this.terrain, this.sky);
-    if (this.ocean) scene.add(this.ocean);
-    if (this.whale) scene.add(this.whale);
-    scene.add(this.rainbow);
-    this.birds.forEach((b) => scene.add(b));
-    this.clouds.forEach((c) => scene.add(c));
-    this.balloons.forEach((b) => scene.add(b));
-    this.creatures.forEach((c) => scene.add(c));
-    if (this.roads) scene.add(this.roads);
+  addToScene(parent: THREE.Object3D): void {
+    parent.add(this.terrain, this.sky);
+    if (this.ocean) parent.add(this.ocean);
+    if (this.whale) parent.add(this.whale);
+    parent.add(this.rainbow);
+    this.birds.forEach((b) => parent.add(b));
+    this.clouds.forEach((c) => parent.add(c));
+    this.balloons.forEach((b) => parent.add(b));
+    this.creatures.forEach((c) => parent.add(c));
+    if (this.roads) parent.add(this.roads);
   }
 
   terrainHeight(x: number, z: number): number {

@@ -24,9 +24,9 @@ export class Snow extends THREE.Group {
   // deterministic layout.
   private rng: () => number;
 
-  constructor(config: { ground?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
+  constructor(config: { ground?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}, layout?: SnowLayout) {
     super();
-    this.layout = buildSnowLayout();
+    this.layout = layout ?? buildSnowLayout();
     this.rng = mulberry32(SNOW_SEED + 1);
 
     const ground = config.ground ?? 0xf0f6fc;

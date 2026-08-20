@@ -10,3 +10,5 @@ _shots/
 .pw-browsers/
 *.blend1
 __pycache__/
+# Saves from the map editor (dev tooling) — ship levels via "Baixar JSON"
+public/levels/*.json

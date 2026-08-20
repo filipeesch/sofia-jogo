@@ -33,9 +33,9 @@ export class Mountains extends THREE.Group {
   // always come from the deterministic layout.
   private rng: () => number;
 
-  constructor(config: { grass?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
+  constructor(config: { grass?: number; lake?: number; houseColors?: number[] } = {}, models: WorldModels = {}, layout?: MountainsLayout) {
     super();
-    this.layout = buildMountainsLayout();
+    this.layout = layout ?? buildMountainsLayout();
     this.rng = mulberry32(MOUNTAIN_SEED + 1);
 
     const grass = config.grass ?? 0x6fc45c;

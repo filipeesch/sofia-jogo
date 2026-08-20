@@ -8,7 +8,6 @@ import {
   buildIslandLayout,
   islandTerrainHeight,
   ISLAND_HILLS,
-  ISLAND_LAGOON,
   ISLAND_LAGOON_FLOOR,
   ISLAND_PEAK,
   ISLAND_RADIUS,
@@ -38,9 +37,9 @@ export class Island extends THREE.Group {
   // positions always come from the deterministic layout.
   private rng: () => number;
 
-  constructor(config: { grass?: number; lagoon?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
+  constructor(config: { grass?: number; lagoon?: number; houseColors?: number[] } = {}, models: WorldModels = {}, layout?: IslandLayout) {
     super();
-    this.layout = buildIslandLayout();
+    this.layout = layout ?? buildIslandLayout();
     this.rng = mulberry32(ISLAND_SEED + 1);
 
     const grass = config.grass ?? 0x6fc45c;
@@ -87,14 +86,17 @@ export class Island extends THREE.Group {
     for (const m of this.layout.mountains) this.addMountain(m);
 
     // Lagoon (inland, flush with the flattened basin floor).
-    const lagoon = new THREE.Mesh(
-      new THREE.CircleGeometry(ISLAND_LAGOON.r + 0.6, 40),
-      new THREE.MeshStandardMaterial({ color: lagoonColor, roughness: 0.3 })
-    );
-    lagoon.rotation.x = -Math.PI / 2;
-    lagoon.position.set(ISLAND_LAGOON.x, ISLAND_LAGOON_FLOOR + 0.12, ISLAND_LAGOON.z);
-    lagoon.receiveShadow = true;
-    this.add(lagoon);
+    const lagoonDef = this.layout.waters[0];
+    if (lagoonDef) {
+      const lagoon = new THREE.Mesh(
+        new THREE.CircleGeometry(lagoonDef.r + 0.6, 40),
+        new THREE.MeshStandardMaterial({ color: lagoonColor, roughness: 0.3 })
+      );
+      lagoon.rotation.x = -Math.PI / 2;
+      lagoon.position.set(lagoonDef.x, ISLAND_LAGOON_FLOOR + 0.12, lagoonDef.z);
+      lagoon.receiveShadow = true;
+      this.add(lagoon);
+    }
 
     // ---- L2: anchors beside the roads (village, lagoon, farm, beach) ----
     for (const h of this.layout.houses) {

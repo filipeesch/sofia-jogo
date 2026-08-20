@@ -31,9 +31,9 @@ export class Desert extends THREE.Group {
   // come from the deterministic layout.
   private rng: () => number;
 
-  constructor(config: { ground?: number; oasis?: number; houseColors?: number[] } = {}, models: WorldModels = {}) {
+  constructor(config: { ground?: number; oasis?: number; houseColors?: number[] } = {}, models: WorldModels = {}, layout?: DesertLayout) {
     super();
-    this.layout = buildDesertLayout();
+    this.layout = layout ?? buildDesertLayout();
     this.rng = mulberry32(DESERT_SEED + 1);
 
     const ground = config.ground ?? 0xe8c98a;

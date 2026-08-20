@@ -13,13 +13,21 @@ import { Car } from './entities/Car';
 import { FlightController } from './controllers/FlightController';
 import { CarController } from './controllers/CarController';
 import { loadGLB, loadWorldModels } from './assets';
+import type { WorldModels } from './assets';
 import { LEVELS } from './levels';
-import type { LevelConfig } from './levels';
+import type { LevelConfig, WorldType } from './levels';
 import type { Vehicle, VehicleController } from './entities/Vehicle';
+import { EditorApp } from './editor/EditorApp';
+import {
+  layoutToLevelData,
+  resolveLevelData,
+  type LevelData
+} from './editor/levelData';
 
 const app = document.getElementById('app')!;
 let game: Game | null = null;
 let currentApp: { destroy: () => void } | null = null;
+let editor: EditorApp | null = null;
 
 const launcher = new Launcher([
   { id: 'aviao', emoji: '✈️', name: 'Avião', color: 'linear-gradient(135deg,#ffb74d,#ff8a65)', onOpen: () => openLevelSelect('airplane') },
@@ -28,7 +36,8 @@ const launcher = new Launcher([
   { id: 'bolhas', emoji: '🫧', name: 'Bolhas', color: 'linear-gradient(135deg,#4fc3f7,#0288d1)', onOpen: openBubbles },
   { id: 'sons', emoji: '🐶', name: 'Quebra-Cabeça', color: 'linear-gradient(135deg,#d1a6ff,#9c27b0)', onOpen: openAnimals },
   { id: 'veiculos', emoji: '🚕', name: 'Transportes', color: 'linear-gradient(135deg,#4fc3f7,#1565c0)', onOpen: openVehicles },
-  { id: 'frutas', emoji: '🍎', name: 'Frutas', color: 'linear-gradient(135deg,#aed581,#558b2f)', onOpen: openFruits }
+  { id: 'frutas', emoji: '🍎', name: 'Frutas', color: 'linear-gradient(135deg,#aed581,#558b2f)', onOpen: openFruits },
+  { id: 'editor', emoji: '🛠️', name: 'Editor', color: 'linear-gradient(135deg,#b0bec5,#546e7a)', onOpen: () => void openEditor() }
 ]);
 
 function clearAll(): void {
@@ -39,6 +48,10 @@ function clearAll(): void {
   if (currentApp) {
     currentApp.destroy();
     currentApp = null;
+  }
+  if (editor) {
+    editor.destroy();
+    editor = null;
   }
   document.getElementById('ui')!.innerHTML = '';
 }
@@ -85,8 +98,16 @@ function openFruits(): void {
   a.mount();
 }
 
-async function startLevel(id: string, vehicleType: 'airplane' | 'car'): Promise<void> {
+async function startLevel(
+  id: string,
+  vehicleType: 'airplane' | 'car',
+  dataOverride?: LevelData,
+  opts: { onExit?: () => void } = {}
+): Promise<void> {
   const level = LEVELS.find((l) => l.id === id) ?? LEVELS[0];
+  const data = dataOverride ?? (await resolveLevelData(id));
+  // Data-driven levels carry their own config (colors, music, …).
+  const cfg: LevelConfig = data ? data.level : level;
 
   let vehicle: Vehicle;
   let controller: VehicleController;
@@ -102,13 +123,62 @@ async function startLevel(id: string, vehicleType: 'airplane' | 'car'): Promise<
     controller = new CarController(c);
   }
 
-  const models = await loadWorldModels(level.worldType);
+  const models = await loadWorldModels(cfg.worldType);
   let ambientModel: import('three').Group | undefined;
   try { ambientModel = await loadGLB('models/aviao.glb'); } catch { ambientModel = undefined; }
 
-  game = new Game(app, level, vehicle, controller, models, ambientModel, vehicleType);
-  game.onExit = () => { game!.dispose(); game = null; launcher.show(); };
+  game = new Game(app, cfg, vehicle, controller, models, ambientModel, vehicleType, data ?? undefined);
+  game.onExit = () => {
+    const cb = opts.onExit ?? (() => launcher.show());
+    game!.dispose();
+    game = null;
+    cb();
+  };
   game.start();
+}
+
+// Map editor: loads the level data (saved overrides, or the procedural level
+// as a starting point), builds the editor and wires live mode back into the
+// real Game.
+// Live-mode callbacks shared by both editor entry points.
+function editorCallbacks(): {
+  onLive: (d: LevelData, vehicle: 'car' | 'airplane') => void;
+  onExit: () => void;
+  loadWorldModels: (wt: WorldType) => Promise<WorldModels>;
+} {
+  return {
+    onLive: (d, vehicle) => {
+      // Live mode IS the real game running on the editor's data; the in-game
+      // exit button comes back to the editor (same data object, no reload).
+      clearAll();
+      void startLevel(d.level.id, vehicle, d, {
+        onExit: () => void openEditorWithData(d)
+      });
+    },
+    onExit: () => {
+      clearAll();
+      launcher.show();
+    },
+    loadWorldModels: (wt) => loadWorldModels(wt)
+  };
+}
+
+async function openEditor(levelId?: string): Promise<void> {
+  clearAll();
+  const id = levelId ?? 'vale';
+  const data = (await resolveLevelData(id)) ?? layoutToLevelData(id);
+  const models = await loadWorldModels(data.level.worldType);
+  editor = new EditorApp(app, data, models, editorCallbacks());
+  editor.mount();
+}
+
+// Back from live mode: re-open the editor with the same working data (no
+// reload, no re-fetch).
+async function openEditorWithData(data: LevelData): Promise<void> {
+  clearAll();
+  const models = await loadWorldModels(data.level.worldType);
+  editor = new EditorApp(app, data, models, editorCallbacks());
+  editor.mount();
 }
 
 function resolveVehicle(level: LevelConfig, param: string | null): 'airplane' | 'car' {
@@ -118,6 +188,11 @@ function resolveVehicle(level: LevelConfig, param: string | null): 'airplane' | 
 
 function boot(): void {
   const params = new URLSearchParams(window.location.search);
+  // Map editor (?editor=1, optionally ?level=<id>).
+  if (params.has('editor')) {
+    void openEditor(params.get('level') ?? undefined);
+    return;
+  }
   const levelId = params.get('level');
   if (!levelId) {
     launcher.show();
