@@ -36,6 +36,7 @@ export class DebugCapture {
   }
 
   private pollTimer: number;
+  private overlay: HTMLElement | null = null;
 
   private async pollCommands(): Promise<void> {
     try {
@@ -89,8 +90,12 @@ export class DebugCapture {
 
   dispose(): void {
     window.clearInterval(this.pollTimer);
+    this.overlay?.remove();
+    this.overlay = null;
     this.sweepPoints = [];
     this.pendingSnap = null;
+    // O cursor de comandos (cmdCursor) é de módulo e mantém-se: um novo Game
+    // não pode re-executar os comandos antigos que ficaram na fila.
   }
 
   setView(px: number, py: number, pz: number, tx: number, ty: number, tz: number): void {
@@ -206,6 +211,7 @@ export class DebugCapture {
     btn('📸 Snap', () => this.snap());
     btn('🎥 10s', () => this.record(10));
     btn('▶ Chase', () => { this.chaseEnabled = true; this.sweepPoints = []; });
+    this.overlay = bar;
     document.body.append(bar);
   }
 }

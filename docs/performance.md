@@ -67,6 +67,43 @@ deserto, noite, valenoite).
   5 esferas em 1 geometria por nuvem (~10 draw calls).
 - **Céu**: 22 sprites de estrelas cintilantes → 1 THREE.Points.
 
+## Sair para o launcher: nada pode continuar a correr
+
+Sintoma reportado: às vezes, ao voltar ao launcher com o 🏠, ouvia-se a música
+do jogo e a app continuava a consumir recursos em segundo plano.
+
+Causa: abrir uma fase é async (JSON da fase + vários GLBs). Um toque duplo no
+cartão da fase — ou escolher outra fase enquanto a anterior ainda carregava —
+corria startLevel() duas vezes, e o Game criado primeiro ficava sem referência:
+o 🏠 só destruía o último. Cada órfão trazia o seu loop de render
+(setAnimationLoop), o seu AudioContext com a música procedural e um canvas em
+#app. Verificada com Playwright: 2, 3 e 4 jogos vivos ao mesmo tempo.
+
+Invariantes de hoje:
+
+1. navSeq (src/main.ts) — cada navegação incrementa o número; uma carga que
+   ficou para trás desiste antes de construir renderer e áudio.
+2. Game.live / Game.disposeAll() (src/core/Game.ts) — registo de todas as
+   instâncias vivas; clearAll() destrói todas, por isso nenhum órfão sobrevive
+   ao launcher mesmo que alguma corrida nova aconteça.
+3. Game.dispose() é idempotente e corta por cima: loop de render, música
+   (AudioManager.dispose() fecha o AudioContext, e ensure() recusa-se a
+   recriar um context já fechado) e forceContextLoss() do WebGL.
+4. O AudioContext partilhado dos sons gravados (src/ui/sfx.ts) não pertence a
+   nenhum ecrã: adormece com idleSfx() (chamado por clearAll()) e com o ecrã
+   bloqueado, e acorda sozinho quando alguém toca num som.
+5. Ecrã bloqueado / app em segundo plano: visibilitychange, freeze e pagehide
+   páram o loop, o cronómetro e a música — e o timer da música pára também,
+   para não andar a acordar a página.
+
+Verificação: node scripts/check-exit-cleanup.mjs abre o jogo num browser real
+e depois de cada saída (normal, toque duplo, troca rápida de fase, __loadLevel
+da ferramenta MCP, editor → Testar, Pintura/Bolhas/Quebra-Cabeça) confirma que
+#app fica vazio, que não fica nenhum Game vivo (window.__diag().games), que
+não fica nenhum AudioContext em 'running' e que nenhum canvas continua a
+mudar de pixels. Precisa do dev server (npm run dev); use GAME_URL se a porta
+não for a 5173.
+
 ## Nota
 
 O tsc --noEmit ainda aponta 14 erros de tipo, todos pré-existentes em

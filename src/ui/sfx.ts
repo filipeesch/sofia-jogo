@@ -1,21 +1,44 @@
 let ctx: AudioContext | null = null;
 
 export function audioCtx(): AudioContext | null {
-  if (ctx) return ctx;
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
-  } catch {
-    return null;
+  if (!ctx) {
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    } catch {
+      return null;
+    }
   }
+  // Pode estar adormecido por idleSfx() ou pelo ecrã bloqueado: quem pede o
+  // context quer ouvir alguma coisa, por isso acorda-o aqui, sem gestos.
+  if (ctx.state === 'suspended') void ctx.resume();
   return ctx;
+}
+
+// Este AudioContext é partilhado e vive para sempre (é a cache dos sons
+// gravados), por isso tem de saber adormecer. Sem isto, depois de voltar ao
+// launcher ficava um context 'running' a segurar o hardware de áudio — um dos
+// motivos por que a app parecida não fechar quando ia para o launcher.
+export function idleSfx(): void {
+  if (ctx && ctx.state === 'running') void ctx.suspend();
 }
 
 export function resume(): void {
   const c = audioCtx();
   if (c && c.state === 'suspended') void c.resume();
 }
+
+// Com o ecrã bloqueado ou a app em segundo plano nada pode sair pelos
+// altifalantes — nem sequer um context parado a acordar a página.
+document.addEventListener('visibilitychange', () => {
+  try {
+    if (document.visibilityState === 'hidden') idleSfx();
+    else if (ctx && ctx.state === 'suspended') void ctx.resume();
+  } catch {
+    // alguns navegadores não deixam suspender/resumir — não há nada a fazer
+  }
+});
 
 export function tone(freq: number, dur: number, type: OscillatorType = 'sine', vol = 0.2, glideTo?: number, delay = 0): void {
   const c = audioCtx();

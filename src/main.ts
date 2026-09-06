@@ -20,6 +20,8 @@ import { LEVELS } from './levels';
 import type { LevelConfig, WorldType } from './levels';
 import type { Vehicle, VehicleController } from './entities/Vehicle';
 import { EditorApp } from './editor/EditorApp';
+import { initSpeech, primeOnGesture } from './ui/speech';
+import { idleSfx } from './ui/sfx';
 import {
   layoutToLevelData,
   resolveLevelData,
@@ -30,6 +32,16 @@ const app = document.getElementById('app')!;
 let game: Game | null = null;
 let currentApp: { destroy: () => void } | null = null;
 let editor: EditorApp | null = null;
+
+// A abertura de ecrãs é async (JSON da fase + vários GLBs), por isso o toque
+// duplo num cartão de fase — ou escolher outra fase enquanto a anterior ainda
+// estava a carregar — chegava a criar dois Jogos. O launcher só conhecia o
+// último, pelo que o anterior ficava órfão: render + música a correr por trás
+// do launcher para sempre. «navSeq» é o número da navegação em curso: cada
+// navegação o incrementa, e uma carga que ficou para trás desiste antes de
+// construir renderer e áudio. «clearAll» destrói entretanto TODOS os Jogos
+// vivos, para que nada sobreviva à saída mesmo que a corrida aconteça.
+let navSeq = 0;
 
 const launcher = new Launcher([
   { id: 'aviao', emoji: '✈️', name: 'Avião', color: 'linear-gradient(135deg,#ffb74d,#ff8a65)', onOpen: () => openLevelSelect('airplane') },
@@ -45,10 +57,11 @@ const launcher = new Launcher([
 ]);
 
 function clearAll(): void {
-  if (game) {
-    game.dispose();
-    game = null;
-  }
+  navSeq++; // esta navegação passou a ser a anterior
+  // Todos os jogos vivos, não só o «actual»: um órfão de um carregamento
+  // corrido também tem de sair quando vamos para o launcher.
+  Game.disposeAll();
+  game = null;
   if (currentApp) {
     currentApp.destroy();
     currentApp = null;
@@ -57,6 +70,10 @@ function clearAll(): void {
     editor.destroy();
     editor = null;
   }
+  // O AudioContext partilhado dos sons gravados não pertence a nenhum ecrã,
+  // por isso é aqui que vai dormir: sem um jogo ou app aberto não pode haver
+  // áudio nenhum a segurar o hardware.
+  idleSfx();
   document.getElementById('ui')!.innerHTML = '';
 }
 
@@ -122,8 +139,10 @@ async function startLevel(
   dataOverride?: LevelData,
   opts: { onExit?: () => void } = {}
 ): Promise<void> {
+  const nav = ++navSeq; // esta carga é a actual até alguém navegar outra vez
   const level = LEVELS.find((l) => l.id === id) ?? LEVELS[0];
   const data = dataOverride ?? (await resolveLevelData(id));
+  if (nav !== navSeq) return; // entretanto fomos para outro ecrã
   // Data-driven levels carry their own config (colors, music, …).
   const cfg: LevelConfig = data ? data.level : level;
 
@@ -145,11 +164,16 @@ async function startLevel(
   let ambientModel: import('three').Group | undefined;
   try { ambientModel = await loadGLB('models/aviao.glb'); } catch { ambientModel = undefined; }
 
+  // Última porta antes de abrir o ecrã: se à nossa frente já foi escolhido
+  // outro ecrã (toque duplo, outra fase, 🏠), este jogo nunca seria mostrado e
+  // nunca mais seria destruído — os GLBs carregados ficam simplesmente para
+  // trás e são recolhidos pelo GC.
+  if (nav !== navSeq) return;
+
   game = new Game(app, cfg, vehicle, controller, models, ambientModel, vehicleType, data ?? undefined);
   game.onExit = () => {
     const cb = opts.onExit ?? (() => launcher.show());
-    game!.dispose();
-    game = null;
+    clearAll(); // não só este jogo: também qualquer órfão
     cb();
   };
   game.start();
@@ -183,18 +207,24 @@ function editorCallbacks(): {
 
 async function openEditor(levelId?: string): Promise<void> {
   clearAll();
+  const nav = navSeq; // mesmo cuidado que startLevel: isto tem awaits pelo meio
   const id = levelId ?? 'vale';
   const data = (await resolveLevelData(id)) ?? layoutToLevelData(id);
   const models = await loadWorldModels(data.level.worldType);
+  if (nav !== navSeq) return;
   editor = new EditorApp(app, data, models, editorCallbacks());
   editor.mount();
 }
 
 // Back from live mode: re-open the editor with the same working data (no
 // reload, no re-fetch).
+// O editor é síncrono a partir daqui, mas o carregamento dos modelos não é:
+// um toque duplo no botão «Ao vivo» também tinha de ser apanhado.
 async function openEditorWithData(data: LevelData): Promise<void> {
   clearAll();
+  const nav = navSeq;
   const models = await loadWorldModels(data.level.worldType);
+  if (nav !== navSeq) return;
   editor = new EditorApp(app, data, models, editorCallbacks());
   editor.mount();
 }
@@ -233,10 +263,25 @@ function boot(): void {
   void startLevel(level.id, vt);
 };
 
+// Gancho de diagnóstico para os testes (scripts/check-exit-cleanup.mjs): sem
+// isto, provar que não ficou nenhum jogo por trás do launcher era contar
+// canvases.
+(window as unknown as Record<string, unknown>).__diag = () => ({
+  games: Game.liveCount,
+  app: currentApp !== null,
+  editor: editor !== null
+});
+
 // Android/Chrome: a long-press (or right-click) would open the browser's
 // context menu over the game — that never helps a toddler, so block it
 // everywhere (puzzle, paint, bubbles, 3D levels, launcher).
 document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// iOS only lets a page speak after a user gesture, and it drops the first
+// attempt silently. Spend the first tap on a silent utterance to unlock the
+// rest of the session (see src/ui/speech.ts).
+initSpeech();
+primeOnGesture();
 
 boot();
 

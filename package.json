@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "shots": "node scripts/capture-server.mjs",
-    "game": "node scripts/launch-game.mjs"
+    "game": "node scripts/launch-game.mjs",
+    "check:exit": "node scripts/check-exit-cleanup.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"

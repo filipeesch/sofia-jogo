@@ -2,6 +2,11 @@
 export class AudioManager {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  // Depois de dispose() nada pode voltar a criar um AudioContext: um callback
+  // atrasado (som de bicho, colecionável, resume de um evento já removido)
+  // recriaria o context com o motor do veículo ligado, e o jogo continuava a
+  // tocar depois de ter saído para o launcher.
+  private closed = false;
   private engine: { osc: OscillatorNode; lfo: OscillatorNode } | null = null;
   muted = false;
   private musicTimer: number | null = null;
@@ -9,6 +14,7 @@ export class AudioManager {
   private musicStep = 0;
 
   private ensure(): AudioContext | null {
+    if (this.closed) return null;
     if (this.ctx) return this.ctx;
     try {
       const AC: typeof AudioContext | undefined =
@@ -36,7 +42,11 @@ export class AudioManager {
   // suspended, so the music resumes exactly where it stopped.
   suspend(): void {
     const ctx = this.ctx;
-    if (ctx && ctx.state === 'running') void ctx.suspend();
+    if (!ctx || ctx.state !== 'running') return;
+    void ctx.suspend();
+    // Para de agendar notas: com o context suspenso nada é reproduzido, mas o
+    // timer continuava a acordar a página em segundo plano.
+    this.stopMusic();
   }
 
   toggle(): boolean {
@@ -320,6 +330,7 @@ export class AudioManager {
   }
 
   dispose(): void {
+    this.closed = true;
     this.stopMusic();
     if (this.engine) {
       try {

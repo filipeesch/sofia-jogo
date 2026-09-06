@@ -63,6 +63,25 @@ function collectMaterialTextures(material: THREE.Material, out: Set<THREE.Textur
 export class Game {
   onExit?: () => void;
 
+  // Registo de todas as instâncias vivas. O launcher só conhece o jogo
+  // «actual», mas os ecrãs abrem-se por caminhos async (carregar JSON + GLBs):
+  // um toque duplo no cartão da fase, ou escolher outra fase enquanto a
+  // anterior ainda carregava, criava um segundo Game de que ninguém guardava
+  // referência. Esse órfão ficava com o loop de render e a música a correr
+  // depois de voltar ao launcher — era o «o jogo não fecha, ouve-se a
+  // música». disposeAll() é a rede de segurança: destrói todos os vivos.
+  private static readonly live = new Set<Game>();
+
+  /** Nº de jogos vivos — usado pelo teste de regressão de saída. */
+  static get liveCount(): number {
+    return Game.live.size;
+  }
+
+  /** Destroi todos os jogos vivos, incluindo os órfãos de carregamentos corridos. */
+  static disposeAll(): void {
+    for (const g of Array.from(Game.live)) g.dispose();
+  }
+
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
@@ -118,6 +137,7 @@ export class Game {
   private readonly railScratch = new THREE.Vector3();
 
   constructor(container: HTMLElement, level: LevelConfig, vehicle: Vehicle, controller: VehicleController, models: WorldModels = {}, ambientModel?: THREE.Group, vehicleType: 'airplane' | 'car' = 'airplane', data?: LevelData) {
+    Game.live.add(this);
     this.vehicle = vehicle;
     this.controller = controller;
     this.vehicleType = vehicleType;
@@ -694,8 +714,16 @@ export class Game {
   }
 
   dispose(): void {
+    // Idempotente: o launcher passa a chamar disposeAll(), que pode apanhar um
+    // jogo já destruído pelo seu próprio botão de saída.
+    if (this.disposed) return;
     this.disposed = true;
+    Game.live.delete(this);
+    // Corta logo tudo o que pode continuar sozinho depois daqui: o loop de
+    // render e a música (fechar o AudioContext é o que garante que o tema do
+    // nível não fica a tocar por cima do launcher).
     this.renderer.setAnimationLoop(null);
+    this.audio.dispose();
     this.debugCapture?.dispose();
 
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
@@ -731,7 +759,6 @@ export class Game {
     });
     textures.forEach((t) => t.dispose());
 
-    this.audio.dispose();
     this.renderer.dispose();
     // Deterministically release the WebGL context: each Game creates its own
     // renderer/context, so without this the browser keeps old contexts alive
