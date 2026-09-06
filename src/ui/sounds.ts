@@ -47,18 +47,26 @@ export function isSoundLoaded(url: string): boolean {
   return buffers.has(url);
 }
 
-export function playSound(url: string, fallback: () => void, volume = 1): void {
+/**
+ * Plays a cached recording. 'fallback' runs when the file never loaded (offline,
+ * 404, decode failure) and 'onEnd' when playback finishes - the caller needs
+ * the end to chain things (say the name, THEN the animal sound).
+ */
+export function playSound(url: string, fallback: () => void, volume = 1, onEnd?: () => void): void {
   const c = audioCtx();
   const buf = c ? buffers.get(url) : undefined;
   if (!c || !buf) {
     fallback();
     return;
   }
+  // The context may have been parked (iOS 'interrupted') since the last play.
+  if (c.state !== 'running') void c.resume().catch(() => { /* muted, nothing to do */ });
   const src = c.createBufferSource();
   src.buffer = buf;
   const gain = c.createGain();
   gain.gain.value = volume;
   src.connect(gain);
   gain.connect(c.destination);
+  src.onended = () => { if (onEnd) onEnd(); };
   src.start();
 }

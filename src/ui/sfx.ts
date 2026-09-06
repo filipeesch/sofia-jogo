@@ -24,9 +24,11 @@ export function idleSfx(): void {
   if (ctx && ctx.state === 'running') void ctx.suspend();
 }
 
+// iOS parks the context in 'interrupted' after a phone call, the silent
+// switch or a tab switch - 'suspended' alone is not enough there.
 export function resume(): void {
   const c = audioCtx();
-  if (c && c.state === 'suspended') void c.resume();
+  if (c && c.state !== 'running') void c.resume().catch(() => { /* still locked */ });
 }
 
 // Com o ecrã bloqueado ou a app em segundo plano nada pode sair pelos
