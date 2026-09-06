@@ -20,7 +20,18 @@ Sem game over, sem vidas, sem dano — não existe jeito de jogar errado.
 - Avião e objetos dos mundos modelados no Blender (`public/models/*.glb`), com
   fallback procedural automático se o GLB não carregar
 
+## Mini-jogos
+
+Além do avião há pintura, bolhas de sabão e quebra-cabeças (animais, transportes,
+frutas, números e letras). As peças ocupam sempre o ecrã todo — do iPhone SE ao
+iPad, na vertical e na horizontal — sem nunca ficar nada escondido por baixo da
+borda, e cada peça é lida em voz alta quando a criança a coloca.
+
+Como funciona essa voz (e por que razão os nomes das letras estão escritos daquela
+forma tão específica) está explicado em [docs/voz-pt.md](docs/voz-pt.md).
+
 ## Como executar
+
 
     npm install        # instala dependências
     npm run dev        # servidor de desenvolvimento (http://localhost:5173)
