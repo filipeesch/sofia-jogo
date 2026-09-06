@@ -10,7 +10,7 @@ const BASE: Omit<PuzzleItem, 'speak'>[] = [
   { emoji: '🍉', name: 'Melancia' },
   { emoji: '🍇', name: 'Uva' },
   { emoji: '🍓', name: 'Morango' },
-  { emoji: '🍍', name: 'Ananas' },
+  { emoji: '🍍', name: 'Ananás' }, // pt-PT (pt-BR: abacaxi); the accent is what makes a voice say a-NAS
   { emoji: '🥭', name: 'Manga' },
   { emoji: '🍐', name: 'Pera' },
   { emoji: '🍒', name: 'Cereja' },

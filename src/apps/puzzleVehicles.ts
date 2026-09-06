@@ -28,7 +28,7 @@ const BASE: Omit<PuzzleItem, 'speak' | 'soundAfter'>[] = [
   { emoji: '🚓', name: 'Polícia', sound: policeSiren, file: 'sounds/police.mp3' },
   { emoji: '🚑', name: 'Ambulância', sound: ambulanceSiren, file: 'sounds/ambulance.wav' },
   { emoji: '🚒', name: 'Bombeiro', sound: fireSiren, file: 'sounds/fire-truck.mp3' },
-  { emoji: '🚛', name: 'Caminhão', sound: truckHorn, file: 'sounds/truck.mp3' },
+  { emoji: '🚛', name: 'Camião', sound: truckHorn, file: 'sounds/truck.mp3' }, // Caminhão = pt-BR
   { emoji: '🚌', name: 'Autocarro', sound: busHorn, file: 'sounds/bus.mp3' },
   { emoji: '🚲', name: 'Bicicleta', sound: bikeBell, file: 'sounds/bike.mp3' },
   { emoji: '🏍️', name: 'Mota', sound: motorcycleRev, file: 'sounds/motorcycle.mp3' },
