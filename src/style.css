@@ -134,6 +134,8 @@ canvas {
   pointer-events: auto;
   position: fixed;
   inset: 0;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -218,6 +220,8 @@ canvas {
 .launcher {
   position: fixed;
   inset: 0;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -272,6 +276,9 @@ canvas {
 .paint {
   position: fixed;
   inset: 0;
+  /* same iOS Safari fix as .animals: keep the bottom toolbar visible above the browser bar */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -410,41 +417,107 @@ canvas {
 
 /* ---------- Bubbles app ---------- */
 
-.bubbles { position: fixed; inset: 0; overflow: hidden; background: radial-gradient(120% 120% at 50% 30%, #c9ecff 0%, #7cc8f8 60%, #4aa8e8 100%); }
+.bubbles { position: fixed; inset: 0; height: 100vh; height: 100dvh; overflow: hidden; background: radial-gradient(120% 120% at 50% 30%, #c9ecff 0%, #7cc8f8 60%, #4aa8e8 100%); }
 .bubble { position: absolute; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(160,220,255,0.35) 60%, rgba(120,190,255,0.15)); border: 2px solid rgba(255,255,255,0.6); pointer-events: auto; cursor: pointer; }
 .bubble.pop { animation: bubblepop 0.2s ease forwards; }
 @keyframes bubblepop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
 
-/* ---------- Animals app ---------- */
+/* ---------- Puzzle apps (animals, vehicles, fruits, numbers, letters) ------- */
 
-.animals { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; box-sizing: border-box; background: linear-gradient(180deg, #eafbe3 0%, #cdeff0 100%); }
-.animals-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; max-width: 760px; }
-.animal-card { pointer-events: auto; border: none; cursor: pointer; border-radius: 24px; width: clamp(120px, 24vw, 160px); height: clamp(120px, 24vw, 160px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
-.animal-card:active { transform: scale(0.9); }
-.animal-card .emoji { font-size: 56px; line-height: 1; }
-.animal-card .name { font-size: 17px; font-weight: 800; color: #34506b; }
-.back-btn { position: absolute; top: 14px; left: 14px; }
+/* One full-screen column: header on top, then the "stage" (board, "Jogar de
+   novo" pill, tray). The stage is the box src/apps/puzzleLayout.ts measures,
+   so the piece size always comes from the space that is really left: a big
+   screen gets big pieces, a short phone gets small ones - and nothing ever
+   runs past the bottom edge (the body does not scroll, so before this the
+   last rows of a 26-letter tray were simply unreachable).
 
-@keyframes floatUp {
-  from { transform: translateY(0); }
-  to { transform: translateY(-130vh); }
+   height: 100dvh matters on iOS Safari: a fixed layer sized with inset:0 or
+   100vh is as tall as the LARGEST viewport, so the bottom of the app (the
+   tray!) sat behind the URL/toolbar. dvh follows the visible one. */
+.animals {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(10px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
+  background: linear-gradient(180deg, #eafbe3 0%, #cdeff0 100%);
+  overflow: hidden;
+  pointer-events: auto;
+
+  /* Overwritten by PuzzleApp.fitLayout() on every resize; these only cover
+     the first frame before the first measurement. */
+  --slot: 72px;
+  --piece: 59px;
+  --gap: 10px;
+  --cols: 4;
+  --rows: 3;
+  --tray-cols: 5;
+  --tray-rows: 3;
 }
 
-/* ---------- Animals puzzle app ---------- */
+.puzzle-head {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
 
+/* The back button lives in the header instead of floating over the app, so it
+   can never sit on top of the title (or of the top row of the board) on short
+   and landscape screens. */
+.animals .back-btn {
+  position: static;
+  width: clamp(42px, 9vmin, 66px);
+  height: clamp(42px, 9vmin, 66px);
+  font-size: clamp(20px, 4.6vmin, 32px);
+}
+
+.puzzle-title {
+  margin: 0;
+  font-size: clamp(17px, 4.4vmin, 40px);
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  line-height: 1.15;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  letter-spacing: 0.5px;
+}
+
+/* Empty column as wide as the back button, so the title stays centred. */
+.puzzle-head-space { width: clamp(42px, 9vmin, 66px); }
+
+.puzzle-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+  overflow: hidden;
+}
+
+/* Board: the silhouette grid, as big as the stage allows. */
 .puzzle-board {
   display: grid;
-  grid-template-columns: repeat(4, auto); /* AnimalsApp sets 4 (12 items) or 5 (13+) inline */
-  gap: 10px;
-  justify-content: center;
-  max-width: 520px;
+  grid-template-columns: repeat(var(--cols), var(--slot));
+  grid-template-rows: repeat(var(--rows), var(--slot));
+  gap: var(--gap);
 }
 
 .puzzle-slot {
   position: relative;
-  width: clamp(60px, 13vw, 84px);
-  height: clamp(60px, 13vw, 84px);
-  border-radius: 24px;
+  width: var(--slot);
+  height: var(--slot);
+  border-radius: calc(var(--slot) * 0.26);
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 3px rgba(52, 80, 107, 0.14);
   display: flex;
@@ -454,7 +527,7 @@ canvas {
 }
 
 .puzzle-ghost {
-  font-size: clamp(38px, 9vw, 58px);
+  font-size: calc(var(--slot) * 0.62);
   line-height: 1;
   filter: grayscale(1);
   opacity: 0.28;
@@ -472,10 +545,10 @@ canvas {
   pointer-events: auto;
   border: none;
   cursor: grab;
-  border-radius: 20px;
-  width: clamp(56px, 13vw, 72px);
-  height: clamp(56px, 13vw, 72px);
-  font-size: clamp(34px, 8vw, 48px);
+  border-radius: calc(var(--piece) * 0.28);
+  width: var(--piece);
+  height: var(--piece);
+  font-size: calc(var(--piece) * 0.66);
   line-height: 1;
   background: #fff;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
@@ -491,28 +564,50 @@ canvas {
 
 .puzzle-piece.held { opacity: 0; }
 
+/* A placed piece grows into its slot: the emoji ends up exactly the size of
+   the silhouette it replaces. */
 .puzzle-piece.placed {
+  width: 100%;
+  height: 100%;
+  font-size: calc(var(--slot) * 0.62);
+  border-radius: calc(var(--slot) * 0.26);
   cursor: default;
   background: transparent;
   box-shadow: none;
 }
 
+/* Tray: a fixed grid (one cell per piece, assigned in JS), so taking a piece
+   out of the tray to place it never slides the others sideways. The panel
+   keeps its full height for the same reason. */
 .puzzle-tray {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  max-width: 520px;
-  min-height: clamp(56px, 13vw, 72px);
+  display: grid;
+  grid-template-columns: repeat(var(--tray-cols), var(--piece));
+  grid-template-rows: repeat(var(--tray-rows), var(--piece));
+  gap: var(--gap);
+  padding: var(--gap);
+  background: rgba(255, 255, 255, 0.42);
+  border-radius: calc(var(--slot) * 0.3);
+  box-shadow: inset 0 3px 14px rgba(52, 80, 107, 0.1);
 }
 
-/* The floating copy that follows the pointer while dragging. */
+/* Overlay for the drag clone, stars and confetti. Fixed to the viewport, so
+   the clientX/clientY the effects are positioned with are literally right. */
+.puzzle-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 20;
+}
+
+/* The floating copy that follows the pointer while dragging: same glyph size
+   as the silhouette it is aiming at. */
 .puzzle-drag {
   position: absolute;
   left: 0;
   top: 0;
   transform: translate(-50%, -50%) scale(1.12);
-  font-size: clamp(40px, 9.5vw, 56px);
+  font-size: calc(var(--slot) * 0.62);
   line-height: 1;
   pointer-events: none;
   z-index: 50;
@@ -523,7 +618,7 @@ canvas {
 /* Small star burst around a just-filled slot. */
 .puzzle-star {
   position: absolute;
-  font-size: 20px;
+  font-size: clamp(12px, calc(var(--slot) * 0.3), 28px);
   line-height: 1;
   pointer-events: none;
   z-index: 40;
@@ -562,8 +657,8 @@ canvas {
   pointer-events: auto;
   border: none;
   border-radius: 999px;
-  padding: 10px 24px;
-  font-size: 18px;
+  padding: calc(var(--gap) * 0.9) calc(var(--gap) * 2.4);
+  font-size: clamp(14px, 2.6vmin, 22px);
   font-weight: 800;
   color: #fff;
   background: linear-gradient(135deg, #ffb74d, #ff8a65);
@@ -575,5 +670,47 @@ canvas {
 .puzzle-again.visible { visibility: visible; }
 .puzzle-again:active { transform: scale(0.94); }
 
-/* 12 animals need a tighter vertical rhythm to fit small screens. */
-.animals { gap: 14px; }
+/* Floating back button for the other apps (bubbles). */
+.back-btn { position: absolute; top: 14px; left: 14px; }
+
+/* ---------- "Sem som?" hint (shown by src/ui/speech.ts) ------------------ */
+
+/* Only shown on iOS, once per session, after two silent speech attempts:
+   the ring/silent switch and the media volume are invisible to a web page,
+   and they silence speech AND Web Audio - so the parent has to check them. */
+.sound-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(34, 64, 92, 0.95);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.35;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.sound-hint-text { flex: 1; }
+
+.sound-hint-close {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+

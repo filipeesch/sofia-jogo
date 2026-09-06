@@ -1,6 +1,7 @@
 import { thump, ding, win, resume } from '../ui/sfx';
 import { preloadSound, playSound } from '../ui/sounds';
 import { speakName } from '../ui/speech';
+import { solvePuzzleFit, type PuzzleFit } from './puzzleLayout';
 
 // One puzzle item: emoji face, pt-PT name, optional procedural fallback
 // sound and optional real recording (public/sounds/, mp3 or wav).
@@ -8,10 +9,10 @@ import { speakName } from '../ui/speech';
 // 'spoken' overrides the spoken form of the name ('name' stays the display).
 //
 // Audio behaviour (kid-friendly, set per puzzle):
-//   speak      – say the item's name out loud (Web Speech API, pt-PT)
-//   soundAfter – play the item's recorded sound *after* the name finishes
+//   speak      - say the item's name out loud (pt-PT)
+//   soundAfter - play the item's recorded sound *after* the name finishes
 // Animals: name + animal sound. Vehicles: name + vehicle sound.
-// Fruits: name only.
+// Fruits/numbers/letters: name only.
 export interface PuzzleItem {
   emoji: string;
   name: string;
@@ -39,9 +40,15 @@ const TAP_THRESHOLD = 10;
 // Generic drag-and-drop matching puzzle: drag each piece from the tray onto
 // its silhouette slot; the item's sound plays only when it snaps into place.
 // No score, no timer, no fail state (kid-friendly: there is no way to lose).
-// Shared by the animals puzzle and the vehicles puzzle.
+// Shared by the animals, vehicles, fruits, numbers and letters puzzles.
+//
+// The whole board is sized to the screen at runtime (puzzleLayout.ts) so that
+// every piece is reachable on a phone AND the screen is used on a tablet.
 export class PuzzleApp {
   private root: HTMLDivElement;
+  private head: HTMLDivElement;
+  private stage: HTMLDivElement;
+  private fx: HTMLDivElement;
   private board: HTMLDivElement;
   private tray: HTMLDivElement;
   private againBtn: HTMLButtonElement;
@@ -50,18 +57,37 @@ export class PuzzleApp {
   private filled = 0;
   private drag: { piece: HTMLButtonElement; clone: HTMLDivElement; startX: number; startY: number; moved: boolean } | null = null;
   private timeouts: number[] = [];
+  private fit: PuzzleFit | null = null;
+  private ro: ResizeObserver | null = null;
+  private raf = 0;
 
   constructor(private opts: PuzzleOptions) {
     this.root = document.createElement('div');
     this.root.className = 'animals';
 
+    // Header: back button, title, and an invisible spacer the width of the
+    // back button so the title stays optically centred.
+    this.head = document.createElement('div');
+    this.head.className = 'puzzle-head';
+
+    const back = document.createElement('button');
+    back.className = 'btn back-btn';
+    back.textContent = '🏠';
+    back.setAttribute('aria-label', 'Voltar');
+    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.opts.onBack(); });
+
     const title = document.createElement('h1');
-    title.className = 'launcher-title';
+    title.className = 'puzzle-title';
     title.textContent = opts.title;
+
+    const spacer = document.createElement('span');
+    spacer.className = 'puzzle-head-space';
+    spacer.setAttribute('aria-hidden', 'true');
+
+    this.head.append(back, title, spacer);
 
     this.board = document.createElement('div');
     this.board.className = 'puzzle-board';
-    this.board.style.gridTemplateColumns = 'repeat(' + (opts.items.length > 12 ? 5 : 4) + ', auto)';
     this.board.setAttribute('aria-label', 'Quadro do quebra-cabeça');
     for (const a of opts.items) {
       const slot = document.createElement('div');
@@ -100,13 +126,19 @@ export class PuzzleApp {
     this.againBtn.setAttribute('aria-label', 'Jogar de novo');
     this.againBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.playAgain(); });
 
-    const back = document.createElement('button');
-    back.className = 'btn back-btn';
-    back.textContent = '🏠';
-    back.setAttribute('aria-label', 'Voltar');
-    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.opts.onBack(); });
+    // Board + pill + tray: the box the layout solver fits the pieces into.
+    this.stage = document.createElement('div');
+    this.stage.className = 'puzzle-stage';
+    this.stage.append(this.board, this.againBtn, this.tray);
 
-    this.root.append(title, this.board, this.againBtn, this.tray, back);
+    // Overlay for the dragging clone, stars and confetti. It is fixed to the
+    // viewport (not padded like the root), so the pointer coordinates the
+    // effects are positioned with are the ones the browser gave us.
+    this.fx = document.createElement('div');
+    this.fx.className = 'puzzle-fx';
+    this.fx.setAttribute('aria-hidden', 'true');
+
+    this.root.append(this.head, this.stage, this.fx);
     this.shuffleSlots();
     this.shuffleTray();
   }
@@ -118,13 +150,97 @@ export class PuzzleApp {
     for (const a of this.opts.items) {
       if (a.file) void preloadSound(a.file, a.maxDur);
     }
+    this.fitLayout();
+    this.observeViewport();
+    // Fonts, the iOS URL bar and the virtual keyboard all settle a moment
+    // after the first paint - re-fit once the frame is on screen.
+    this.scheduleFit();
+    window.setTimeout(() => this.scheduleFit(), 350);
   }
 
   destroy(): void {
     for (const t of this.timeouts) clearTimeout(t);
     this.timeouts = [];
+    this.stopObserving();
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = 0;
     this.root.remove();
   }
+
+  // ---- fitting the puzzle to the screen -------------------------------
+
+  /** Measure the stage and hand every size to the CSS as custom properties. */
+  private fitLayout(): void {
+    const r = this.stage.getBoundingClientRect();
+    if (r.width < 40 || r.height < 40) return;
+    // The "Jogar de novo" pill is reserved from the start (visibility, not
+    // display) so showing it never moves the board under the child's finger.
+    const chrome = this.againBtn.offsetHeight;
+    const fit = solvePuzzleFit(this.opts.items.length, { w: r.width, h: r.height - chrome });
+    if (!fit) return;
+    this.fit = fit;
+    const s = this.root.style;
+    s.setProperty('--slot', fit.slot + 'px');
+    s.setProperty('--piece', fit.piece + 'px');
+    s.setProperty('--gap', fit.gap + 'px');
+    s.setProperty('--cols', String(fit.cols));
+    s.setProperty('--rows', String(fit.rows));
+    s.setProperty('--tray-cols', String(fit.trayCols));
+    s.setProperty('--tray-rows', String(fit.trayRows));
+    this.root.dataset.fit =
+      'board ' + fit.cols + 'x' + fit.rows + ' tray ' + fit.trayCols + 'x' + fit.trayRows + ' slot ' + fit.slot + ' piece ' + fit.piece + ' gap ' + fit.gap;
+    this.assignTrayCells();
+  }
+
+  // Each tray piece gets a fixed grid cell, so taking one piece away (when it
+  // is placed) never slides the others around: the pieces a child is aiming
+  // at stay exactly where she left them.
+  private assignTrayCells(): void {
+    const cols = this.fit ? this.fit.trayCols : Math.max(1, this.pieces.length);
+    Array.from(this.tray.children).forEach((el, i) => {
+      const e = el as HTMLElement;
+      e.style.gridRowStart = String(Math.floor(i / cols) + 1);
+      e.style.gridColumnStart = String((i % cols) + 1);
+    });
+  }
+
+  private handleResize = (): void => {
+    this.scheduleFit();
+  };
+
+  private scheduleFit(): void {
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = requestAnimationFrame(() => {
+      this.raf = 0;
+      this.fitLayout();
+    });
+  }
+
+  private observeViewport(): void {
+    window.addEventListener('resize', this.handleResize);
+    window.addEventListener('orientationchange', this.handleResize);
+    // iOS Safari: the URL/toolbar showing or hiding changes the visible
+    // height and does not always fire window.resize.
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener('resize', this.handleResize);
+    if (typeof ResizeObserver !== 'undefined') {
+      this.ro = new ResizeObserver(this.handleResize);
+      this.ro.observe(this.root);
+    }
+  }
+
+  private stopObserving(): void {
+    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('orientationchange', this.handleResize);
+    const vv = window.visualViewport;
+    if (vv) vv.removeEventListener('resize', this.handleResize);
+    if (this.ro) {
+      this.ro.disconnect();
+      this.ro = null;
+    }
+  }
+
+  // ---- shuffling ------------------------------------------------------
 
   // Fisher-Yates shuffle of the TRAY pieces; repeats until the resulting
   // order visibly differs from the current one (kids notice when
@@ -136,10 +252,11 @@ export class PuzzleApp {
       order = this.fisherYates(this.pieces);
     }
     for (const p of order) this.tray.append(p);
+    this.assignTrayCells();
   }
 
   // Fisher-Yates shuffle of the BOARD SLOTS: the top grid (where pieces snap
-  // in) is rearranged too, so the silhouettes are never in a fixed order —
+  // in) is rearranged too, so the silhouettes are never in a fixed order -
   // each round the kid has to scan the whole board to find each home.
   private shuffleSlots(): void {
     const current = this.slots.map((s) => s.dataset.animal).join('|');
@@ -159,6 +276,8 @@ export class PuzzleApp {
     return order;
   }
 
+  // ---- dragging -------------------------------------------------------
+
   private startDrag(e: PointerEvent, piece: HTMLButtonElement): void {
     if (piece.classList.contains('placed') || this.drag) return;
     e.preventDefault();
@@ -167,7 +286,7 @@ export class PuzzleApp {
     const clone = document.createElement('div');
     clone.className = 'puzzle-drag';
     clone.textContent = piece.textContent!;
-    this.root.append(clone);
+    this.fx.append(clone);
     this.positionClone(clone, e.clientX, e.clientY);
     piece.classList.add('held');
     this.drag = { piece, clone, startX: e.clientX, startY: e.clientY, moved: false };
@@ -191,7 +310,7 @@ export class PuzzleApp {
       return;
     }
     // Simplified rule: snap if the drop point is close to the piece's OWN
-    // slot — no "nearest slot" comparison, so an adjacent slot can never
+    // slot - no "nearest slot" comparison, so an adjacent slot can never
     // steal a nearly-correct drop.
     const slot = this.slots.find((s) => s.dataset.animal === piece.dataset.animal)!;
     const r = slot.getBoundingClientRect();
@@ -231,11 +350,11 @@ export class PuzzleApp {
   }
 
   // Item audio when a piece snaps in:
-  //   - 'speak':      the name is said out loud in pt-PT (Web Speech API);
-  //                   'spoken' (when set) overrides the spoken form
+  //   - 'speak':      the name is said out loud in pt-PT; 'spoken' (when set)
+  //                   overrides the spoken form
   //   - 'soundAfter': the recorded sound plays right after the name ends
   // Animals: name + animal sound. Vehicles: name + vehicle sound.
-  // Fruits: name only.
+  // Fruits/numbers/letters: name only.
   private playItemSound(a: PuzzleItem): void {
     const playFile = (): void => {
       if (a.file) playSound(a.file, () => { a.sound?.(); });
@@ -274,6 +393,8 @@ export class PuzzleApp {
     this.timeouts.push(t);
   }
 
+  // ---- celebration ----------------------------------------------------
+
   private starburst(slot: HTMLDivElement): void {
     const r = slot.getBoundingClientRect();
     for (let i = 0; i < 7; i++) {
@@ -286,7 +407,7 @@ export class PuzzleApp {
       s.style.top = r.top + r.height / 2 + 'px';
       s.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
       s.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
-      this.root.append(s);
+      this.fx.append(s);
       const t = window.setTimeout(() => s.remove(), 750);
       this.timeouts.push(t);
     }
@@ -303,7 +424,7 @@ export class PuzzleApp {
       s.style.left = Math.random() * 100 + '%';
       s.style.fontSize = 16 + Math.random() * 20 + 'px';
       s.style.animationDelay = Math.random() * 0.5 + 's';
-      this.root.append(s);
+      this.fx.append(s);
       const t = window.setTimeout(() => s.remove(), 3000);
       this.timeouts.push(t);
     }
