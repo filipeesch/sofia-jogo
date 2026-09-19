@@ -197,6 +197,18 @@ export function speakName(text: string, onDone?: (ok: boolean) => void): void {
   synthesise(safe, done);
 }
 
+/**
+ * Corta a fala em curso — usado por um app ao voltar para o launcher. Tem de
+ * passar por aqui: chamar window.speechSynthesis.cancel() à mão deixaria a
+ * utterance em curso sem o 'end'/'error' tratado, e o motor de iOS fica a
+ * dizer-se "speaking" para o resto da sessão.
+ */
+export function cancelSpeech(): void {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  try { synth.cancel(); } catch { /* ignore */ }
+}
+
 /** The speechSynthesis path: clear the queue, then speak (iOS needs a beat). */
 function synthesise(safe: string, done: (ok: boolean) => void): void {
   const synth = window.speechSynthesis;

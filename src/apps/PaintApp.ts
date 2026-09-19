@@ -1,5 +1,5 @@
 import { bark, meow, cluck, baa, moo, quack, popSound, tone, resume } from '../ui/sfx';
-import { speakName } from '../ui/speech';
+import { cancelSpeech, speakName } from '../ui/speech';
 
 interface Stamp { emoji: string; label: string; sound: () => void }
 
@@ -103,6 +103,7 @@ export class PaintApp {
     back.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       if (this.strokeActive()) return;
+      cancelSpeech();   // a palavra em curso não pode sobreviver à volta ao launcher
       this.onBack();
     });
 

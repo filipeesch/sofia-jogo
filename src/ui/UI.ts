@@ -28,7 +28,9 @@ export class UI {
     });
 
     const homeBtn = document.createElement('button');
-    homeBtn.className = 'btn home';
+    // hud-home e não "home": .home é o contentor do HomeScreen (ecrã inteiro),
+    // e partilhar o nome esticava o botão para toda a altura do ecrã.
+    homeBtn.className = 'btn hud-home';
     homeBtn.textContent = '🏠';
     homeBtn.setAttribute('aria-label', 'Voltar ao início');
     homeBtn.addEventListener('pointerdown', (e) => {

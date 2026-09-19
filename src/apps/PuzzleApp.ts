@@ -1,6 +1,6 @@
 import { thump, ding, win, resume } from '../ui/sfx';
 import { preloadSound, playSound } from '../ui/sounds';
-import { speakName } from '../ui/speech';
+import { cancelSpeech, speakName } from '../ui/speech';
 import { solvePuzzleFit, type PuzzleFit } from './puzzleLayout';
 
 // One puzzle item: emoji face, pt-PT name, optional procedural fallback
@@ -74,7 +74,10 @@ export class PuzzleApp {
     back.className = 'btn back-btn';
     back.textContent = '🏠';
     back.setAttribute('aria-label', 'Voltar');
-    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); this.opts.onBack(); });
+    // Voltar corta a palavra em curso: sem isto, a criança ouviria o nome do
+    // animal continuar a ser dito por cima do launcher. `cancelSpeech()` é
+    // exactamente o que essa função documenta ser, e era chamada por ninguém.
+    back.addEventListener('pointerdown', (e) => { e.stopPropagation(); cancelSpeech(); this.opts.onBack(); });
 
     const title = document.createElement('h1');
     title.className = 'puzzle-title';

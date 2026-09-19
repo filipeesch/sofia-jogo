@@ -74,6 +74,116 @@ export function hoot(): void { tone(400, 0.18, 'sine', 0.2, 320); tone(380, 0.22
 export function crow(): void { tone(880, 0.12, 'square', 0.15); tone(700, 0.1, 'square', 0.14, 600, 0.14); tone(950, 0.2, 'square', 0.15, 800, 0.28); }
 export function popSound(): void { tone(600, 0.08, 'triangle', 0.22, 300); }
 
+// Escala pentatônica de Dó (Dó Ré Mi Sol Lá) em três oitavas, da mais grave à
+// mais aguda. Não há semitons, por isso duas notas quaisquer soam bem juntas:
+// no app das bolhas não existe toque errado.
+const PENTA = [
+  130.81, 146.83, 164.81, 196.0, 220.0,
+  261.63, 293.66, 329.63, 392.0, 440.0,
+  523.25, 587.33, 659.25, 783.99, 880.0,
+];
+
+/** A nota duma bolha: as grandes mais graves, as pequenas mais agudas. */
+export function bubbleTone(sizePx: number): void {
+  const t = Math.min(1, Math.max(0, (sizePx - 70) / 190));
+  const i = Math.round((1 - t) * (PENTA.length - 1));
+  tone(PENTA[i], 0.16, 'triangle', 0.2);
+}
+
+/** Nota ascendente para cada toque parcial duma bolha gigante. */
+export function bubbleTapStep(step: number): void {
+  tone(PENTA[Math.min(PENTA.length - 1, 4 + step * 3)], 0.12, 'triangle', 0.18);
+}
+
+// ── Bolhas: o som de uma bolha a rebentar ─────────────────────────────────
+//
+// Tudo sintetizado — não há (nem precisa de haver) um ficheiro de bolha em
+// public/sounds/. Um estouro de verdade são duas coisas a acontecer ao mesmo
+// tempo: a película a arrebentar (um estalido de banda larga de ~50 ms) e o ar
+// a escapar-se (um "plop" que desliza para grave). A nota pentatónica por baixo
+// é cauda musical, não o ataque: é ela que faz 200 estouros soarem a música e
+// não a um teclado avariado.
+
+let ruído: AudioBuffer | null = null;
+
+/** Ruído branco de ~128 ms, criado UMA vez e partilhado por todos os estouros.
+ *  Gerar ruído a cada toque seria CPU deitada fora num tablet fraco. */
+export function noiseBuffer(): AudioBuffer | null {
+  if (ruído) return ruído;
+  const c = audioCtx();
+  if (!c) return null;
+  try {
+    ruído = c.createBuffer(1, Math.floor(c.sampleRate * 0.128), c.sampleRate);
+    const dados = ruído.getChannelData(0);
+    for (let i = 0; i < dados.length; i++) dados[i] = Math.random() * 2 - 1;
+  } catch {
+    return null;
+  }
+  return ruído;
+}
+
+/** Estalido: passa-banda sobre o ruído, com envelope a fechar depressa. É banda
+ *  larga e curtíssimo, por isso NÃO desafina com a nota que soa por baixo. */
+export function pop(vol = 0.16, hz = 1100, dur = 0.05, delay = 0): void {
+  const c = audioCtx();
+  if (!c) return;
+  const buf = noiseBuffer();
+  if (!buf) return;
+  const t = c.currentTime + delay;
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const f = c.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = hz;
+  f.Q.value = 0.9;
+  const g = c.createGain();
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f);
+  f.connect(g);
+  g.connect(c.destination);
+  src.start(t, Math.random() * 0.06);
+  src.stop(t + dur + 0.02);
+}
+
+/** O "plop": seno a deslizar para grave. Bolha grande = mais grave e mais
+ *  comprido; pequena = mais agudo e mais seco. */
+export function blip(sizePx: number): void {
+  const t = Math.min(1, Math.max(0, (sizePx - 70) / 190)); // 0 = pequena, 1 = gigante
+  tone(780 - 180 * t, 0.075 + 0.02 * t, 'sine', 0.26, 250 - 80 * t);
+}
+
+/** Os três juntos, no mesmo gesto: estalido + plop + nota da escala. */
+export function bubbleBurst(sizePx: number): void {
+  pop(sizePx > 150 ? 0.2 : 0.15, sizePx > 150 ? 900 : 1200);
+  blip(sizePx);
+  bubbleTone(sizePx);
+}
+
+/** Chuvisco: uma data de estalidos muito curtos em instantes pseudo-aleatórios.
+ *  É o corpo do fogo de artifício — e é feito só de agudos, porque um estrondo
+ *  grave e súbito a volume de tablet assusta uma criança de 3 anos. */
+export function sparkleCrackle(count = 8, spread = 0.42): void {
+  for (let i = 0; i < count; i++) {
+    pop(0.05 + Math.random() * 0.04, 1500 + Math.random() * 2000, 0.03 + Math.random() * 0.03,
+      0.08 + (i / count) * spread + Math.random() * 0.05);
+  }
+}
+
+/** O fogo de artifício: assobio a descer (o foguete) e depois o chuvisco. */
+export function sparkle(): void {
+  tone(1200, 0.28, 'sine', 0.13, 400);
+  sparkleCrackle();
+}
+
+/** Glup-glup do peixe: três bolhas de ar abafadas, SEM nota da escala — é som
+ *  de ar, não música, e assim não choca com um estouro quase simultâneo. */
+export function glup(): void {
+  for (let i = 0; i < 3; i++) {
+    tone(300 + Math.random() * 130, 0.06, 'sine', 0.11, 170, i * 0.09);
+  }
+}
+
 // Procedural fallbacks for the vehicles puzzle (used only when the real
 // MP3 cannot be loaded).
 export function carHorn(): void { tone(400, 0.09, 'square', 0.16); tone(400, 0.1, 'square', 0.16, undefined, 0.17); }
