@@ -209,10 +209,11 @@ mcp__game__*  →  scripts/game-mcp.mjs (MCP stdio)  →  POST /cmd no capture s
              →  POST /shot | /clip  →  salvo em _shots/
 ```
 
-⚠️ **Gotcha**: `mcp__game__list_levels` devolve uma lista **hardcoded** dentro de
-`scripts/game-mcp.mjs` (não é o `levels.ts` vivo). Para fases novas, chame
-`mcp__game__load_level('id-novo')` direto (que lê o `LEVELS` real do jogo), e
-**não** confie no `list_levels` para enxergá-las.
+ℹ️ **Nota**: `mcp__game__list_levels` lê `src/levels.ts` (já não é uma lista
+escrita à mão). O ficheiro é lido e guardado na primeira chamada, por isso uma
+fase **acabada de adicionar** só aparece depois de recarregar o MCP — até lá,
+chame `mcp__game__load_level('id-novo')` direto, que o jogo aceita o id novo sem
+reclamar.
 
 ### Troubleshooting
 

@@ -41,6 +41,13 @@ Produção:
     npm run build      # typecheck (tsc --noEmit) + build de produção
     npm run preview    # serve a build em http://localhost:4173
 
+Modo debug para agente (capturas do cenário real):
+
+    npm run game ilha airplane   # garante os servidores e abre o deep-link
+    # http://localhost:5173/?debug=1&level=<id>&vehicle=<car|airplane>
+
+Ver `docs/debug-capture.md` (API `__debug`, MCP do jogo, canal HTTP via curl).
+
 > Se o npm install falhar com erro de cache (EPERM em ~/.npm), use um cache local:
 > npm install --cache ./.npm-cache
 
@@ -83,7 +90,10 @@ reatrelar no percurso.
       check-rail-tour.mjs     valida os percursos trilho (cobre todas as ruas, fica na
                               estrada, margem de colisão, loop do avião) — rodar com
                               `node scripts/check-rail-tour.mjs`
-      capture-server.mjs      servidor de captura debug (`?debug=1&shots=PORT`)  
+      capture-server.mjs      servidor de captura debug (`?debug=1&shots=PORT`)
+      launch-game.mjs         garante os servidores e abre o deep-link (`npm run game [level] [vehicle]`)
+      game-mcp.mjs            MCP do jogo (stdio): câmera, capturas e troca de cenário em runtime
+      test-mcp.mjs            teste do MCP por stdio (`npm run test:mcp`, sem tocar no jogo)
     public/models/            aviao, car, palm, tree, whale, bird, balloon, peak,
                                snowman, pine, cactus, pyramid, house, barn, fence (.glb)
 

@@ -3,10 +3,18 @@
 // viewport as tools. Each tool forwards to the HTTP capture server
 // (scripts/capture-server.mjs, port 4477) which relays to the running game.
 import { createInterface } from 'node:readline';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SERVER = 'http://localhost:' + (process.env.SHOTS_PORT || '4477');
 
-const LEVELS = [
+// `list_levels` serve a lista que um agente usa para descobrir cenários, por
+// isso tem de ser a mesma lista que o jogo joga. `src/levels.ts` é a fonte de
+// verdade; a cópia à mão lá embaixo fica só como rede de segurança se o formato
+// do ficheiro mudar, porque um MCP partido a meio de uma verificação é pior do
+// que uma lista ligeiramente envelhecida.
+const LEVELS_FALLBACK = [
   { id: 'vale', name: 'Vale Vivo', emoji: '🌄', vehicle: 'both' },
   { id: 'valenoite', name: 'Vale à Noite', emoji: '🌙', vehicle: 'both' },
   { id: 'ilha', name: 'Ilha Feliz', emoji: '🌴', vehicle: 'airplane' },
@@ -15,6 +23,38 @@ const LEVELS = [
   { id: 'deserto', name: 'Deserto', emoji: '🏜️', vehicle: 'both' },
   { id: 'noite', name: 'Noite Estrelada', emoji: '⭐', vehicle: 'both' }
 ];
+
+let levelsCache = null;
+
+function levels() {
+  if (levelsCache) return levelsCache;
+  try {
+    const caminho = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'levels.ts');
+    const fonte = readFileSync(caminho, 'utf8');
+    const inicio = fonte.indexOf('export const LEVELS');
+    if (inicio < 0) throw new Error('sem `export const LEVELS`');
+    const fim = fonte.indexOf('\n];', inicio);
+    // Cada cenário é um objecto a duas espaços de indentação; ler campo a campo
+    // por bloco evita que um campo em falta faça a regex saltar para o cenário
+    // seguinte e invente uma combinação que não existe.
+    const blocos = fonte.slice(inicio, fim).split(/\n {2}\{/).slice(1);
+    const saida = [];
+    for (const b of blocos) {
+      const id = /id:\s*'([^']+)'/.exec(b);
+      const name = /name:\s*'([^']+)'/.exec(b);
+      if (!id || !name) continue;
+      const emoji = /emoji:\s*'([^']*)'/.exec(b);
+      const vehicle = /vehicle:\s*'([^']+)'/.exec(b);
+      saida.push({ id: id[1], name: name[1], emoji: emoji ? emoji[1] : '', vehicle: vehicle ? vehicle[1] : 'both' });
+    }
+    if (saida.length === 0) throw new Error('nenhum cenário lido');
+    levelsCache = saida;
+  } catch (e) {
+    console.error('[game-mcp] fallback para a lista embutida:', e.message);
+    levelsCache = LEVELS_FALLBACK;
+  }
+  return levelsCache;
+}
 
 const TOOLS = [
   {
@@ -113,7 +153,7 @@ async function handleCall(id, name, args) {
         break;
       }
       case 'list_levels':
-        text = JSON.stringify(LEVELS);
+        text = JSON.stringify(levels());
         break;
       case 'load_level':
         await httpPost('/cmd', { cmd: 'loadLevel', args: [args.level, args.vehicle] });

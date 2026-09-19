@@ -67,12 +67,13 @@ const probeState = () => {
   const list = (w.__audioProbe && w.__audioProbe.list) || [];
   const open = list.filter(function (r) { return !r.closed; });
   return {
-    // NB: o botao de saida do jogo tem classe 'btn home', por isso o seletor
-    // do seletor de fases tem de ser da grelha, nao de '.home'.
+    // NB: o seletor de fases tem de ser detectado pela grelha ('.home-grid'),
+    // nao por '.home' — essa classe e o contentor do ecra do seletor. O botao
+    // de saida do jogo e '.btn.hud-home' justamente para nao colidir com ela.
     screen: document.querySelector('.launcher') ? 'launcher'
       : document.querySelector('.ed-root') ? 'editor'
       : document.querySelector('.home-grid') ? 'levelselect'
-      : document.querySelector('.btn.home') ? 'game'
+      : document.querySelector('.btn.hud-home') ? 'game'
       : 'other',
     canvases: document.querySelectorAll('#app canvas').length,
     appChildren: document.getElementById('app').childElementCount,
@@ -140,11 +141,11 @@ const appCard = (page, name) => page.locator('.app-card[aria-label="' + name + '
 async function openGame(page, appName, levelName) {
   await appCard(page, appName).click();
   await levelCard(page, levelName).click();
-  await page.locator('.btn.home').waitFor({ timeout: 30000 });
+  await page.locator('.btn.hud-home').waitFor({ timeout: 30000 });
 }
 
 async function quitToLauncher(page) {
-  await page.locator('.btn.home').click();
+  await page.locator('.btn.hud-home').click();
   await page.locator('.launcher').waitFor({ timeout: 10000 });
   await settle(page);
 }
@@ -235,7 +236,7 @@ try {
   await appCard(page, 'Carro').click();
   await levelCard(page, 'Vale Vivo').waitFor();
   await tapAll(page, ['Vale Vivo', 'Vale Vivo']); // dois toques no mesmo tick
-  await page.locator('.btn.home').waitFor({ timeout: 30000 });
+  await page.locator('.btn.hud-home').waitFor({ timeout: 30000 });
   await settle(page, 2500);
   s = await page.evaluate(probeState);
   check(s.canvases === 1, 'duplo toque cria apenas um jogo', 'canvases=' + s.canvases);
@@ -248,7 +249,7 @@ try {
   await appCard(page, 'Carro').click();
   await levelCard(page, 'Vale Vivo').waitFor();
   await tapAll(page, ['Vale Vivo', 'Mundo da Neve']); // troca antes de acabar de carregar
-  await page.locator('.btn.home').waitFor({ timeout: 30000 });
+  await page.locator('.btn.hud-home').waitFor({ timeout: 30000 });
   await settle(page, 2500);
   s = await page.evaluate(probeState);
   check(s.canvases === 1, 'troca rapida deixa apenas um jogo', 'canvases=' + s.canvases);
@@ -282,7 +283,7 @@ try {
     window.__loadLevel('vale', 'car');
     window.__loadLevel('neve', 'car');
   });
-  await page.locator('.btn.home').waitFor({ timeout: 30000 });
+  await page.locator('.btn.hud-home').waitFor({ timeout: 30000 });
   await settle(page, 2500);
   s = await page.evaluate(probeState);
   check(s.canvases === 1, '__loadLevel em serie deixa apenas um jogo', 'canvases=' + s.canvases);
@@ -315,11 +316,11 @@ try {
     b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   });
-  await page.locator('.btn.home').waitFor({ timeout: 30000 });
+  await page.locator('.btn.hud-home').waitFor({ timeout: 30000 });
   await settle(page, 2500);
   s = await page.evaluate(probeState);
   check(s.canvases === 1, 'duplo toque em Testar cria apenas um jogo', 'canvases=' + s.canvases);
-  await page.locator('.btn.home').click(); // volta ao editor com a mesma fase
+  await page.locator('.btn.hud-home').click(); // volta ao editor com a mesma fase
   await page.locator('.ed-live').waitFor({ timeout: 30000 });
   await settle(page, 1500);
   s = await page.evaluate(probeState);
