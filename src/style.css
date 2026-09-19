@@ -462,10 +462,176 @@ canvas {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 13vh;
+  height: 15vh;
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(242, 215, 155, 0) 0%, rgba(242, 215, 155, 0.85) 45%, #e8c68a 100%);
+  background: linear-gradient(180deg, rgba(242, 215, 155, 0) 0%, rgba(242, 215, 155, 0.55) 26%, rgba(232, 198, 138, 0.95) 62%, #d9b06a 100%);
+}
+/* A crista da areia deixa de ser uma recta: três elipses encostadas ao fundo,
+   cada uma com um timbre diferente de areia, fazem dunas que se sobrepõem. */
+.bubbles-sand::before {
+  content: '';
+  position: absolute;
+  inset: -4.5vh 0 0 0;
+  background:
+    radial-gradient(58% 100% at 15% 100%, #e8c68a 97%, rgba(232, 198, 138, 0) 100%),
+    radial-gradient(46% 78% at 44% 100%, #f0dba9 97%, rgba(240, 219, 169, 0) 100%),
+    radial-gradient(64% 104% at 76% 100%, #e0b877 97%, rgba(224, 184, 119, 0) 100%);
+}
+/* Grão. Sem isto a areia é um plástico. Três malhas de pontos com tamanhos
+   quase primos entre si (9, 14 e 23 px), em vez de duas iguais: duas malhas do
+   mesmo passo alinhavam e a areia ficava PONTILHADA a lápis, um padrõesinho de
+   catálogo. Desalinhadas, batem umas nas outras e o olho já lê areia. */
+.bubbles-sand::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(rgba(255, 252, 240, 0.55) 0.9px, rgba(255, 252, 240, 0) 1.4px),
+    radial-gradient(rgba(126, 82, 30, 0.26) 0.9px, rgba(126, 82, 30, 0) 1.4px),
+    radial-gradient(rgba(126, 82, 30, 0.18) 1.3px, rgba(126, 82, 30, 0) 1.9px);
+  background-size: 9px 9px, 14px 14px, 23px 23px;
+  background-position: 0 5px, 4px 11px, 9px 3px;
+  opacity: 0.45;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000 55%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000 55%);
+}
+
+/* ── O fundo: algas, conchas e cavalos-marinhos ───────────────────────────
+   São desenhos com reacção, não alvos de jogo. Todos em z-index 3 — iguais aos
+   dos peixes, mas entram ANTES deles no DOM, por isso um peixe a passar pinta
+   por cima; e ficam sempre ABAIXO das bolhas (z 6). É isto que garante a única
+   coisa que importa: onde uma bolha e um adorno se sobrepõem, o toque vai
+   sempre para a bolha. O cenário nunca rouba nada ao brinquedo. */
+.bubbles-plant {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  /* A inclinação base mora na propriedade `rotate`, que é separada do
+     `transform`: assim o balanço da corrente e o tombsonão da reacção se
+     compõem com ela, em vez de a apagarem a meio da animação. */
+  rotate: var(--inclina, 0deg);
+  filter: drop-shadow(0 4px 8px rgba(0, 40, 70, 0.3));
+  animation: plantSway var(--ondul, 5.5s) ease-in-out var(--atraso, 0s) infinite alternate;
+}
+.bubbles-plant span {
+  display: block;
+  position: relative;
+  font-size: var(--f, 84px);
+  line-height: 1;
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
+/* Caixa de toque alta e estreita, centrada na planta: um 🌿 de 60 px não é
+   alvo para um dedo de 2-3 anos. É a mesma regra dos 90 px do peixe. */
+.bubbles-plant span::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 88px;
+  height: 120px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.bubbles-plant span.onda { animation: plantWave 0.62s cubic-bezier(0.2, 0.8, 0.3, 1); }
+
+@keyframes plantSway {
+  from { transform: rotate(-4deg); }
+  to { transform: rotate(5deg); }
+}
+/* O abanão: a planta encaixa-se para o lado do dedo e devolve-se a si própria,
+   com as raízes plantadas na areia (transform-origin em baixo). */
+@keyframes plantWave {
+  0% { transform: rotate(0deg) scaleY(1); }
+  26% { transform: rotate(calc(var(--dir, 1) * 11deg)) scaleY(0.88); }
+  58% { transform: rotate(calc(var(--dir, 1) * -8deg)) scaleY(1.06); }
+  100% { transform: rotate(0deg) scaleY(1); }
+}
+
+.bubbles-shell {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 5px rgba(0, 40, 70, 0.3));
+}
+.bubbles-shell span {
+  display: block;
+  position: relative;
+  font-size: var(--f, 40px);
+  line-height: 1;
+  transform: rotate(var(--tilt, 0deg));
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
+.bubbles-shell span::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 92px;
+  height: 86px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+/* Fecha-se (encaixa em scaleY), abre-se a mais um bocadinho e assenta. As
+   quatro imagens levam o tilt da concha dentro, senão ela saltava do lugar. */
+.bubbles-shell span.fecha { animation: shellClose 0.5s cubic-bezier(0.3, 0.9, 0.3, 1); }
+
+@keyframes shellClose {
+  0% { transform: rotate(var(--tilt, 0deg)) scaleY(1); }
+  22% { transform: rotate(calc(var(--tilt, 0deg) - 3deg)) scaleY(0.5); }
+  58% { transform: rotate(calc(var(--tilt, 0deg) + 2deg)) scaleY(1.08); }
+  100% { transform: rotate(var(--tilt, 0deg)) scaleY(1); }
+}
+
+.bubbles-horse {
+  position: absolute;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  /* É o mesmo `swim` dos peixes: o cavalo-marinho também é levado pela
+     corrente, da direita para a esquerda — por isso o desenho aponta para a
+     esquerda, para não andar para trás. */
+  animation: swim var(--nada, 26s) linear var(--atraso, 0s) infinite;
+}
+.bubbles-horse span {
+  display: block;
+  position: relative;
+  transform-origin: 50% 50%;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+  filter: drop-shadow(0 4px 8px rgba(0, 40, 70, 0.35));
+  animation: horseBob var(--bob, 3.4s) ease-in-out var(--atraso, 0s) infinite alternate;
+}
+.bubbles-horse span svg { display: block; width: var(--h, 72px); height: auto; }
+.bubbles-horse span::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 90px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+.bubbles-horse span.pula { animation: horseJump 0.58s cubic-bezier(0.2, 0.8, 0.3, 1); }
+
+@keyframes horseBob {
+  from { transform: translateY(-7px) rotate(-3deg); }
+  to { transform: translateY(7px) rotate(3deg); }
+}
+@keyframes horseJump {
+  0% { transform: translateY(0) rotate(0deg) scale(1); }
+  26% { transform: translateY(-28px) translateX(calc(var(--dir, 1) * 16px)) rotate(calc(var(--dir, 1) * -9deg)) scale(1.12); }
+  64% { transform: translateY(6px) translateX(calc(var(--dir, 1) * -8px)) rotate(calc(var(--dir, 1) * 7deg)) scale(0.96); }
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
 }
 
 .bubbles-fish {

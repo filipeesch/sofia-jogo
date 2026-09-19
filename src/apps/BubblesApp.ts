@@ -1,4 +1,4 @@
-import { bubbleBurst, bubbleTapStep, glup, idleSfx, resume, sparkle, win } from '../ui/sfx';
+import { bubbleBurst, bubbleTapStep, clique, glup, idleSfx, puff, resume, sparkle, trill, win } from '../ui/sfx';
 
 // Bolhas: um brinquedo, não um jogo. Cada bolha é só um conjunto de atributos
 // (dimensão, cor, carga) e cada atributo devolve qualquer coisa à criança — o
@@ -48,6 +48,66 @@ const MAX_FAGULHAS = 60;
 
 interface Faísca { dx: number; dy: number; dur: number; atraso: number; queda: number }
 
+// ── O fundo ───────────────────────────────────────────────────────────────
+//
+// Algas, conchas e cavalos-marinhos. Não são alvos de jogo nem vocabulário:
+// cada um devolve um som pequeno, um movimento seu e um pouco de ar a subir.
+// Ficam por baixo das bolhas na ordem das camadas (ver `.bubbles-plant` no
+// CSS), por isso nunca roubam um toque ao brinquedo — é a única coisa desta
+// cena que não pode falhar.
+
+// Emoji antigos (Unicode 1.0) de propósito: o coral 🪸 e a rocha 🪨 são
+// Unicode 15 e só existem em iOS 16.4+. Num iPad de 2019 seriam rectos vazios
+// no meio do mar, e um recto vazio não é brinquedo nenhum.
+//
+// As algas são TODAS 🌿 com escalas e inclinações diferentes, e não uma montra
+// de emojis de planta: um 🌱 de 54 px ao lado dum 🌿 de 96 px lia-se como uma
+// erva daninha perdida, não como o mesmo sargaçal. A variedade fazem-na o
+// tamanho, a inclinação e o ritmo de cada uma.
+interface Alga { emo: string; left: string; f: number; ondul: string; atraso: string; bottom: string; inclina: string }
+const ALGAS: Alga[] = [
+  { emo: '🌿', left: '3%', f: 104, ondul: '5.6s', atraso: '-1.2s', bottom: '3vh', inclina: '-7deg' },
+  { emo: '🌿', left: '16%', f: 72, ondul: '4.4s', atraso: '-3.1s', bottom: '6vh', inclina: '5deg' },
+  { emo: '🌿', left: '33%', f: 88, ondul: '6.2s', atraso: '-0.4s', bottom: '4vh', inclina: '-4deg' },
+  { emo: '🌿', left: '50%', f: 62, ondul: '5.1s', atraso: '-2.4s', bottom: '7vh', inclina: '8deg' },
+  { emo: '🌿', left: '64%', f: 96, ondul: '7.1s', atraso: '-4.2s', bottom: '2vh', inclina: '-6deg' },
+];
+
+interface Concha { emo: string; left: string; f: number; tilt: string; bottom: string }
+// As conchas cresceram face ao primeiro rascunho: a 30 px eram um grão de sal
+// cinzento na areia. Continuam menores que as algas (é o fundo, não o alvo),
+// mas já se vêem do outro lado da sala.
+const CONCHAS: Concha[] = [
+  { emo: '🐚', left: '10%', f: 54, tilt: '-8deg', bottom: '8vh' },
+  { emo: '🐚', left: '24%', f: 40, tilt: '13deg', bottom: '4vh' },
+  { emo: '🐚', left: '43%', f: 58, tilt: '-4deg', bottom: '6vh' },
+  { emo: '🐚', left: '57%', f: 38, tilt: '17deg', bottom: '3vh' },
+];
+
+interface Cavalo { h: number; top: string; nada: string; atraso: string; bob: string; pele: string; barriga: string; barbatana: string }
+const CAVALOS: Cavalo[] = [
+  { h: 78, top: '42vh', nada: '27s', atraso: '-7s', bob: '3.4s', pele: '#ffb457', barriga: '#ffe3ad', barbatana: '#ff8a5c' },
+  { h: 60, top: '66vh', nada: '36s', atraso: '-21s', bob: '4.4s', pele: '#ff9ec7', barriga: '#ffdbe9', barbatana: '#ff6fa5' },
+];
+
+// O cavalo-marinho é o único elemento desenhado: não existe emoji dele em
+// Unicode. Vista para a ESQUERDA, que é a direcção em que o `swim` o leva, e
+// feita de traços grossos de extremidade redonda em vez de contornos
+// fechados — é o modo mais barato de ter um corpo gordo de brinquedo.
+const CAVALO_SVG = `
+<svg viewBox="0 0 62 86" role="img" aria-label="Cavalo-marinho" xmlns="http://www.w3.org/2000/svg">
+  <path d="M47 34 C58 39 58 51 45 55 C52 47 52 40 47 34 Z" fill="var(--barbatana)" opacity="0.9"/>
+  <path d="M31 28 C44 36 45 50 35 58" fill="none" stroke="var(--pele)" stroke-width="19" stroke-linecap="round"/>
+  <path d="M35 58 C27 64 27 76 36 78 C43 79 46 73 41 69" fill="none" stroke="var(--pele)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M34 33 C41 39 41 48 35 54" fill="none" stroke="var(--barriga)" stroke-width="7" stroke-linecap="round" opacity="0.9"/>
+  <circle cx="30" cy="20" r="12" fill="var(--pele)"/>
+  <path d="M22 17 L5 24 L22 27 Z" fill="var(--pele)" stroke="var(--pele)" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M25 9 L29 2 L33 10 Z" fill="var(--barbatana)"/>
+  <path d="M29 37 L39 34 M29 44 L40 43 M31 51 L40 51" stroke="var(--barriga)" stroke-width="2.4" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="25" cy="17" r="4" fill="#fff"/>
+  <circle cx="24" cy="17" r="2" fill="#22303c"/>
+</svg>`;
+
 export class BubblesApp {
   private root = document.createElement('div');
   private fx = document.createElement('div');
@@ -80,6 +140,11 @@ export class BubblesApp {
     const sand = document.createElement('div');
     sand.className = 'bubbles-sand';
     this.root.append(rays, sand);
+
+    // O cenário entra ANTES dos peixes no DOM. Com o mesmo z-index, o elemento
+    // que vem depois é que pinta por cima e que leva o toque onde os dois se
+    // sobrepõem — assim um peixe a passar continua a ser o peixe.
+    this.root.append(this.algas(), this.conchas(), this.cavalos());
 
     ['🐠', '🐟', '🐡'].forEach((emo, i) => {
       const f = document.createElement('div');
@@ -526,21 +591,128 @@ export class BubblesApp {
 
     const n = 4 + Math.floor(Math.random() * 3);
     const dir = e.clientX <= cx ? 1 : -1;
+    this.bolhinhas(cx, cy, dir, n);
+  }
+
+  // ── fundo ──────────────────────────────────────────────────────────────
+  //
+  // Algas, conchas e cavalos-marinhos são tocáveis pelos mesmos motivos que o
+  // peixe: um adorno que não responde a nada é uma promessa partida ao lado de
+  // um peixe que faz cabriola. Mas continuam a ser adorno — não dão pontos, não
+  // dizem palavras e nunca se podem atravessar entre a criança e uma bolha.
+
+  private algas(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    for (const a of ALGAS) {
+      const el = document.createElement('div');
+      el.className = 'bubbles-plant';
+      el.style.left = a.left;
+      el.style.bottom = a.bottom;
+      el.style.setProperty('--f', `${a.f}px`);
+      el.style.setProperty('--ondul', a.ondul);
+      el.style.setProperty('--atraso', a.atraso);
+      el.style.setProperty('--inclina', a.inclina);
+      const corpo = document.createElement('span');
+      corpo.textContent = a.emo;
+      el.append(corpo);
+      this.tocavel(el, corpo, (dir) => {
+        // O ar escapa-se pelo pontal de cima da alga, não do meio dela.
+        this.tocaCenario(el, corpo, 'onda', puff, dir, 4, 46, 0.14);
+      });
+      frag.append(el);
+    }
+    return frag;
+  }
+
+  private conchas(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    for (const c of CONCHAS) {
+      const el = document.createElement('div');
+      el.className = 'bubbles-shell';
+      el.style.left = c.left;
+      el.style.bottom = c.bottom;
+      const corpo = document.createElement('span');
+      corpo.textContent = c.emo;
+      corpo.style.setProperty('--f', `${c.f}px`);
+      corpo.style.setProperty('--tilt', c.tilt);
+      el.append(corpo);
+      this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'fecha', clique, dir, 3, 34, 0.5));
+      frag.append(el);
+    }
+    return frag;
+  }
+
+  private cavalos(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    for (const h of CAVALOS) {
+      const el = document.createElement('div');
+      el.className = 'bubbles-horse';
+      el.style.top = h.top;
+      el.style.setProperty('--nada', h.nada);
+      el.style.setProperty('--atraso', h.atraso);
+      el.style.setProperty('--bob', h.bob);
+      const corpo = document.createElement('span');
+      corpo.style.setProperty('--h', `${h.h}px`);
+      corpo.style.setProperty('--pele', h.pele);
+      corpo.style.setProperty('--barriga', h.barriga);
+      corpo.style.setProperty('--barbatana', h.barbatana);
+      corpo.innerHTML = CAVALO_SVG;
+      el.append(corpo);
+      this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'pula', trill, dir, 4, 40, 0.5));
+      frag.append(el);
+    }
+    return frag;
+  }
+
+  /** Um gesto, um som, um movimento. O `stopPropagation` é o que impede um
+   *  toque no cenário de chegar a uma bolha por baixo, e o `resume()` acorda o
+   *  áudio no primeiro toque depois de o tablet ter adormecido. O `--dir` é o
+   *  lado do dedo: os elementos dobram-se para o lado OPPOSTO, nunca contra o
+   *  dedo que os acabou de tocar — é assim que o peixe foge desde sempre. */
+  private tocavel(el: HTMLElement, corpo: HTMLElement, aoTocar: (dir: number) => void): void {
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resume();
+      const r = el.getBoundingClientRect();
+      const dir = (e as PointerEvent).clientX <= r.left + r.width / 2 ? 1 : -1;
+      corpo.style.setProperty('--dir', String(dir));
+      aoTocar(dir);
+    });
+  }
+
+  /** O que o cenário devolve: o som seu, o movimento seu e ar a subir. Sem
+   *  palavra, sem pontuação, sem maneira de errar — a mesma lei das bolhas.
+   *  `topo` é a fracção da altura do elemento de onde sai o ar: 0.14 numa alga
+   *  (foge pelo pontal de cima), 0.5 numa concha (sai-lhe do lado). */
+  private tocaCenario(el: HTMLElement, corpo: HTMLElement, classe: string, som: () => void, dir: number, ar: number, sobe: number, topo: number): void {
+    const r = el.getBoundingClientRect();
+    som();
+    corpo.classList.remove(classe);
+    void corpo.offsetWidth; // reinicia a animação
+    corpo.classList.add(classe);
+    corpo.addEventListener('animationend', () => corpo.classList.remove(classe), { once: true });
+    this.bolhinhas(r.left + r.width / 2, r.top + r.height * topo, dir, ar, sobe);
+  }
+
+  /** Bolhinhas decorativas a subir de um ponto do ecrã. Vivem sempre em `fx`,
+   *  a camada sem pointer-events: um adorno não pode tirar um toque a uma
+   *  bolha, nem mesmo por acidente. Saída garantida pela animação e, se ela
+   *  não chegar ao fim (ecrã bloqueado a meio), pela rede de segurança. */
+  private bolhinhas(cx: number, cy: number, dir: number, n: number, sobe = 26, passo = 14): void {
     for (let i = 0; i < n; i++) {
       const t = document.createElement('i');
       t.className = 'bubbles-trail';
-      t.style.left = `${cx + dir * i * 14}px`;
+      t.style.left = `${cx + dir * i * passo}px`;
       t.style.top = `${cy + (Math.random() * 18 - 9)}px`;
       const d = 12 + Math.random() * 14;
       t.style.width = `${d}px`;
       t.style.height = `${d}px`;
-      t.style.setProperty('--sobe', `${-(26 + Math.random() * 34)}px`);
+      t.style.setProperty('--sobe', `${-(sobe + Math.random() * 34)}px`);
       t.style.setProperty('--dur', `${(0.7 + Math.random() * 0.5).toFixed(2)}s`);
       t.style.setProperty('--atraso', `${(i * 0.07).toFixed(2)}s`);
       t.addEventListener('animationend', () => t.remove());
       this.fx.append(t);
-      // Rede de segurança para o caso de a animação não chegar ao fim (por
-      // exemplo se o ecrã bloquear a meio): nada pode ficar pendurado.
       this.later(() => t.remove(), 1800);
     }
   }

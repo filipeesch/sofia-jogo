@@ -184,6 +184,36 @@ export function glup(): void {
   }
 }
 
+// ── Bolhas: o fundo ganhou vida ───────────────────────────────────────────
+//
+// Plantas, conchas e cavalos-marinhos respondem a toque. Três sons curtos e
+// muito mais baixos que um estouro: o cenário é um mimo, não um rival das
+// bolhas. Nenhum deles leva nota da escala — são matéria de água e de ar, e
+// assim não desafinam com um estouro quase simultâneo (a mesma razão do glup).
+
+/** Planta do fundo tocada: bolhinhas de ar a escaparem-se, três tiques cada vez
+ *  mais agudos e mais depressa — é o ar a subir, não uma melodia. */
+export function puff(): void {
+  for (let i = 0; i < 3; i++) {
+    tone(880 + i * 240 + Math.random() * 90, 0.05, 'sine', 0.075, 1480 + i * 260, i * 0.055);
+  }
+}
+
+/** Concha que se fecha e se abre: dois estalidos secos — o reaproveitamento do
+ *  estalido das bolhas, mais grave e abafado, para soar à mesma família — e um
+ *  brilhinho agudo quando ela reabre. */
+export function clique(): void {
+  pop(0.12, 720, 0.045);
+  pop(0.1, 560, 0.05, 0.09);
+  tone(1500, 0.05, 'sine', 0.06, 1950, 0.16);
+}
+
+/** Cavalo-marinho: duas notas muito curtas a subir, um assobio de brinquedo. */
+export function trill(): void {
+  tone(880, 0.07, 'triangle', 0.11, 1180);
+  tone(1180, 0.09, 'triangle', 0.09, 1560, 0.08);
+}
+
 // Procedural fallbacks for the vehicles puzzle (used only when the real
 // MP3 cannot be loaded).
 export function carHorn(): void { tone(400, 0.09, 'square', 0.16); tone(400, 0.1, 'square', 0.16, undefined, 0.17); }
