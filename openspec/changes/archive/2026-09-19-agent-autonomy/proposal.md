@@ -7,6 +7,7 @@ O viewport de debug hoje anima a câmera ao longo dos waypoints do sweep, mas um
 - `sweep` teleporta a câmera para cada waypoint instantaneamente e captura um frame por ponto — sem interpolação/animação entre pontos.
 - O jogo aceita deep-link (`?debug=1&level=<id>&vehicle=<car|airplane>`) e inicia direto no cenário, pulando o launcher.
 - Um script de lançamento (`npm run game`) sobe o capture server e o dev server quando necessário e abre o browser no deep-link em modo debug.
+- O MCP do jogo passa a servir o cenário **em runtime**: `load_level` troca de cenário sem recarregar a página, `list_levels` devolve os cenários do jogo e `list_captures` lista o que já foi capturado.
 
 ## Capabilities
 
@@ -21,4 +22,6 @@ O viewport de debug hoje anima a câmera ao longo dos waypoints do sweep, mas um
 - `src/debug/DebugCapture.ts` (sweep → teleporte instantâneo).
 - `src/main.ts` (boot via query params).
 - `scripts/launch-game.mjs` (novo) + `package.json` (script `game`).
-- `scripts/capture-server.mjs` / `scripts/game-mcp.mjs` inalterados (já fazem o relay de comandos + tools).
+- `scripts/capture-server.mjs` inalterado (já faz o relay de comandos). Já `scripts/game-mcp.mjs` mudou: a descrição do `sweep` passou a dizer teleporte, e as tools de runtime `load_level` / `list_levels` / `list_captures` passaram a servir o jogo em execução. `scripts/test-mcp.mjs` é novo e testa o servidor por stdio.
+
+> **Nota da verificação antes do arquivo.** `list_levels` tinha uma lista de cenários escrita à mão, que é precisamente o género de cópia que envelhece sozinha — passou a ler `src/levels.ts`, com a lista antiga como rede de segurança se o formato do ficheiro mudar. E o `test-mcp.mjs` passou a correr, por omissão, só as tools de leitura: `record`, `sweep` e `load_level` alteram o jogo em curso, e um teste que mexe na cena não se pode correr enquanto um agente está a meio de uma captura. Ficou `npm run test:mcp` (seguro) e `npm run test:mcp:live` (com as que alteram).

@@ -1,7 +1,7 @@
 # vehicle-puzzle Specification
 
 ## Purpose
-TBD - created by archiving change vehicle-puzzle. Update Purpose after archive.
+Define o puzzle dos transportes: um quadro com um slot em silhueta para cada um dos 15 veículos, o arrastar e soltar por ponteiro ou toque, o encaixe com área de acerto generosa e a devolução sonora — a gravação real de cada veículo, com fallback procedural — sempre sem pontuação, cronómetro nem estado de "falhou".
 
 ## Requirements
 
