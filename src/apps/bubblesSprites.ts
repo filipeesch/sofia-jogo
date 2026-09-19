@@ -153,33 +153,44 @@ export const CAVALO_MARINHO = (cores: { pele?: string; barriga?: string; barbata
   const pele = cores.pele ?? '#ffb457';
   const barriga = cores.barriga ?? '#ffe3ad';
   const barbatana = cores.barbatana ?? '#ff8a5c';
-  const torso = 'M 32 30 C 45 38 46 52 36 60';
-  const cauda = 'M 36 60 C 27 66 27 78 37 80 C 45 81 48 74 43 70';
-  // Coroa de três pontas, desenhada ANTES da cabeça: a base desaparece por baixo
-  // do círculo e ficam só os bicos de fora. Um triângulo só, como no primeiro
-  // rascunho, lia-se como um caroço.
-  const coroa = 'M 21 13 L 24 2 L 28 11 L 32 0 L 36 10 L 40 3 L 42 13 Z';
-  return `<svg viewBox="0 0 64 90" role="img" aria-label="Cavalo-marinho" xmlns="http://www.w3.org/2000/svg">
-  <path d="M 46 34 C 58 40 58 53 44 57 C 52 48 52 40 46 34 Z" fill="${barbatana}" stroke="${LINHA}" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/>
-  ${raios(['M 47 37 L 55 40', 'M 47 42 L 56 45', 'M 46 47 L 54 50', 'M 45 52 L 51 55'], 1.4)}
-  <path d="M 20 30 C 14 34 14 39 21 41 Z" fill="${barbatana}" stroke="${LINHA}" stroke-width="1.6" paint-order="stroke" opacity="0.9"/>
-  <path d="${torso}" fill="none" stroke="${LINHA}" stroke-width="23" stroke-linecap="round"/>
-  <path d="${cauda}" fill="none" stroke="${LINHA}" stroke-width="13" stroke-linecap="round"/>
-  <path d="${torso}" fill="none" stroke="${pele}" stroke-width="19" stroke-linecap="round"/>
-  <path d="${cauda}" fill="none" stroke="${pele}" stroke-width="9" stroke-linecap="round"/>
-  <path d="M 35 34 C 42 40 42 50 36 56" fill="none" stroke="${barriga}" stroke-width="8" stroke-linecap="round" opacity="0.95"/>
-  ${raios(['M 30 38 L 41 36', 'M 31 44 L 42 43', 'M 32 50 L 42 50', 'M 33 55 L 41 56'], 2.1, TINTA_ESCURA, 0.22)}
-  ${raios(['M 34 65 C 30 68 29 73 33 76', 'M 38 68 C 35 71 35 75 39 77'], 1.8, TINTA_ESCURA, 0.25)}
-  <path d="${coroa}" fill="${barbatana}" stroke="${LINHA}" stroke-width="1.8" stroke-linejoin="round" paint-order="stroke"/>
-  <circle cx="32" cy="21" r="12.6" fill="${LINHA}"/>
-  <circle cx="32" cy="21" r="11.2" fill="${pele}"/>
-  <path d="M 24 15.5 C 13 14.5 6 18.5 4.5 23.5 C 9 27 17 28 24 27 Z" fill="${pele}" stroke="${LINHA}" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>
-  <circle cx="7.5" cy="23" r="1.6" fill="${LINHA}"/>
-  <path d="M 36 12 C 40 15 42 19 42 24" fill="none" stroke="${TINTA_ESCURA}" stroke-width="1.8" stroke-linecap="round" opacity="0.25"/>
-  <path d="M 22 27 C 26 30 31 31 35 30" fill="none" stroke="${TINTA_ESCURA}" stroke-width="1.6" stroke-linecap="round" opacity="0.2"/>
-  <circle cx="36" cy="30" r="1.8" fill="${barbatana}" opacity="0.6"/>
-  <circle cx="39" cy="46" r="1.6" fill="${barbatana}" opacity="0.5"/>
-  ${olho(27, 18, 4.4)}
+  const torso = 'M 34 44 C 48 52 48 66 39 76';
+  const cauda = 'M 39 76 C 29 82 29 96 41 98 C 49 99 51 90 45 86';
+  const barrigaD = 'M 28 48 C 21 56 21 68 29 76';
+  // A crina vai ao LONGO DO DORSO, por trás do corpo, e não em cima da cabeça.
+  // No rascunho anterior havia uma coroa de pontas no topo da cabeça e uma
+  // barbatana debaixo do queixo: isso lê-se crista e brinco, e o bicho passava
+  // a galinha. Um cavalo-marinho tem a cabeça lisa e a barbatana dorsal a
+  // correr-lhe pelas costas — por isso os picos todos mudaram de lado.
+  // O primeiro pico fica ATRÁS da cabeça, não acima dela: enquanto houve uma
+  // ponta sobre o crânio, voltou a ler-se crista.
+  const pontas: [number, number][] = [[47, 3], [58, 7], [69, 16], [73, 34], [66, 53], [60, 67], [56, 80]];
+  const vales: [number, number][] = [[51, 18], [57, 22], [62, 30], [59, 41], [54, 54], [50, 66], [46, 78]];
+  const crina = 'M 34 12 ' + pontas.map(([px, py], i) => `L ${px} ${py} L ${vales[i][0]} ${vales[i][1]}`).join(' ')
+    + ' C 52 62 58 38 44 18 L 34 12 Z';
+  const vincos = vales.map(([vx, vy], i) => `M ${vx} ${vy} L ${(vx + pontas[i][0]) / 2 - 4} ${(vy + pontas[i][1]) / 2 - 2}`);
+  return `<svg viewBox="0 0 76 104" role="img" aria-label="Cavalo-marinho" xmlns="http://www.w3.org/2000/svg">
+  <path d="${crina}" fill="${barbatana}" stroke="${LINHA}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
+  ${raios(vincos, 1.8, TINTA_ESCURA, 0.22)}
+  <path d="${torso}" fill="none" stroke="${LINHA}" stroke-width="27" stroke-linecap="round"/>
+  <path d="${cauda}" fill="none" stroke="${LINHA}" stroke-width="15" stroke-linecap="round"/>
+  <path d="${torso}" fill="none" stroke="${pele}" stroke-width="23" stroke-linecap="round"/>
+  <path d="${cauda}" fill="none" stroke="${pele}" stroke-width="11" stroke-linecap="round"/>
+  <path d="${barrigaD}" fill="none" stroke="${barriga}" stroke-width="14" stroke-linecap="round"/>
+  ${raios(['M 21 52 L 31 50', 'M 19 59 L 30 58', 'M 19 67 L 31 67', 'M 22 74 L 33 72'], 2.2, pele, 0.75)}
+  <circle cx="34" cy="30" r="20.4" fill="${LINHA}"/>
+  <circle cx="34" cy="30" r="18.6" fill="${pele}"/>
+  <path d="M 26 33 L 9 36" fill="none" stroke="${LINHA}" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 26 33 L 9 36" fill="none" stroke="${pele}" stroke-width="7.5" stroke-linecap="round"/>
+  <circle cx="7" cy="36" r="5.4" fill="${LINHA}"/>
+  <circle cx="7" cy="36" r="4" fill="${pele}"/>
+  <path d="M 4.4 37.4 C 6 39 8.4 39 10 37.4" fill="none" stroke="${LINHA}" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
+  <circle cx="46" cy="26" r="3" fill="${barbatana}" opacity="0.75"/>
+  <circle cx="50" cy="34" r="3.4" fill="${barbatana}" opacity="0.7"/>
+  <circle cx="44" cy="40" r="2.6" fill="${barbatana}" opacity="0.65"/>
+  <path d="M 23 40 C 26 44 31 45 35 43" fill="none" stroke="${LINHA}" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  ${olho(28, 26, 6.4)}
+  <path d="M 40 70 C 50 62 64 64 66 72 C 68 80 56 86 46 82 C 42 80 40 75 40 70 Z" fill="${barriga}" stroke="${LINHA}" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>
+  ${raios(['M 44 73 L 62 68', 'M 44 76 L 63 76', 'M 45 79 L 58 82'], 1.7, pele, 0.8)}
 </svg>`;
 };
 
