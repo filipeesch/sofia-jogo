@@ -518,15 +518,14 @@ canvas {
 .bubbles-plant span {
   display: block;
   position: relative;
-  font-size: var(--f, 84px);
   line-height: 1;
   transform-origin: 50% 100%;
   pointer-events: auto;
   cursor: pointer;
   touch-action: none;
 }
-/* Caixa de toque alta e estreita, centrada na planta: um 🌿 de 60 px não é
-   alvo para um dedo de 2-3 anos. É a mesma regra dos 90 px do peixe. */
+/* Caixa de toque alta e estreita, centrada na planta: as pontas das folhas são
+   finas e não dão alvo a um dedo de 2-3 anos. É a mesma regra dos 90 px do peixe. */
 .bubbles-plant span::before {
   content: '';
   position: absolute;
@@ -561,7 +560,6 @@ canvas {
 .bubbles-shell span {
   display: block;
   position: relative;
-  font-size: var(--f, 40px);
   line-height: 1;
   transform: rotate(var(--tilt, 0deg));
   transform-origin: 50% 100%;
@@ -610,7 +608,7 @@ canvas {
   filter: drop-shadow(0 4px 8px rgba(0, 40, 70, 0.35));
   animation: horseBob var(--bob, 3.4s) ease-in-out var(--atraso, 0s) infinite alternate;
 }
-.bubbles-horse span svg { display: block; width: var(--h, 72px); height: auto; }
+/* (o tamanho do svg vem da regra partilhada das figuras do fundo) */
 .bubbles-horse span::before {
   content: '';
   position: absolute;
@@ -641,17 +639,25 @@ canvas {
   pointer-events: none;
   animation: swim var(--swim, 18s) linear var(--atraso, 0s) infinite;
 }
+/* As figuras do fundo medem-se em ALTURA de píxeis (`--h`), não em `font-size`
+   dum glifo: um emoji mudava de tamanho conforme a fonte do sistema de quem
+   usava o tablet, e um desenho não tem esse problema — mas tem de ser medido. */
+.bubbles-fish span svg, .bubbles-plant span svg, .bubbles-shell span svg, .bubbles-horse span svg {
+  display: block;
+  height: var(--h, 56px);
+  width: auto;
+}
+
 .bubbles-fish span {
   display: block;
   position: relative;
-  font-size: clamp(28px, 7vw, 52px);
   filter: drop-shadow(0 3px 6px rgba(0, 40, 70, 0.35));
   pointer-events: auto;
   cursor: pointer;
   touch-action: none;
 }
-/* Caixa de toque de 90 px centrada no emoji. Um boneco de ~44 px não é alvo
-   para dedos de 2-3 anos, e este projeto já decidiu que um alvo se mede pelo
+/* Caixa de toque de 90 px centrada na figura. Um peixe de ~64 px de alto não é
+   alvo para dedos de 2-3 anos, e este projeto já decidiu que um alvo se mede pelo
    dedo, não pelo desenho: o peixe continua pequeno e cenográfico, mas toca-se
    nele como se fosse uma bolha. */
 .bubbles-fish span::before {
@@ -844,13 +850,6 @@ canvas {
   100% { transform: translate(-50%, calc(-50% + var(--sobe, -40px))) scale(0.6); opacity: 0; }
 }
 
-.bubbles-confetti {
-  position: absolute;
-  top: -52px;
-  z-index: 30;
-  animation: confettiFall 1.9s linear forwards;
-}
-
 .bubbles-blow {
   position: absolute;
   right: calc(18px + env(safe-area-inset-right));
@@ -874,6 +873,13 @@ canvas {
   -webkit-user-select: none;
   line-height: 1;
 }
+.bubbles-blow svg {
+  display: block;
+  height: clamp(36px, 8vw, 54px);
+  width: auto;
+  pointer-events: none;
+}
+
 .bubbles-blow:active { transform: scale(0.92); }
 
 .bubbles .back-btn {

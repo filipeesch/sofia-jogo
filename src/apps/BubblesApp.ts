@@ -1,4 +1,5 @@
 import { bubbleBurst, bubbleTapStep, clique, glup, idleSfx, puff, resume, sparkle, trill, win } from '../ui/sfx';
+import { ALGA, BAIACU, BOLHA_SOPRAR, CAVALO_MARINHO, CONCHA_ESPIRAL, CONCHA_VIEIRA, PEIXE_PRATA, PEIXE_TROPICAL } from './bubblesSprites';
 
 // Bolhas: um brinquedo, não um jogo. Cada bolha é só um conjunto de atributos
 // (dimensão, cor, carga) e cada atributo devolve qualquer coisa à criança — o
@@ -56,57 +57,60 @@ interface Faísca { dx: number; dy: number; dur: number; atraso: number; queda: 
 // CSS), por isso nunca roubam um toque ao brinquedo — é a única coisa desta
 // cena que não pode falhar.
 
-// Emoji antigos (Unicode 1.0) de propósito: o coral 🪸 e a rocha 🪨 são
-// Unicode 15 e só existem em iOS 16.4+. Num iPad de 2019 seriam rectos vazios
-// no meio do mar, e um recto vazio não é brinquedo nenhum.
-//
-// As algas são TODAS 🌿 com escalas e inclinações diferentes, e não uma montra
-// de emojis de planta: um 🌱 de 54 px ao lado dum 🌿 de 96 px lia-se como uma
-// erva daninha perdida, não como o mesmo sargaçal. A variedade fazem-na o
-// tamanho, a inclinação e o ritmo de cada uma.
-interface Alga { emo: string; left: string; f: number; ondul: string; atraso: string; bottom: string; inclina: string }
-const ALGAS: Alga[] = [
-  { emo: '🌿', left: '3%', f: 104, ondul: '5.6s', atraso: '-1.2s', bottom: '3vh', inclina: '-7deg' },
-  { emo: '🌿', left: '16%', f: 72, ondul: '4.4s', atraso: '-3.1s', bottom: '6vh', inclina: '5deg' },
-  { emo: '🌿', left: '33%', f: 88, ondul: '6.2s', atraso: '-0.4s', bottom: '4vh', inclina: '-4deg' },
-  { emo: '🌿', left: '50%', f: 62, ondul: '5.1s', atraso: '-2.4s', bottom: '7vh', inclina: '8deg' },
-  { emo: '🌿', left: '64%', f: 96, ondul: '7.1s', atraso: '-4.2s', bottom: '2vh', inclina: '-6deg' },
+// Paletas das algas: a MESMA planta em três matizes. O que dá variedade à fila
+// é a escala, a inclinação, o ritmo e o matiz — nunca a forma, porque um
+// sargaçal é feito de repetições, não de modelos diferentes.
+const ALGA_PALETA = [
+  { folha: '#3fae5f', clara: '#8ee0a1', talo: '#2e8a4c' },
+  { folha: '#2f9b74', clara: '#7fdcc0', talo: '#1f7a59' },
+  { folha: '#63b852', clara: '#aee3a0', talo: '#3f8f3a' },
 ];
 
-interface Concha { emo: string; left: string; f: number; tilt: string; bottom: string }
-// As conchas cresceram face ao primeiro rascunho: a 30 px eram um grão de sal
-// cinzento na areia. Continuam menores que as algas (é o fundo, não o alvo),
-// mas já se vêem do outro lado da sala.
+interface Alga { left: string; h: number; cor: number; ondul: string; atraso: string; bottom: string; inclina: string }
+const ALGAS: Alga[] = [
+  { left: '4%', h: 132, cor: 0, ondul: '5.6s', atraso: '-1.2s', bottom: '3vh', inclina: '-9deg' },
+  { left: '19%', h: 92, cor: 1, ondul: '4.4s', atraso: '-3.1s', bottom: '6vh', inclina: '6deg' },
+  { left: '37%', h: 110, cor: 2, ondul: '6.2s', atraso: '-0.4s', bottom: '4vh', inclina: '-4deg' },
+  { left: '55%', h: 80, cor: 1, ondul: '5.1s', atraso: '-2.4s', bottom: '7vh', inclina: '10deg' },
+  { left: '76%', h: 124, cor: 0, ondul: '7.1s', atraso: '-4.2s', bottom: '2vh', inclina: '-7deg' },
+];
+
+// Duas formas de concha alternadas — a vieira em leque e o búzio em espiral —
+// porque duas instâncias duma única forma parecem logo quatro coisas diferentes.
+// A `interior` só é usada pelo búzio; a vieira ignora-a.
+const CONCHA_PALETA = [
+  { pele: '#f0a6b4', clara: '#ffe3ea', interior: '#c98f52' },
+  { pele: '#f6c67a', clara: '#fff0cf', interior: '#b07a44' },
+  { pele: '#c9b6ee', clara: '#efe6ff', interior: '#8d76b8' },
+];
+
+interface Concha { forma: 'vieira' | 'espiral'; left: string; h: number; cor: number; tilt: string; bottom: string }
+// Espalhadas pela largura toda: com as quatro no terço esquerdo a areia da
+// direita ficava vazia e a cena parecia a metade duma cena. A última fica em
+// 72% — mais à direita já invadiria o canto do botão de soprar.
 const CONCHAS: Concha[] = [
-  { emo: '🐚', left: '10%', f: 54, tilt: '-8deg', bottom: '8vh' },
-  { emo: '🐚', left: '24%', f: 40, tilt: '13deg', bottom: '4vh' },
-  { emo: '🐚', left: '43%', f: 58, tilt: '-4deg', bottom: '6vh' },
-  { emo: '🐚', left: '57%', f: 38, tilt: '17deg', bottom: '3vh' },
+  { forma: 'vieira', left: '11%', h: 58, cor: 0, tilt: '-8deg', bottom: '8vh' },
+  { forma: 'espiral', left: '27%', h: 46, cor: 1, tilt: '13deg', bottom: '4vh' },
+  { forma: 'vieira', left: '46%', h: 62, cor: 2, tilt: '-4deg', bottom: '6vh' },
+  { forma: 'espiral', left: '72%', h: 46, cor: 0, tilt: '15deg', bottom: '3vh' },
 ];
 
 interface Cavalo { h: number; top: string; nada: string; atraso: string; bob: string; pele: string; barriga: string; barbatana: string }
 const CAVALOS: Cavalo[] = [
-  { h: 78, top: '42vh', nada: '27s', atraso: '-7s', bob: '3.4s', pele: '#ffb457', barriga: '#ffe3ad', barbatana: '#ff8a5c' },
-  { h: 60, top: '66vh', nada: '36s', atraso: '-21s', bob: '4.4s', pele: '#ff9ec7', barriga: '#ffdbe9', barbatana: '#ff6fa5' },
+  { h: 116, top: '42vh', nada: '27s', atraso: '-7s', bob: '3.4s', pele: '#ffb457', barriga: '#ffe3ad', barbatana: '#ff8a5c' },
+  { h: 92, top: '66vh', nada: '36s', atraso: '-21s', bob: '4.4s', pele: '#ff9ec7', barriga: '#ffdbe9', barbatana: '#ff6fa5' },
 ];
 
-// O cavalo-marinho é o único elemento desenhado: não existe emoji dele em
-// Unicode. Vista para a ESQUERDA, que é a direcção em que o `swim` o leva, e
-// feita de traços grossos de extremidade redonda em vez de contornos
-// fechados — é o modo mais barato de ter um corpo gordo de brinquedo.
-const CAVALO_SVG = `
-<svg viewBox="0 0 62 86" role="img" aria-label="Cavalo-marinho" xmlns="http://www.w3.org/2000/svg">
-  <path d="M47 34 C58 39 58 51 45 55 C52 47 52 40 47 34 Z" fill="var(--barbatana)" opacity="0.9"/>
-  <path d="M31 28 C44 36 45 50 35 58" fill="none" stroke="var(--pele)" stroke-width="19" stroke-linecap="round"/>
-  <path d="M35 58 C27 64 27 76 36 78 C43 79 46 73 41 69" fill="none" stroke="var(--pele)" stroke-width="9" stroke-linecap="round"/>
-  <path d="M34 33 C41 39 41 48 35 54" fill="none" stroke="var(--barriga)" stroke-width="7" stroke-linecap="round" opacity="0.9"/>
-  <circle cx="30" cy="20" r="12" fill="var(--pele)"/>
-  <path d="M22 17 L5 24 L22 27 Z" fill="var(--pele)" stroke="var(--pele)" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M25 9 L29 2 L33 10 Z" fill="var(--barbatana)"/>
-  <path d="M29 37 L39 34 M29 44 L40 43 M31 51 L40 51" stroke="var(--barriga)" stroke-width="2.4" stroke-linecap="round" opacity="0.55"/>
-  <circle cx="25" cy="17" r="4" fill="#fff"/>
-  <circle cx="24" cy="17" r="2" fill="#22303c"/>
-</svg>`;
+type Cores = { pele?: string; barriga?: string; barbatana?: string };
+
+// Os três peixes, cada um da sua espécie — é o que faz deles três peixes e não
+// três cores do mesmo peixe. Cada um a sua altura de natação e o seu ciclo.
+interface Peixe { sprite: (cores?: Cores) => string; top: string; nada: string; atraso: string; h: number }
+const PEIXES: Peixe[] = [
+  { sprite: PEIXE_TROPICAL, top: '57vh', nada: '17s', atraso: '0s', h: 64 },
+  { sprite: PEIXE_PRATA, top: '69vh', nada: '24s', atraso: '-6s', h: 56 },
+  { sprite: BAIACU, top: '80vh', nada: '31s', atraso: '-12s', h: 60 },
+];
 
 export class BubblesApp {
   private root = document.createElement('div');
@@ -146,14 +150,15 @@ export class BubblesApp {
     // sobrepõem — assim um peixe a passar continua a ser o peixe.
     this.root.append(this.algas(), this.conchas(), this.cavalos());
 
-    ['🐠', '🐟', '🐡'].forEach((emo, i) => {
+    PEIXES.forEach((peixe) => {
       const f = document.createElement('div');
       f.className = 'bubbles-fish';
-      f.style.top = `${58 + i * 11}vh`;
-      f.style.setProperty('--swim', `${17 + i * 7}s`);
-      f.style.setProperty('--atraso', `-${i * 6}s`);
+      f.style.top = peixe.top;
+      f.style.setProperty('--swim', peixe.nada);
+      f.style.setProperty('--atraso', peixe.atraso);
       const body = document.createElement('span');
-      body.textContent = emo;
+      body.style.setProperty('--h', `${peixe.h}px`);
+      body.innerHTML = peixe.sprite();
       f.append(body);
       // O peixe deixou de ser cenário: é um alvo tocável com caixa de 90 px
       // (ver `.bubbles-fish span::before`), e responder a um toque é a única
@@ -172,7 +177,7 @@ export class BubblesApp {
 
     const blow = document.createElement('button');
     blow.className = 'bubbles-blow';
-    blow.textContent = '🫧';
+    blow.innerHTML = BOLHA_SOPRAR;
     blow.setAttribute('aria-label', 'Soprar bolhas');
     blow.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -289,20 +294,13 @@ export class BubblesApp {
     this.celebrate();
   }
 
+  /** Fim de vaga: um jingle curto e a vaga seguinte. Já não atira ícones do
+   *  topo — num brinquedo cuja lei é que a criança é sempre a autora, um adorno
+   *  que cai sem ela o ter provocado é a única coisa que acontecia À criança. O
+   *  espectáculo visual continua a ser o fogo de artifício das gigantes. */
   private celebrate(): void {
     this.emFesta = true;
     win();
-    const faces = ['🎉', '⭐', '🫧', '✨'];
-    for (let i = 0; i < 22; i++) {
-      const s = document.createElement('span');
-      s.className = 'bubbles-confetti';
-      s.textContent = faces[i % faces.length];
-      s.style.left = `${Math.random() * 96}%`;
-      s.style.fontSize = `${16 + Math.random() * 22}px`;
-      s.style.animationDelay = `${Math.random() * 0.45}s`;
-      this.fx.append(s);
-      this.later(() => s.remove(), 2600);
-    }
     this.later(() => this.startWave(), 1600);
   }
 
@@ -513,7 +511,7 @@ export class BubblesApp {
 
   private dispara(x: number, y: number, cor: Cor, forma: Forma, n: number, escala: number): void {
     // O clarão no ponto de explosão: sem ele, 20 pontos a abrir lêem-se como
-    // confetti a cair e não como uma explosão. Só nos fogos a sério (escala 1).
+    // papelinhos a cair do ar e não como uma explosão. Só nos fogos a sério (escala 1).
     if (escala === 1) this.flash(x, y, cor);
     // Teto declarado: dois fogos quase simultâneos nunca põem centenas de nós
     // no ar num tablet fraco.
@@ -543,7 +541,7 @@ export class BubblesApp {
   }
 
   // O clarão da explosão: um anel de cor a abrir em ~0,4 s. É o que faz vinte
-  // pontos a abrir parecerem uma explosão em vez de confetti a cair.
+  // pontos a abrir parecerem uma explosão em vez de papelinhos a cair.
   private flash(x: number, y: number, cor: Cor): void {
     const el = document.createElement('i');
     el.className = 'spark-flash';
@@ -608,12 +606,12 @@ export class BubblesApp {
       el.className = 'bubbles-plant';
       el.style.left = a.left;
       el.style.bottom = a.bottom;
-      el.style.setProperty('--f', `${a.f}px`);
       el.style.setProperty('--ondul', a.ondul);
       el.style.setProperty('--atraso', a.atraso);
       el.style.setProperty('--inclina', a.inclina);
       const corpo = document.createElement('span');
-      corpo.textContent = a.emo;
+      corpo.style.setProperty('--h', `${a.h}px`);
+      corpo.innerHTML = ALGA(ALGA_PALETA[a.cor]);
       el.append(corpo);
       this.tocavel(el, corpo, (dir) => {
         // O ar escapa-se pelo pontal de cima da alga, não do meio dela.
@@ -632,9 +630,9 @@ export class BubblesApp {
       el.style.left = c.left;
       el.style.bottom = c.bottom;
       const corpo = document.createElement('span');
-      corpo.textContent = c.emo;
-      corpo.style.setProperty('--f', `${c.f}px`);
+      corpo.style.setProperty('--h', `${c.h}px`);
       corpo.style.setProperty('--tilt', c.tilt);
+      corpo.innerHTML = c.forma === 'vieira' ? CONCHA_VIEIRA(CONCHA_PALETA[c.cor]) : CONCHA_ESPIRAL(CONCHA_PALETA[c.cor]);
       el.append(corpo);
       this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'fecha', clique, dir, 3, 34, 0.5));
       frag.append(el);
@@ -653,10 +651,7 @@ export class BubblesApp {
       el.style.setProperty('--bob', h.bob);
       const corpo = document.createElement('span');
       corpo.style.setProperty('--h', `${h.h}px`);
-      corpo.style.setProperty('--pele', h.pele);
-      corpo.style.setProperty('--barriga', h.barriga);
-      corpo.style.setProperty('--barbatana', h.barbatana);
-      corpo.innerHTML = CAVALO_SVG;
+      corpo.innerHTML = CAVALO_MARINHO(h);
       el.append(corpo);
       this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'pula', trill, dir, 4, 40, 0.5));
       frag.append(el);
