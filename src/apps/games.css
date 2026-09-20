@@ -57,6 +57,19 @@
 
 /* ---------- seletor de dificuldade (comum aos dois jogos) ---------- */
 
+/* Linha que agrupa o seletor de modos e o interruptor ♾️ do Galo, cada um
+   na sua própria pílula: a regra infinita não pertence ao grupo dos modos. */
+.game-seg-row {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.game-seg-row .game-seg { margin: 0; }
+
 .game-seg {
   flex: 0 0 auto;
   align-self: center;
@@ -289,4 +302,26 @@
 @keyframes ttt-glow {
   0%, 100% { box-shadow: 0 0 0 4px #fb8c00, 0 3px 10px rgba(0, 0, 0, 0.2); }
   50% { box-shadow: 0 0 0 6px #ffb300, 0 0 22px rgba(255, 179, 0, 0.8); }
+}
+
+/* Interruptor ♾️: é um toggle, não um modo — vive noutra pílula e usa o
+   mesmo "is-on" das pílulas, com a cor do jogo para ler como ligado. */
+.ttt-inf-btn { font-size: clamp(15px, 3.6vmin, 24px); }
+.ttt-inf-btn.is-on {
+  background: #ede7f6;
+  color: #4527a0;
+  box-shadow: 0 0 0 2px #7e57c2, 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Peça reformada pelo modo infinito: já saiu da lógica quando a 4.ª do
+   jogador entra; o esvanecer é só imagem (~0,4 s, ver FADE_MS). O transform
+   não mexe no layout — as vizinhas ficam onde estão. */
+.ttt-cell.ttt-fading {
+  pointer-events: none;
+  animation: ttt-fade 0.43s ease forwards;
+}
+
+@keyframes ttt-fade {
+  from { opacity: 1; }
+  to { opacity: 0; transform: scale(0.6); }
 }

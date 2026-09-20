@@ -10,6 +10,12 @@ import { clique, win, thump } from '../ui/sfx';
 // No modo CPU a criança é sempre X e abre sempre a partida. Vitória e empate
 // são celebrativos apenas com SOM (jingle/neutro) e linha destacada: sem
 // vozes, sem nenhuma mensagem de perdedor.
+//
+// O interruptor ♾️ (independente do modo) liga o MODO INFINITO: cada jogador
+// tem no máximo 3 peças ativas; ao colocar a 4.ª, a mais antiga do próprio
+// jogador esvanece (~0,4 s) e sai da lógica no mesmo instante (nunca gera
+// "vitória-fantasma"). O tabuleiro nunca enche, o empate desaparece e a
+// partida prossegue até alguém alinhar três peças ainda vivas.
 
 export interface TicTacToeOptions {
   onBack: () => void;
@@ -24,6 +30,12 @@ const MODE_LABELS: [Mode, string][] = [
   ['hard', '🤖 Difícil']
 ];
 const LS_KEY = 'sofia.ttt.mode';
+const LS_INF = 'sofia.ttt.inf';
+
+// Máximo de peças vivas por jogador no modo infinito (a quarta peça coloca a
+// mais antiga a esvanecer — é a regra do "infinite tic-tac-toe").
+const MAX_LIVE = 3;
+const FADE_MS = 430;
 
 // As 8 linhas vencedoras do 3x3.
 const LINES: [number, number, number][] = [
@@ -103,18 +115,25 @@ export class TicTacToeApp {
   private chipX: HTMLDivElement;
   private chipO: HTMLDivElement;
   private againBtn: HTMLButtonElement;
+  private infBtn: HTMLButtonElement;
   private segBtns = new Map<Mode, HTMLButtonElement>();
 
   private mode: Mode;
+  private inf = false; // modo infinito: peças a mais de 3 por jogador esvanecem
   private board0: Cell[] = Array(9).fill(null);
   private turn: 'x' | 'o' = 'x';
   private locked = false; // vitória/empate/a aguardar a CPU: recusa toques
   private gen = 0; // invalida a jogada da CPU após reset/destroy (padrão navSeq)
   private pvpOpensX = true; // primeiro jogador alterna entre partidas em 2p
   private timeouts: number[] = [];
+  // Filas FIFO por jogador (modo infinito): a peça colocada há mais tempo é
+  // a primeira a esvanecer quando a 4.ª chega.
+  private histX: number[] = [];
+  private histO: number[] = [];
 
   constructor(private opts: TicTacToeOptions) {
     this.mode = readMode();
+    this.inf = readInf();
 
     this.root = document.createElement('div');
     this.root.className = 'game game-galo';
@@ -160,6 +179,28 @@ export class TicTacToeApp {
       seg.append(b);
     }
 
+    // O ♾️ é um interruptor próprio, separado do grupo de modos: liga a
+    // regra infinita (máx. 3 peças vivas por jogador) a qualquer dos modos.
+    const infWrap = document.createElement('div');
+    infWrap.className = 'game-seg';
+    this.infBtn = document.createElement('button');
+    this.infBtn.className = 'game-seg-btn ttt-inf-btn';
+    this.infBtn.textContent = '♾️';
+    this.infBtn.setAttribute('aria-label', 'Modo infinito');
+    this.infBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.inf = !this.inf;
+      writeInf(this.inf);
+      this.markSeg();
+      this.newGame();
+    });
+    infWrap.append(this.infBtn);
+
+    const segRow = document.createElement('div');
+    segRow.className = 'game-seg-row';
+    segRow.append(seg, infWrap);
+
     // Indicador de turno sem texto: a peça do turno pulsa.
     const turn = document.createElement('div');
     turn.className = 'ttt-turn';
@@ -200,7 +241,7 @@ export class TicTacToeApp {
     const stage = document.createElement('div');
     stage.className = 'game-stage';
     stage.append(turn, this.board, this.againBtn);
-    this.root.append(head, seg, stage);
+    this.root.append(head, segRow, stage);
     this.markSeg();
   }
 
@@ -225,6 +266,8 @@ export class TicTacToeApp {
     for (const t of this.timeouts) clearTimeout(t);
     this.timeouts = [];
     this.board0 = Array(9).fill(null);
+    this.histX = [];
+    this.histO = [];
     this.locked = false;
     this.againBtn.classList.remove('visible');
     // CPU: a criança é X e abre. 2 Jogadores: X alterna entre partidas.
@@ -252,9 +295,33 @@ export class TicTacToeApp {
     this.board0[i] = mark;
     const c = this.cells[i];
     c.textContent = mark === 'x' ? 'X' : 'O';
+    c.classList.remove('ttt-fading'); // a casa pode estar a esvanecer a peça antiga
     c.classList.add(mark);
     c.setAttribute('aria-label', `Casa ${i + 1}: ${mark === 'x' ? 'X' : 'O'}`);
     clique();
+    if (this.inf) this.retireOldest(i, mark);
+  }
+
+  /** Regra infinita: cada jogador mantém no máximo MAX_LIVE peças vivas; a
+   *  4.ª reforma a mais antiga (FIFO). A peça reformada sai da lógica no
+   *  imediato — uma linha com uma peça a esvanecer nunca é "vitória-fantasma"
+   *  — e esvanece-se em ~0,4 s apenas como imagem. */
+  private retireOldest(i: number, mark: 'x' | 'o'): void {
+    const hist = mark === 'x' ? this.histX : this.histO;
+    hist.push(i);
+    if (hist.length <= MAX_LIVE) return;
+    const old = hist.shift() as number;
+    this.board0[old] = null;
+    const c = this.cells[old];
+    c.classList.add('ttt-fading');
+    c.setAttribute('aria-label', `Casa ${old + 1} vazia`);
+    const gen = this.gen;
+    this.after(FADE_MS, () => {
+      if (gen !== this.gen) return; // newGame/destroy já limparam a casa
+      if (this.board0[old] !== null) return; // a casa foi recomprada entretanto
+      c.textContent = '';
+      c.classList.remove('x', 'o', 'ttt-fading');
+    });
   }
 
   private isCpuTurn(): boolean {
@@ -287,6 +354,17 @@ export class TicTacToeApp {
       // de competência que a Média não promete ter.
       const t = threats(b, 'x');
       if (t.length === 1) return t[0];
+      return randomEmpty(b);
+    }
+    if (this.inf) {
+      // Difícil no modo infinito: o minimax exato pressupõe peças permanentes
+      // e perde o sentido num tabuleiro onde as peças expiram. Heurística
+      // imediata — ganhar se puder, senão bloquear ameaça iminente, senão
+      // aleatória — que cumpre o contrato do spec para este modo.
+      const w = threats(b, 'o');
+      if (w.length) return w[0];
+      const t = threats(b, 'x');
+      if (t.length) return t[0];
       return randomEmpty(b);
     }
     // Difícil: minimax puro. A CPU abre com o tabuleiro quase cheio de X,
@@ -341,6 +419,8 @@ export class TicTacToeApp {
       b.classList.toggle('is-on', mode === this.mode);
       b.setAttribute('aria-pressed', String(mode === this.mode));
     }
+    this.infBtn.classList.toggle('is-on', this.inf);
+    this.infBtn.setAttribute('aria-pressed', String(this.inf));
   }
 
   private after(ms: number, fn: () => void): void {
@@ -358,5 +438,14 @@ function readMode(): Mode {
 }
 
 function writeMode(mode: Mode): void {
-  try { localStorage.setItem(LS_KEY, mode); } catch { /* idem */ }
+  try { localStorage.setItem(LS_KEY, mode); } catch { /* modo privado: vive sem memória */ }
+}
+
+function readInf(): boolean {
+  try { return localStorage.getItem(LS_INF) === '1'; } catch { /* idem */ }
+  return false;
+}
+
+function writeInf(on: boolean): void {
+  try { localStorage.setItem(LS_INF, on ? '1' : '0'); } catch { /* idem */ }
 }
