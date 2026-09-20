@@ -285,10 +285,11 @@ export class TicTacToeApp {
     const b = this.board0;
     if (this.mode === 'easy') return randomEmpty(b);
     if (this.mode === 'medium') {
+      // Exactamente como o spec: bloqueia a vitória iminente quando há uma e
+      // uma única célula de bloqueio; caso contrário, aleatória — sem "aspas"
+      // de competência que a Média não promete ter.
       const t = threats(b, 'x');
       if (t.length === 1) return t[0];
-      const own = threats(b, 'o');
-      if (own.length === 1) return own[0];
       return randomEmpty(b);
     }
     // Difícil: minimax puro. A CPU abre com o tabuleiro quase cheio de X,
