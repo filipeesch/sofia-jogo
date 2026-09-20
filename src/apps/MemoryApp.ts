@@ -5,9 +5,10 @@ import { preloadSound, playSound } from '../ui/sounds';
 import { cancelSpeech, speakName } from '../ui/speech';
 import { clique, ding, win } from '../ui/sfx';
 
-// Jogo da Memória: pares de animais virados para baixo; ao revelar, o nome é
-// falado em pt-PT e, quando há gravação, o som do bicho toca a seguir (a mesma
-// cadeia speak + soundAfter dos quebra-cabeças). O adulto escolhe o tamanho do
+// Jogo da Memória: pares de animais virados para baixo; a virada é silenciosa
+// e só o acerto de um par fala o nome em pt-PT e, quando há gravação, o som do
+// bicho toca a seguir (a mesma cadeia speak + soundAfter dos quebra-cabeças).
+// O adulto escolhe o tamanho do
 // tabuleiro no topo (2x3/3x4/4x5); sem pontuação, sem cronómetro, sem "errou":
 // o par errado fecha com um clique suave e as cartas ficam abertas o tempo
 // suficiente para a criança as ver.
@@ -221,11 +222,11 @@ export class MemoryApp {
 
   /** Toque numa carta: só cartas por abrir e jogo sem pausa do par errado. */
   private tap(c: MemCard): void {
-    if (this.locked || c.up || c.matched) return; // tocar carta aberta não repete a fala
+    if (this.locked || c.up || c.matched) return; // tocar carta aberta não repete nada
     c.up = true;
     c.el.classList.add('up');
     c.el.setAttribute('aria-label', c.item.name);
-    this.reveal(c);
+    // A virada é silenciosa: o nome e o som do animal são a recompensa do acerto.
     if (!this.first) {
       this.first = c;
       return;
@@ -238,7 +239,11 @@ export class MemoryApp {
       c.el.classList.add('matched');
       ding();
       this.matchedPairs++;
-      if (this.matchedPairs * 2 === this.cards.length) this.celebrate();
+      // O acerto fala o nome uma vez e, se houver gravação, o bicho depois.
+      // No último par a celebração só entra quando a fala do animal acabar:
+      // speakName cancela a fila, e sem isto a festa calaria o nome.
+      if (this.matchedPairs * 2 === this.cards.length) this.reveal(c, () => this.celebrate());
+      else this.reveal(c);
     } else {
       // Nenhum som de "erro": um clique suave e as cartas fecham devagar.
       clique();
@@ -255,13 +260,15 @@ export class MemoryApp {
     }
   }
 
-  /** Nome falado; quando há gravação, o som do bicho toca a seguir à fala. */
-  private reveal(c: MemCard): void {
+  /** Nome falado; quando há gravação, o som do bicho toca a seguir à fala.
+   *  'then' corre no fim de tudo (mesmo sem fala nem gravação nenhuma). */
+  private reveal(c: MemCard, then?: () => void): void {
     const a = c.item;
     const playFile = (): void => {
-      if (a.file) playSound(a.file, () => { a.sound?.(); });
+      if (a.file) playSound(a.file, () => { a.sound?.(); then?.(); }, 1, then);
+      else then?.();
     };
-    speakName(a.spoken ?? a.name, () => playFile());
+    speakName(a.spoken ?? a.name, playFile);
   }
 
   private celebrate(): void {
