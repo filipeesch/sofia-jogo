@@ -257,6 +257,17 @@ export function tractorRumble(): void { tone(58, 0.8, 'sawtooth', 0.16, 85); ton
 
 // Puzzle feedback (animal-puzzle): miss, hit and win.
 export function thump(): void { tone(150, 0.2, 'sine', 0.1, 90); }
+
+/** Par errado da memória: um "ups" fofo — duas notas de triângulo a descer,
+ *  a segunda mais grave e mais comprida. Ao contrário do thump (150→90 Hz,
+ *  que desenha o "erro" do quebra-cabeças), vive na banda 330–523 Hz que os
+ *  altifalantes minúsculos de tablet e telemóvel conseguem realmente
+ *  reproduzir: abaixo de ~200 Hz o hardware simplesmente apaga o som. O
+ *  volume fica um degrau acima do ding do acerto — ouve-se sem sustos. */
+export function missBoop(): void {
+  tone(523.25, 0.12, 'triangle', 0.2, 440);
+  tone(392, 0.2, 'triangle', 0.18, 330, 0.13);
+}
 export function ding(): void { tone(660, 0.1, 'triangle', 0.14); tone(990, 0.14, 'triangle', 0.14, undefined, 0.09); }
 export function win(): void {
   tone(523, 0.14, 'triangle', 0.16, undefined, 0);

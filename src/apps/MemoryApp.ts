@@ -3,15 +3,15 @@ import { ANIMALS } from './puzzleAnimals';
 import type { PuzzleItem } from './PuzzleApp';
 import { preloadSound, playSound } from '../ui/sounds';
 import { cancelSpeech, speakName } from '../ui/speech';
-import { ding, thump, win } from '../ui/sfx';
+import { ding, missBoop, win } from '../ui/sfx';
 
 // Jogo da Memória: pares de animais virados para baixo; a virada é silenciosa
 // e o acerto de um par é o momento sonoro: o som do bicho toca de imediato
 // (sem esperar por fala nenhuma) e o nome em pt-PT segue-se ao som. O adulto
 // escolhe o tamanho do
 // tabuleiro no topo (2x3/3x4/4x5); sem pontuação, sem cronómetro, sem "errou":
-// o par errado balança suavemente com um som grave e macio e as cartas ficam
-// abertas o tempo suficiente para a criança as ver.
+// o par errado balança suavemente com um "ups" fofo de notas médias e as
+// cartas ficam abertas o tempo suficiente para a criança as ver.
 
 export interface MemoryOptions {
   onBack: () => void;
@@ -245,9 +245,10 @@ export class MemoryApp {
       if (this.matchedPairs * 2 === this.cards.length) this.reveal(c, () => this.celebrate());
       else this.reveal(c);
     } else {
-      // Nenhum som de "erro": o thump grave e macio dos quebra-cabeças diz
-      // "não é este" e as cartas abanam de mansinho antes de fechar devagar.
-      thump();
+      // Nenhum som de "erro": o "ups" fofo do missBoop — duas notas médias a
+      // descer, audíveis nos altifalantes pequenos — diz "não é este" e as
+      // cartas abanam de mansinho antes de fechar devagar.
+      missBoop();
       a.el.classList.add('wrong');
       c.el.classList.add('wrong');
       this.locked = true;
