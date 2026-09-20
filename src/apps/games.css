@@ -235,6 +235,10 @@
 .ttt-board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  /* Linhas em frações FIXAS, não auto: com linhas auto, o texto enorme de um
+     X/O recém-colocado tem uma altura natural maior que a linha dividida e
+     empurra as linhas vizinhas — o tabuleiro "dançava" a cada jogada. */
+  grid-template-rows: repeat(3, 1fr);
   gap: clamp(6px, 1.6vmin, 12px);
   width: min(92vw, 52dvh);
   aspect-ratio: 1;
@@ -242,6 +246,8 @@
 
 .ttt-cell {
   border: 0;
+  min-height: 0;
+  overflow: hidden;
   border-radius: 14%;
   background: rgba(255, 255, 255, 0.75);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);

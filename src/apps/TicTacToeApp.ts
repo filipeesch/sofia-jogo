@@ -1,5 +1,4 @@
 import './games.css';
-import { cancelSpeech, speakName } from '../ui/speech';
 import { clique, win, thump } from '../ui/sfx';
 
 // Jogo do Galo 3x3 com X e O. O seletor no topo é a escolha do adulto:
@@ -9,8 +8,8 @@ import { clique, win, thump } from '../ui/sfx';
 //            célula de bloqueio; senão joga aleatoriamente;
 //   Difícil: minimax puro — imbatível.
 // No modo CPU a criança é sempre X e abre sempre a partida. Vitória e empate
-// são celebrativos: linha destacada, jingle e fala, sem nenhuma mensagem de
-// perdedor.
+// são celebrativos apenas com SOM (jingle/neutro) e linha destacada: sem
+// vozes, sem nenhuma mensagem de perdedor.
 
 export interface TicTacToeOptions {
   onBack: () => void;
@@ -129,7 +128,6 @@ export class TicTacToeApp {
     back.setAttribute('aria-label', 'Voltar');
     back.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
-      cancelSpeech(); // a celebração em curso não passa por cima do launcher
       this.opts.onBack();
     });
 
@@ -226,7 +224,6 @@ export class TicTacToeApp {
     this.gen++;
     for (const t of this.timeouts) clearTimeout(t);
     this.timeouts = [];
-    cancelSpeech();
     this.board0 = Array(9).fill(null);
     this.locked = false;
     this.againBtn.classList.remove('visible');
@@ -314,13 +311,9 @@ export class TicTacToeApp {
       this.chipX.classList.remove('ttt-on');
       this.chipO.classList.remove('ttt-on');
       for (const i of w.line) this.cells[i].classList.add('ttt-win');
+      // Só som: o jingle é a festa, para X e para O — sem vozes e sem
+      // qualquer mensagem de "perdeste".
       win();
-      if (w.mark === 'x') {
-        speakName(this.mode === 'pvp' ? 'Ganharam com X!' : 'Ganhaste!');
-      } else {
-        // Vitória da CPU: neutro-positivo, sem "perdeste" nenhum.
-        speakName(this.mode === 'pvp' ? 'Ganharam com O!' : 'A CPU fez três!');
-      }
       this.againBtn.classList.add('visible');
       return true;
     }
@@ -328,8 +321,7 @@ export class TicTacToeApp {
       this.locked = true;
       this.chipX.classList.remove('ttt-on');
       this.chipO.classList.remove('ttt-on');
-      thump();
-      speakName('Empate!');
+      thump(); // empate: apenas um tom grave e suave, sem voz
       this.againBtn.classList.add('visible');
       return true;
     }

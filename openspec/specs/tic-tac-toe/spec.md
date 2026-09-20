@@ -28,9 +28,13 @@ O jogo SHALL apresentar um tabuleiro 3x3 de células grandes e tocáveis onde as
 - **WHEN** um jogador toca numa célula já marcada
 - **THEN** nada acontece: a marca não muda e o turno não avança
 
-#### Scenario: Voltar ao launcher a meio de uma fala
-- **WHEN** o botão 🏠 é tocado enquanto uma celebração está a ser falada
-- **THEN** a fala é cortada imediatamente e o launcher é mostrado
+#### Scenario: Colocar peça não desloca o tabuleiro
+- **WHEN** uma peça é colocada em qualquer célula
+- **THEN** o retângulo de todas as outras nove células permanece exatamente na mesma posição e tamanho
+
+#### Scenario: Voltar ao launcher
+- **WHEN** o botão 🏠 é tocado a qualquer momento da partida
+- **THEN** o launcher é mostrado imediatamente e nenhuma jogada ou som do jogo continua
 
 ### Requirement: Calibração das três dificuldades da CPU
 No modo contra a CPU, a CPU SHALL jogar a peça O e a criança SHALL jogar X e abrir sempre a partida. A CPU Fácil SHALL escolher uma célula vazia aleatória. A CPU Média SHALL bloquear a vitória iminente do adversário quando existir uma e só uma célula de bloqueio e, caso contrário, jogar aleatoriamente. A CPU Difícil SHALL jogar de forma imbatível (minimax). A jogada da CPU SHALL ocorrer com um atraso curto (~0,5–1 s) após a jogada do jogador, para ser legível por uma criança.
@@ -55,11 +59,13 @@ No modo "2 Jogadores", dois jogadores SHALL alternar X e O no mesmo ecrã por to
 - **THEN** o jogador que abriu com X na partida anterior passa a abrir a nova partida
 
 ### Requirement: Vitória e empate com feedback celebrativo
-Quando um jogador completar três peças em linha (linha, coluna ou diagonal), o jogo SHALL bloquear novas jogadas, destacar visualmente a linha vencedora e celebrar com jingle e fala pt-PT; nenhuma mensagem SHALL culpar ou menosprezar o perdedor. No empate, o jogo SHALL bloquear jogadas e celebrar suavemente um empate. Em ambos os casos SHALL existir botão "Jogar de novo" que limpa o tabuleiro mantendo o modo atual. O jogo SHALL NOT manter pontuação acumulada entre partidas (filosofia infantil do projeto).
+Quando um jogador completar três peças em linha (linha, coluna ou diagonal), o jogo SHALL bloquear novas jogadas, destacar visualmente a linha vencedora e celebrar **apenas com som** (jingle), sem qualquer voz; nenhuma mensagem — falada ou escrita — SHALL culpar ou menosprezar o perdedor. No empate, o jogo SHALL bloquear jogadas e assinalá-lo apenas com um tom suave. Em ambos os casos SHALL existir botão "Jogar de novo" que limpa o tabuleiro mantendo o modo atual. O jogo SHALL NOT manter pontuação acumulada entre partidas (filosofia infantil do projeto).
+
+As células do tabuleiro SHALL manter posição e tamanho inalterados ao receber uma peça: as linhas e colunas da grelha são fixas e o texto da peça não empurra as vizinhas.
 
 #### Scenario: Vitória do jogador
 - **WHEN** o jogador completa uma linha de três
-- **THEN** a linha vencedora fica destacada, toca o jingle, é falada uma celebração, novas jogadas são recusadas e aparece "Jogar de novo"
+- **THEN** a linha vencedora fica destacada, toca o jingle (sem voz), novas jogadas são recusadas e aparece "Jogar de novo"
 
 #### Scenario: Vitória da CPU
 - **WHEN** a CPU completa uma linha de três
