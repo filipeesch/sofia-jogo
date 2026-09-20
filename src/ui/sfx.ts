@@ -214,6 +214,29 @@ export function trill(): void {
   tone(1180, 0.09, 'triangle', 0.09, 1560, 0.08);
 }
 
+/** Ostra que se abre: a charneira a ceder (um estalido grave e abafado, da
+ *  mesma família do fecho das conchas), a valva a descolar-se (um segundo
+ *  estalido mais longo e mais agudo) e, quando a pérola apanha a luz, um brilho
+ *  agudo e comprido — duas notas da escala (G e C) duas oitavas acima dos
+ *  estouros, que é onde uma bolha nunca vai bater. Os três juntos ficam abaixo
+ *  de um quarto do volume de um estouro: a ostra é a mais rica do fundo e mesmo
+ *  assim é um mimo. */
+export function abraOstra(): void {
+  pop(0.085, 380, 0.07);
+  pop(0.055, 620, 0.13, 0.07);
+  tone(1568, 0.42, 'sine', 0.042, 2093, 0.19);
+  tone(2093, 0.5, 'sine', 0.026, undefined, 0.3);
+}
+
+/** Caranguejo assustado: dois estalidos de tenaz, secos e curtos — o som de duas
+ *  unhas a bater uma na outra — e um E a subir até G, baixinho, por cima. É o
+ *  susto dele, não uma fanfarra: o pico fica em 0,075, um terço de um estouro. */
+export function pinca(): void {
+  pop(0.075, 760, 0.035);
+  pop(0.06, 540, 0.03, 0.06);
+  tone(1318.51, 0.16, 'sine', 0.03, 1567.98, 0.11);
+}
+
 // Procedural fallbacks for the vehicles puzzle (used only when the real
 // MP3 cannot be loaded).
 export function carHorn(): void { tone(400, 0.09, 'square', 0.16); tone(400, 0.1, 'square', 0.16, undefined, 0.17); }

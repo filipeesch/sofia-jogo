@@ -266,26 +266,182 @@ export const CONCHA_VIEIRA = (cores: { pele?: string; clara?: string } = {}) => 
 </svg>`;
 };
 
-/** Búzio: concha com a VOLTA em espiral desenhada a sério. No rascunho eram só
- *  arcos soltos e lia-se "batata"; o que faz de uma concha uma concha em espiral
- *  é a espiral em si, do bico ao centro, com as costelas a sair dela. */
-export const CONCHA_ESPIRAL = (cores: { pele?: string; clara?: string; interior?: string } = {}) => {
-  const pele = cores.pele ?? '#f6c67a';
-  const clara = cores.clara ?? '#fff0cf';
-  const interior = cores.interior ?? '#c98f52';
-  const corpo = 'M 22 44 C 15 27 33 12 56 12 C 78 12 90 24 88 37 C 86 51 68 62 46 60 C 32 58 25 52 22 44 Z';
-  // A abertura é uma fenda comprida a correr junto ao bordo, não uma nódoa: é o
-  // que diz "concha aberta" a uma criança de dois anos. O lábio claro é um traço
-  // que segue o bordo POR DENTRO — quando ficou de fora, parecia um plátano.
-  const abertura = 'M 31 22 C 25 30 25 42 32 51 C 35 42 35 30 37 24 Z';
-  const labios = 'M 29.5 25 C 24 31 24 41 30.5 48';
+/** Búzio: concha em espiral construída como espiral A SÉRIO. O primeiro rascunho
+ *  punha arcos soltos sobre um vulto e lia-se "batata"; o segundo punha riscas a
+ *  sair do CENTRO, que é um sol — não uma concha.
+ *
+ *  Aqui o desenho É a matemática da concha: uma espiral logarítmica que cresce
+ *  2,6 vezes por volta, e o tubo da volta é a faixa entre ela e a volta anterior.
+ *  Daí tiram-se todas as peças: a boca é o corte no fim da volta mais gorda, e as
+ *  riscas são travessas dessa faixa — por construção ficam DENTRO da concha, não há
+ *  ponta nenhuma para fora (a lição das costelas da vieira). O bico fino é o
+ *  princípio da espiral, onde a faixa já quase não tem espessura. */
+export const CONCHA_ESPIRAL = (cores: { pele?: string; clara?: string; interior?: string; risca?: string } = {}) => {
+  const pele = cores.pele ?? '#f2a95f';
+  const clara = cores.clara ?? '#ffe0ad';
+  const interior = cores.interior ?? '#a5652f';
+  const risca = cores.risca ?? '#d9782f';
+  const ax = 57, ay = 37;                    // o eixo da espiral, perto do centro
+  const k = Math.log(2.6) / (Math.PI * 2);   // 2,6× por volta
+  const r0 = 6.2, fim = 10.2, fase = -0.78;  // `fase` põe a boca virada para a esquerda
+  const raio = (t: number) => r0 * Math.exp(k * t);
+  const pto = (r: number, t: number): [number, number] => [ax + r * Math.cos(t + fase), ay + r * Math.sin(t + fase)];
+  const fora: string[] = [];
+  for (let t = 0; t <= fim + 1e-6; t += 0.28) {
+    const [x, y] = pto(raio(t), t);
+    fora.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
+  }
+  const dentro: string[] = [];
+  for (let t = fim; t >= -1e-6; t -= 0.28) {
+    const [x, y] = pto(raio(t) / 2.6, t);
+    dentro.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
+  }
+  const volta = 'M ' + fora.join(' L ') + ' L ' + dentro.join(' L ') + ' Z';
+  // Travessas da faixa: cada uma vai de uma borda da volta à outra, com uma
+  // ligeira torção no meio para a risca seguir a volta em vez de a cortar à réguá.
+  const riscas: string[] = [];
+  for (let t = 1.7; t < fim - 0.5; t += 0.92) {
+    const r1 = (raio(t) / 2.6) * 1.08, r2 = raio(t) * 0.93;
+    const [x1, y1] = pto(r1, t);
+    const [x2, y2] = pto(r2, t);
+    const [xm, ym] = pto((r1 + r2) / 2, t + 0.3);
+    riscas.push(`M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${xm.toFixed(1)} ${ym.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+  }
+  // A boca: uma lente no corte da última volta. Enche para DENTRO, quase nada
+  // para fora — quando era o contrário, a abertura saía da silhueta e parecia
+  // uma língua de fora.
+  const [bx, by] = pto(raio(fim), fim);
+  const [ix, iy] = pto(raio(fim) / 2.6, fim);
+  const mx = (bx + ix) / 2, my = (by + iy) / 2;
+  const nx = -(iy - by), ny = ix - bx;                 // perpendicular ao corte
+  const boca = `M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(mx + nx * 0.44).toFixed(1)} ${(my + ny * 0.44).toFixed(1)} ${ix.toFixed(1)} ${iy.toFixed(1)}`
+    + ` Q ${(mx - nx * 0.02).toFixed(1)} ${(my - ny * 0.02).toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)} Z`;
+  const luz = pto(raio(7.4) * 0.84, 7.4), luz2 = pto(raio(9.9) * 0.84, 9.9);
   return `<svg viewBox="0 0 96 74" role="img" aria-label="Concha" xmlns="http://www.w3.org/2000/svg">
-  <path d="M 83 27 C 92 25 96 31 92 36 C 89 40 84 39 81 35 Z" fill="${pele}" stroke="${LINHA}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
-  <path d="${corpo}" fill="${pele}" stroke="${LINHA}" stroke-width="2.8" stroke-linejoin="round" paint-order="stroke"/>
-  <path d="M 60 35 C 67 34 69 40 64 43 C 57 46 51 39 54 31 C 58 21 72 18 80 25" fill="none" stroke="${TINTA_ESCURA}" stroke-width="2.6" stroke-linecap="round" opacity="0.42"/>
-  ${raios(['M 54 31 C 47 25 48 17 55 13', 'M 64 43 C 64 51 57 57 48 59', 'M 80 25 C 85 28 88 33 87 39', 'M 30 21 C 35 26 38 33 37 40'], 2.1, TINTA_ESCURA, 0.26)}
-  <path d="${abertura}" fill="${interior}" stroke="${LINHA}" stroke-width="1.8" paint-order="stroke"/>
-  <path d="${labios}" fill="none" stroke="${clara}" stroke-width="3.2" stroke-linecap="round" opacity="0.95"/>
+  <path d="${volta}" fill="${pele}" stroke="${LINHA}" stroke-width="2.8" stroke-linejoin="round" paint-order="stroke"/>
+  ${raios(riscas, 3.6, risca, 0.9)}
+  <circle cx="${ax}" cy="${ay}" r="3.4" fill="${risca}"/>
+  <path d="M ${luz[0].toFixed(1)} ${luz[1].toFixed(1)} Q ${pto(raio(8.6) * 0.98, 8.6)[0].toFixed(1)} ${pto(raio(8.6) * 0.98, 8.6)[1].toFixed(1)} ${luz2[0].toFixed(1)} ${luz2[1].toFixed(1)}" fill="none" stroke="${clara}" stroke-width="3.2" stroke-linecap="round" opacity="0.65"/>
+  <path d="${boca}" fill="${interior}" stroke="${LINHA}" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(mx - nx * 0.1).toFixed(1)} ${(my - ny * 0.1).toFixed(1)} ${ix.toFixed(1)} ${iy.toFixed(1)}" fill="none" stroke="${clara}" stroke-width="2.6" stroke-linecap="round" opacity="0.85"/>
+</svg>`;
+};
+
+/** Ostra. Um só desenho com dois grupos nomeados: `<g class="ostra-corpo">` é a
+ *  valva de baixo com o leito e a pérola, `<g class="ostra-valva">` é a de cima,
+ *  chifrada na direita. Quem abre é o CSS a rodar esse grupo em redor da
+ *  charneira — dois desenhos empilhados entregavam o truque pela emenda e pelas
+ *  duas sombras.
+ *
+ *  A charneira fica à DIREITA e a boca à esquerda, como todos os bichos desta
+ *  cena virados para a corrente; o grupo da valva roda à volta dela e levanta a
+ *  ponta esquerda. Fechada, a valva tapa quase toda a pérola mas deixa ver uma
+ *  réstia de carne e um bocado dela — é o convite. */
+export const OSTRA = (cores: { concha?: string; risca?: string; interior?: string; carne?: string; perola?: string } = {}) => {
+  const concha = cores.concha ?? '#cfd4da';
+  const risca = cores.risca ?? '#a8b1ba';
+  const interior = cores.interior ?? '#e7ddf0';
+  const carne = cores.carne ?? '#f2a3ad';
+  const perola = cores.perola ?? '#fffdf7';
+  // Valva de baixo: a borda de cima (onde a carne se deita) e o bojo por baixo.
+  const cha = 'M 12 62 C 42 74 80 72 106 54 C 98 92 24 90 12 62 Z';
+  const leito = 'M 19 60 C 46 50 86 48 103 52 C 88 68 34 70 19 60 Z';
+  // Valva de cima: uma aba com a borda ondulada — a ostra é uma concha torta,
+  // não um leque arrumado como a vieira.
+  const tampa = 'M 102 54 C 88 20 32 14 15 55 C 26 60 30 51 40 57 C 50 63 56 53 66 59 C 76 65 82 55 90 59 C 96 62 100 58 102 54 Z';
+  // Costelas a sair da charneira (102,54), todas paradas a 78 % do caminho.
+  const charneira: [number, number] = [100, 52];
+  const costelas = ([[68, 22], [48, 18], [30, 26], [20, 42]] as [number, number][]).map(([px, py]) => {
+    const x = charneira[0] + (px - charneira[0]) * 0.78;
+    const y = charneira[1] + (py - charneira[1]) * 0.78;
+    return `M ${charneira[0]} ${charneira[1]} L ${x.toFixed(1)} ${y.toFixed(1)}`;
+  });
+  return `<svg viewBox="0 0 120 100" role="img" aria-label="Ostra" xmlns="http://www.w3.org/2000/svg">
+  <g class="ostra-corpo">
+    <path d="${cha}" fill="${concha}" stroke="${LINHA}" stroke-width="2.8" stroke-linejoin="round" paint-order="stroke"/>
+    ${raios(['M 16 69 C 44 80 80 78 103 61', 'M 21 76 C 48 86 82 83 99 66', 'M 28 82 C 52 89 78 85 94 71'], 2, risca, 0.8)}
+    <path d="${leito}" fill="${carne}" stroke="${LINHA}" stroke-width="1.8" stroke-linejoin="round" paint-order="stroke"/>
+    <path d="M 26 58 C 48 52 82 51 98 53" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+    <ellipse cx="60" cy="61" rx="13" ry="4.6" fill="${TINTA_ESCURA}" opacity="0.2"/>
+    <circle cx="60" cy="46" r="13.6" fill="${perola}" stroke="${LINHA}" stroke-width="2.2" paint-order="stroke"/>
+    <path d="M 50 52 C 55 58 66 58 70 52 C 65 55 55 55 50 52 Z" fill="${TINTA_ESCURA}" opacity="0.15"/>
+    <circle cx="55" cy="41" r="4" fill="${LUZ}" opacity="0.95"/>
+    <circle cx="66" cy="50" r="2.2" fill="${LUZ}" opacity="0.5"/>
+  </g>
+  <g class="ostra-valva">
+    <path d="${tampa}" fill="${interior}" stroke="${LINHA}" stroke-width="2.8" stroke-linejoin="round" paint-order="stroke"/>
+    ${raios(costelas, 2.2, risca, 0.8)}
+    <path d="M 96 50 C 82 30 44 24 24 48" fill="none" stroke="${LUZ}" stroke-width="2.4" stroke-linecap="round" opacity="0.4"/>
+  </g>
+  <g class="ostra-brilho" opacity="0">
+    <path d="M 80 26 L 82 32 L 88 34 L 82 36 L 80 42 L 78 36 L 72 34 L 78 32 Z" fill="${LUZ}"/>
+    <path d="M 34 22 L 35.4 26 L 39.4 27.4 L 35.4 28.8 L 34 32.8 L 32.6 28.8 L 28.6 27.4 L 32.6 26 Z" fill="${LUZ}"/>
+  </g>
+</svg>`;
+};
+
+
+// ── Caranguejo ─────────────────────────────────────────────────────────────
+
+/** O caranguejo que anda na areia. É o único bicho do fundo que anda em vez de
+ *  ser levado, por isso é o único que tem patas de fora — e elas vivem em dois
+ *  grupos (`cang-pernas-e` e `cang-pernas-d`) a alternar, que é o que faz dele um
+ *  bicho a passear e não uma figura colada no sítio. As tenazes ficam em
+ *  `cang-bracos`: é esse grupo que se levanta quando alguém lhe toca.
+ *
+ *  Patas e braços são o mesmo `d` desenhado duas vezes — um traço escuro largo
+ *  por baixo, um traço da cor por cima. Dá contorno e articulação com dois
+ *  caminhos, sem precisar de `<defs>` nem de máscaras, e as pontas ficam
+ *  redondas, que é como se desenha para crianças de 2 e 3 anos. */
+export const CARANGUEJO = (cores: { casca?: string; escura?: string; clara?: string; iris?: string } = {}) => {
+  const casca = cores.casca ?? '#e8452e';
+  const escura = cores.escura ?? '#bf2d1c';
+  const clara = cores.clara ?? '#ff9070';
+  const iris = cores.iris ?? '#d9a441';
+
+  const pata = (d: string, largo = 9, fino = 5.6): string =>
+    `<path d="${d}" fill="none" stroke="${escura}" stroke-width="${largo}" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<path d="${d}" fill="none" stroke="${casca}" stroke-width="${fino}" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  const pernas = pata('M 41 55 L 31 67 L 28 83', 10, 6.4)
+    + pata('M 35 58 L 23 70 L 18 84', 10, 6.4)
+    + pata('M 32 60 L 19 74 L 10 85', 10, 6.4);
+
+  /** Uma tenaz com a dobradiça na origem, aberta para cima e para DENTRO — para
+   *  o lado do outro braço, como na referência: é isso que faz as duas tenazes
+   *  parecerem levantadas em vez de estendidas. Dedos grossos e com ponta
+   *  aparada: um dedo acabados em ponta fechava-se em folha. */
+  const tenaz = `<ellipse cx="-3" cy="-1" rx="7.6" ry="6.4" fill="${casca}" stroke="${escura}" stroke-width="2.4" paint-order="stroke"/>
+    <path d="M -2 -2 Q 2 -14 12 -21 Q 18 -22 17 -16 Q 10 -10 5 -2 Z" fill="${casca}" stroke="${escura}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
+    <path d="M 1 4 Q 12 5 19 -1 Q 20 -6 14 -6 Q 7 -4 3 0 Z" fill="${casca}" stroke="${escura}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
+    <path d="M 0 -4 Q 4 -12 10 -17" fill="none" stroke="${clara}" stroke-width="2.4" stroke-linecap="round" opacity="0.6"/>`;
+
+  const braco = pata('M 34 46 L 23 40 L 15 32', 12, 8)
+    + `<g transform="translate(15 32) rotate(-10) scale(1.25)">${tenaz}</g>`;
+
+  const espelho = 'translate(120 0) scale(-1 1)';
+
+  const olhoGrande = (cx: number): string =>
+    `<circle cx="${cx}" cy="30" r="11" fill="${LUZ}" stroke="${LINHA}" stroke-width="3"/>`
+    + `<circle cx="${cx - 2.4}" cy="31" r="5.2" fill="${iris}"/>`
+    + `<circle cx="${cx - 3}" cy="31.4" r="2.7" fill="#22303c"/>`
+    + `<circle cx="${cx + 2.6}" cy="26.6" r="2.2" fill="${LUZ}"/>`;
+
+  return `<svg viewBox="0 0 120 92" role="img" aria-label="Caranguejo" xmlns="http://www.w3.org/2000/svg">
+  <g class="cang-pernas-e">${pernas}</g>
+  <g transform="${espelho}"><g class="cang-pernas-d">${pernas}</g></g>
+  <g class="cang-bracos">
+    ${braco}
+    <g transform="${espelho}">${braco}</g>
+  </g>
+  <path d="M 27 48 C 27 33 41 26 60 26 C 79 26 93 33 93 48 C 93 58 83 64 60 64 C 37 64 27 58 27 48 Z" fill="${casca}" stroke="${escura}" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M 28 50 C 32 61 44 64 60 64 C 76 64 88 61 92 50 C 87 60 75 63 60 63 C 45 63 33 60 28 50 Z" fill="${escura}" opacity="0.9"/>
+  <path d="M 33 40 C 41 31 53 28 62 28 C 50 31 41 35 36 42 Z" fill="${clara}" opacity="0.5"/>
+  ${raios(['M 34 46 C 40 42 46 41 52 41', 'M 86 46 C 80 42 74 41 68 41'], 1.5, escura, 0.3)}
+  <path d="M 47 47 C 52 57 68 57 73 47 C 67 52 53 52 47 47 Z" fill="#8c1f14" stroke="${escura}" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M 54 52 C 57 49.5 63 49.5 66 52 C 63 55.5 57 55.5 54 52 Z" fill="#ff9fb2"/>
+  ${olhoGrande(49)}
+  ${olhoGrande(71)}
 </svg>`;
 };
 

@@ -1,5 +1,6 @@
-import { bubbleBurst, bubbleTapStep, clique, glup, idleSfx, puff, resume, sparkle, trill, win } from '../ui/sfx';
-import { ALGA, BAIACU, BOLHA_SOPRAR, CAVALO_MARINHO, CONCHA_ESPIRAL, CONCHA_VIEIRA, PEIXE_PRATA, PEIXE_TROPICAL } from './bubblesSprites';
+import { abraOstra, bubbleBurst, bubbleTapStep, clique, glup, idleSfx, pinca, puff, resume, sparkle, trill, win } from '../ui/sfx';
+import { pararMar, startMar } from '../ui/seaAmbience';
+import { ALGA, BAIACU, BOLHA_SOPRAR, CAVALO_MARINHO, CARANGUEJO, CONCHA_ESPIRAL, CONCHA_VIEIRA, OSTRA, PEIXE_PRATA, PEIXE_TROPICAL } from './bubblesSprites';
 
 // Bolhas: um brinquedo, não um jogo. Cada bolha é só um conjunto de atributos
 // (dimensão, cor, carga) e cada atributo devolve qualquer coisa à criança — o
@@ -77,11 +78,11 @@ const ALGAS: Alga[] = [
 
 // Duas formas de concha alternadas — a vieira em leque e o búzio em espiral —
 // porque duas instâncias duma única forma parecem logo quatro coisas diferentes.
-// A `interior` só é usada pelo búzio; a vieira ignora-a.
+// A `interior` e a `risca` só são usadas pelo búzio; a vieira ignora-as.
 const CONCHA_PALETA = [
-  { pele: '#f0a6b4', clara: '#ffe3ea', interior: '#c98f52' },
-  { pele: '#f6c67a', clara: '#fff0cf', interior: '#b07a44' },
-  { pele: '#c9b6ee', clara: '#efe6ff', interior: '#8d76b8' },
+  { pele: '#f0a6b4', clara: '#ffe3ea', interior: '#c98f52', risca: '#dd7f92' },
+  { pele: '#f2a95f', clara: '#ffe0ad', interior: '#b5713c', risca: '#d9782f' },
+  { pele: '#c9b6ee', clara: '#efe6ff', interior: '#8d76b8', risca: '#a587d8' },
 ];
 
 interface Concha { forma: 'vieira' | 'espiral'; left: string; h: number; cor: number; tilt: string; bottom: string }
@@ -99,6 +100,36 @@ interface Cavalo { h: number; top: string; nada: string; atraso: string; bob: st
 const CAVALOS: Cavalo[] = [
   { h: 116, top: '42vh', nada: '27s', atraso: '-7s', bob: '3.4s', pele: '#ffb457', barriga: '#ffe3ad', barbatana: '#ff8a5c' },
   { h: 92, top: '66vh', nada: '36s', atraso: '-21s', bob: '4.4s', pele: '#ff9ec7', barriga: '#ffdbe9', barbatana: '#ff6fa5' },
+];
+
+// As ostras são a única coisa da cena com uma parte que se mexe por dentro do
+// desenho: a valva de cima levanta-se. Vão para os vãos maiores da areia — a
+// primeira entre a alga de 55 % e a concha de 72 %, a segunda no vão dos 33 % —
+// para que se possam tocar sem disputar o dedo às vizinhas, e nunca para o canto
+// de onde se sopra.
+//
+// As conchas deitadas e as ostras são frias de cor (cinzas e lilases) de
+// propósito: a areia é quente e uma concha bege sobre ela desaparecia.
+const OSTRA_PALETA = [
+  { concha: '#d3d8de', risca: '#a3adb7', interior: '#e6dcf0', carne: '#f2a3ad', perola: '#fffdf7' },
+  { concha: '#cbc3c0', risca: '#9d938e', interior: '#f7e4e4', carne: '#e88fa0', perola: '#fff8ee' },
+];
+
+interface Ostra { left: string; h: number; bottom: string; tilt: string; cor: number; ciclo: number }
+const OSTRAS: Ostra[] = [
+  { left: '64%', h: 78, bottom: '2vh', tilt: '-3deg', cor: 0, ciclo: 9000 },
+  { left: '33%', h: 62, bottom: '6vh', tilt: '4deg', cor: 1, ciclo: 12500 },
+];
+
+// Um só caranguejo, e é de propósito: os outros bichos do fundo estão em três,
+// quatro ou cinco porque são paisagem. Este anda, e o que anda uma vez já é
+// personagem — a dois deixar de ser um a passear e passava a fila.
+const CARANGUEJO_PALETA = [
+  { casca: '#e8452e', escura: '#bf2d1c', clara: '#ff9070', iris: '#d9a441' },
+];
+interface Caranguejo { h: number; bottom: string; passeio: string; atraso: string; cor: number }
+const CARANGUEJOS: Caranguejo[] = [
+  { h: 64, bottom: '1vh', passeio: '46s', atraso: '-4s', cor: 0 },
 ];
 
 type Cores = { pele?: string; barriga?: string; barbatana?: string };
@@ -122,6 +153,12 @@ export class BubblesApp {
   private spawner: number | null = null;
   private blowing: number | null = null;
   private blowPos: { x: number; y: number } | null = null;
+  // As ostras que estão na areia e os `setTimeout` da respiração delas, que têm
+  // de ter lista própria: a lista geral de timeouts é limpa de uma vez no
+  // `destroy()`, e a respiração pára e recomeça várias vezes dentro da mesma
+  // visita ao app (ecrã bloqueado, segundo plano).
+  private ostrasVivas: { el: HTMLElement; corpo: HTMLElement; ciclo: number }[] = [];
+  private respirando: number[] = [];
 
   private pendentes = 0;
   private criadas = 0;
@@ -148,7 +185,7 @@ export class BubblesApp {
     // O cenário entra ANTES dos peixes no DOM. Com o mesmo z-index, o elemento
     // que vem depois é que pinta por cima e que leva o toque onde os dois se
     // sobrepõem — assim um peixe a passar continua a ser o peixe.
-    this.root.append(this.algas(), this.conchas(), this.cavalos());
+    this.root.append(this.algas(), this.conchas(), this.ostras(), this.cavalos(), this.caranguejos());
 
     PEIXES.forEach((peixe) => {
       const f = document.createElement('div');
@@ -209,12 +246,26 @@ export class BubblesApp {
     ui.append(this.root);
     this.startSpawner();
     this.startWave();
+    this.respirarOstras();
+    // O mar entra com o app. Antes do primeiro gesto o navegador não deixa sair
+    // som nenhum, por isso volta a chamar-se a cada toque: é de graça (a segunda
+    // chamada não faz nada) e é o que faz o fundo acordar com o primeiro dedo.
+    startMar();
+    this.root.addEventListener('pointerdown', this.acordaMar, true);
     document.addEventListener('visibilitychange', this.onVisibility);
   }
+
+  private acordaMar = (): void => { startMar(); };
 
   destroy(): void {
     this.stopSpawner();
     this.stopBlow();
+    this.pararRespiracao();
+    this.root.removeEventListener('pointerdown', this.acordaMar, true);
+    // O mar das bolhas vai embora COM o brinquedo, não com o contexto de áudio:
+    // o `idleSfx()` que se segue adormece o contexto partilhado, mas a pintura e
+    // os quebra-cabeças continuam a poder usar o mesmo contexto amanhã.
+    pararMar();
     for (const t of this.timeouts) window.clearTimeout(t);
     this.timeouts.length = 0;
     this.live.clear();
@@ -229,13 +280,18 @@ export class BubblesApp {
   }
 
   // Com o ecrã bloqueado ou a app em segundo plano nada pode criar bolhas nem
-  // sair pelos altifalantes. Não há fala para cortar: este app não fala.
+  // sair pelos altifalantes, nem uma ostra a abrir-se para ninguém. Não há fala
+  // para cortar: este app não fala.
   private onVisibility = (): void => {
     if (document.visibilityState === 'hidden') {
       this.stopSpawner();
       this.stopBlow();
+      this.pararRespiracao();
+      pararMar();
     } else {
       this.startSpawner();
+      this.respirarOstras();
+      startMar();
     }
   };
 
@@ -640,6 +696,74 @@ export class BubblesApp {
     return frag;
   }
 
+  /** As ostras. São postas na areia e ficam a respirar sozinhas — abrir, esperar
+   *  um bocado, fechar — porque uma criatura que se mexe sem ninguém lhe tocar é
+   *  o que faz uma criança parar e olhar. A respiração é TODA silenciosa e não
+   *  cria bolha estourável: o que acontece por si não soa nem dá nada, para que o
+   *  som e as bolhas continuem a ser prova de que a criança foi a autora.
+   *  Tocada, porém, abre-se por inteiro, faz-se ouvir e oferece uma bolha. */
+  private ostras(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    for (const o of OSTRAS) {
+      const el = document.createElement('div');
+      el.className = 'bubbles-ostra';
+      el.style.left = o.left;
+      el.style.bottom = o.bottom;
+      const corpo = document.createElement('span');
+      corpo.style.setProperty('--h', `${o.h}px`);
+      corpo.style.setProperty('--tilt', o.tilt);
+      corpo.innerHTML = OSTRA(OSTRA_PALETA[o.cor]);
+      el.append(corpo);
+      this.tocavel(el, corpo, () => this.tocaOstra(el, corpo));
+      this.ostrasVivas.push({ el, corpo, ciclo: o.ciclo });
+      frag.append(el);
+    }
+    return frag;
+  }
+
+  /** O que a ostra devolve a quem a toca: a valva toda acima, o brilho da
+   *  pérola, o seu som e ar a subir — e, se houver lugar no ecrã, uma bolha a
+   *  sério a sair-lhe da boca. A bolha é `spawn('pequena')` como a do botão de
+   *  soprar: a mesma função, o mesmo `live`, o mesmo limite do ecrã. Uma segunda
+   *  classe de bolhas só para as ostras era uma segunda lei para manter. */
+  private tocaOstra(el: HTMLElement, corpo: HTMLElement): void {
+    const r = el.getBoundingClientRect();
+    abraOstra();
+    corpo.classList.add('aberta', 'respira');
+    this.later(() => corpo.classList.remove('aberta', 'respira'), 2100);
+    this.bolhinhas(r.left + r.width * 0.4, r.top + r.height * 0.36, 1, 5, 44, 12);
+    if (!this.emFesta && this.live.size <= 4) {
+      this.spawn('pequena', { x: r.left + r.width * 0.34, y: r.top + r.height * 0.4 });
+    }
+  }
+
+  /** Encadeia a respiração de cada ostra com `setTimeout` encadeados, não um
+   *  `setInterval`: é o mesmo mecanismo do spawner das bolhas, e com encadeamento
+   *  o ciclo sai diferente a cada vez — um ritmo que se repete à risca deixa de
+   *  ser vida e passa a ser metrónomo. */
+  private respirarOstras(): void {
+    if (this.respirando.length) return;
+    for (const o of this.ostrasVivas) {
+      const pulso = (): void => {
+        const r = o.el.getBoundingClientRect();
+        o.corpo.classList.add('aberta');
+        this.bolhinhas(r.left + r.width * 0.42, r.top + r.height * 0.4, 1, 3, 34, 12);
+        this.respirando.push(window.setTimeout(() => o.corpo.classList.remove('aberta'), 1900));
+        this.respirando.push(window.setTimeout(pulso, o.ciclo + Math.random() * 5000));
+      };
+      this.respirando.push(window.setTimeout(pulso, 2500 + Math.random() * 6000));
+    }
+  }
+
+  /** Parar a respiração é mais do que deixar de agendar: as valvas que ficaram a
+   *  meio de uma abertura têm de se fechar, senão recebiam a criança com a boca
+   *  aberta num ecrã que ela não estava a ver. */
+  private pararRespiracao(): void {
+    for (const t of this.respirando) window.clearTimeout(t);
+    this.respirando.length = 0;
+    for (const o of this.ostrasVivas) o.corpo.classList.remove('aberta');
+  }
+
   private cavalos(): DocumentFragment {
     const frag = document.createDocumentFragment();
     for (const h of CAVALOS) {
@@ -654,6 +778,31 @@ export class BubblesApp {
       corpo.innerHTML = CAVALO_MARINHO(h);
       el.append(corpo);
       this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'pula', trill, dir, 4, 40, 0.5));
+      frag.append(el);
+    }
+    return frag;
+  }
+
+  /** O caranguejo passeia pela areia, da direita para a esquerda como os peixes,
+   *  mas ao seu ritmo: os peixes vão na corrente, este vai a pé — 46 segundos a
+   *  atravessar o ecrã inteiro. Entra no DOM depois das conchas e antes dos
+   *  peixes, por isso pinta por cima das algas mas continua a perder o toque para
+   *  quem lhe passa à frente. É tocável como o resto: assusta-se, levanta as
+   *  tenazes e deita duas patadas de ar — sem palavra nem pontuação, a mesma lei
+   *  de sempre. */
+  private caranguejos(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    for (const c of CARANGUEJOS) {
+      const el = document.createElement('div');
+      el.className = 'bubbles-caranguejo';
+      el.style.bottom = c.bottom;
+      el.style.setProperty('--passeio', c.passeio);
+      el.style.setProperty('--atraso', c.atraso);
+      const corpo = document.createElement('span');
+      corpo.style.setProperty('--h', `${c.h}px`);
+      corpo.innerHTML = CARANGUEJO(CARANGUEJO_PALETA[c.cor]);
+      el.append(corpo);
+      this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'sustou', pinca, dir, 4, 38, 0.42));
       frag.append(el);
     }
     return frag;

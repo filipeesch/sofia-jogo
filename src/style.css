@@ -588,6 +588,65 @@ canvas {
   100% { transform: rotate(var(--tilt, 0deg)) scaleY(1); }
 }
 
+/* ── A ostra ───────────────────────────────────────────────────────────────
+   É a única figura da cena com uma parte que se mexe por dentro do desenho: a
+   valva de cima é um grupo do próprio SVG e roda em redor da charneira. A
+   sombra fica no CONTENTOR, que não anima — um `filter` sobre uma subárvore que
+   está a animar re-rasteriza essa subárvore a cada frame, e é exatamente isso
+   que faz um tablet velho engasgar-se. */
+.bubbles-ostra {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(0, 40, 70, 0.32));
+}
+.bubbles-ostra span {
+  display: block;
+  position: relative;
+  line-height: 1;
+  transform: rotate(var(--tilt, 0deg));
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
+/* Caixa de toque larga e baixa, a das conchas: a ostra é um leque deitado. */
+.bubbles-ostra span::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 92px;
+  height: 86px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+/* `transform-box: fill-box` é o que permite dar a charneira em percentagens do
+   próprio grupo: a figura é do tamanho que `--h` quiser e o pivô acompanha. */
+.bubbles-ostra .ostra-valva {
+  transform-box: fill-box;
+  transform-origin: 99% 62%;
+  transform: rotate(0deg);
+  transition: transform 420ms cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+.bubbles-ostra span.aberta .ostra-valva { transform: rotate(34deg); }
+.bubbles-ostra .ostra-brilho { transition: opacity 380ms ease 120ms; }
+.bubbles-ostra span.aberta .ostra-brilho { opacity: 1 !important; }
+/* O ar que ela deita ao abrir: a pérola encolhe e estica uma vez, sem saltar
+   do lugar — é uma ostra, não uma bola. */
+.bubbles-ostra span.respira .ostra-corpo {
+  animation: ostraBreathe 1.1s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes ostraBreathe {
+  0% { transform: scaleY(1); }
+  35% { transform: scaleY(0.93); }
+  70% { transform: scaleY(1.05); }
+  100% { transform: scaleY(1); }
+}
+
 .bubbles-horse {
   position: absolute;
   left: 0;
@@ -632,6 +691,82 @@ canvas {
   100% { transform: translateY(0) rotate(0deg) scale(1); }
 }
 
+.bubbles-caranguejo {
+  position: absolute;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  /* O mesmo `swim` dos peixes, mas a 46 s: os peixes vão na corrente, este vai a
+     pé. Fica em z-index 3 e entra no DOM depois das conchas e ANTES dos peixes,
+     por isso passa por cima das algas mas um peixe a atravessar-se-lhe à frente
+     continua a ser o peixe que leva o toque. */
+  animation: swim var(--passeio, 46s) linear var(--atraso, 0s) infinite;
+  /* A sombra vai no contentor, que só faz uma translação e é composto assim
+     mesmo; no `span`, que balança a cada 0,66 s, seria um filtro a repintar-se
+     60 vezes por segundo num tablet que não pediu nada. */
+  filter: drop-shadow(0 4px 6px rgba(0, 40, 70, 0.3));
+}
+.bubbles-caranguejo span {
+  display: block;
+  position: relative;
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+  /* O gingado de quem tem oito patas: balança para um lado e para o outro sem
+     descolar do chão. É o `span` que ginga, nunca o contentor. */
+  animation: cangAnda 0.66s ease-in-out var(--atraso, 0s) infinite alternate;
+}
+/* Caixa de toque do tamanho do bicho inteiro, patas e tenazes incluídas: a esta
+   altura (64 px) é fácil de dar com um dedo de dois anos. */
+.bubbles-caranguejo span::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 96px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+/* As patas em dois grupos a alternar — é a alternância deles que faz deste um
+   bicho a andar e não uma figura colada no sítio. `transform-box: fill-box` dá
+   o pivô em percentagens do próprio grupo, por isso o `--h` que for acompanha. */
+.bubbles-caranguejo .cang-pernas-e,
+.bubbles-caranguejo .cang-pernas-d {
+  transform-box: fill-box;
+  transform-origin: 50% 4%;
+}
+.bubbles-caranguejo .cang-pernas-e { animation: cangPata 0.66s ease-in-out infinite alternate; }
+.bubbles-caranguejo .cang-pernas-d { animation: cangPata 0.66s ease-in-out infinite alternate-reverse; }
+.bubbles-caranguejo .cang-bracos {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 300ms cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+/* Assustado: levanta as tenazes, acelera as patas e dá um passinho para o lado
+   OPPOSTO ao dedo. A classe sai com o `animationend`, no `tocaCenario`, e as
+   patas voltam ao passo de passeio sozinhas. */
+.bubbles-caranguejo span.sustou { animation: cangSusto 0.62s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.bubbles-caranguejo span.sustou .cang-bracos { transform: translateY(-5px) scale(1.07); }
+.bubbles-caranguejo span.sustou .cang-pernas-e,
+.bubbles-caranguejo span.sustou .cang-pernas-d { animation-duration: 0.16s; }
+
+@keyframes cangAnda {
+  from { transform: translateY(0) rotate(-1.8deg); }
+  to { transform: translateY(-2px) rotate(1.8deg); }
+}
+@keyframes cangPata {
+  from { transform: rotate(-7deg); }
+  to { transform: rotate(8deg); }
+}
+@keyframes cangSusto {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  30% { transform: translate(calc(var(--dir, 1) * -18px), -4px) rotate(calc(var(--dir, 1) * -6deg)) scale(1.06); }
+  70% { transform: translate(calc(var(--dir, 1) * 8px), 0) rotate(calc(var(--dir, 1) * 3deg)) scale(0.98); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
 .bubbles-fish {
   position: absolute;
   left: 0;
@@ -642,7 +777,7 @@ canvas {
 /* As figuras do fundo medem-se em ALTURA de píxeis (`--h`), não em `font-size`
    dum glifo: um emoji mudava de tamanho conforme a fonte do sistema de quem
    usava o tablet, e um desenho não tem esse problema — mas tem de ser medido. */
-.bubbles-fish span svg, .bubbles-plant span svg, .bubbles-shell span svg, .bubbles-horse span svg {
+.bubbles-fish span svg, .bubbles-plant span svg, .bubbles-shell span svg, .bubbles-ostra span svg, .bubbles-horse span svg, .bubbles-caranguejo span svg {
   display: block;
   height: var(--h, 56px);
   width: auto;
