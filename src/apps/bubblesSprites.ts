@@ -144,53 +144,69 @@ export const BAIACU = (cores: { pele?: string; barriga?: string; barbatana?: str
 
 // ── Cavalo-marinho ─────────────────────────────────────────────────────────
 
-/** Cavalo-marinho. O corpo é feito de traços grossos de extremidade redonda — o
- *  modo mais barato de ter um corpo gordo sem um único contorno fechado. O
- *  contorno desenha-se passando o MESMO traço duas vezes: primeiro largo na cor
- *  da linha, depois mais fino na cor da pele. É o `paint-order` em jeito de
- *  traço, e é o que põe este bicho na mesma família dos outros. */
+/**
+ * Cavalo-marinho. A silhueta não foi inventada: foi decalcada de um desenho de
+ * colorir — o contorno exterior do bicho seguido píxel a píxel, depois
+ * simplificado e suavizado. Fiz isso porque as duas tentativas anteriores
+ * falharam no mesmo lugar: pontas na cabeça liam-se crista e um focinho a
+ * sair-lhe da cara como um tubo lia-se bico, e o bicho passava a galinha. Um
+ * cavalo-marinho tem, e é só isso:
+ *
+ *   - a cabeça redonda com o focinho a *continuar* a cara, virado para baixo,
+ *     sem quebra entre a testa, a face e o tubo da boca;
+ *   - um ondulado a correr-lhe do alto da cabeça por todas as costas até à
+ *     cauda — uma peça só, e não uma coroa nem uma crina;
+ *   - a barriga em gomos, marcados a traço fino;
+ *   - uma barbatana de leque com três raios no meio das costas;
+ *   - a cauda em caracol, que é o que o anuncia como cavalo-marinho.
+ *
+ * Decalcar só dá o fora. O que vai por dentro — gomos, leque, caracol, olho —
+ * é desenhado por cima, na língua das outras figuras: camadas planas, sem
+ * gradientes, contornos com `paint-order="stroke"`.
+ */
 export const CAVALO_MARINHO = (cores: { pele?: string; barriga?: string; barbatana?: string } = {}) => {
   const pele = cores.pele ?? '#ffb457';
   const barriga = cores.barriga ?? '#ffe3ad';
   const barbatana = cores.barbatana ?? '#ff8a5c';
-  const torso = 'M 34 44 C 48 52 48 66 39 76';
-  const cauda = 'M 39 76 C 29 82 29 96 41 98 C 49 99 51 90 45 86';
-  const barrigaD = 'M 28 48 C 21 56 21 68 29 76';
-  // A crina vai ao LONGO DO DORSO, por trás do corpo, e não em cima da cabeça.
-  // No rascunho anterior havia uma coroa de pontas no topo da cabeça e uma
-  // barbatana debaixo do queixo: isso lê-se crista e brinco, e o bicho passava
-  // a galinha. Um cavalo-marinho tem a cabeça lisa e a barbatana dorsal a
-  // correr-lhe pelas costas — por isso os picos todos mudaram de lado.
-  // O primeiro pico fica ATRÁS da cabeça, não acima dela: enquanto houve uma
-  // ponta sobre o crânio, voltou a ler-se crista.
-  const pontas: [number, number][] = [[47, 3], [58, 7], [69, 16], [73, 34], [66, 53], [60, 67], [56, 80]];
-  const vales: [number, number][] = [[51, 18], [57, 22], [62, 30], [59, 41], [54, 54], [50, 66], [46, 78]];
-  const crina = 'M 34 12 ' + pontas.map(([px, py], i) => `L ${px} ${py} L ${vales[i][0]} ${vales[i][1]}`).join(' ')
-    + ' C 52 62 58 38 44 18 L 34 12 Z';
-  const vincos = vales.map(([vx, vy], i) => `M ${vx} ${vy} L ${(vx + pontas[i][0]) / 2 - 4} ${(vy + pontas[i][1]) / 2 - 2}`);
-  return `<svg viewBox="0 0 76 104" role="img" aria-label="Cavalo-marinho" xmlns="http://www.w3.org/2000/svg">
-  <path d="${crina}" fill="${barbatana}" stroke="${LINHA}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
-  ${raios(vincos, 1.8, TINTA_ESCURA, 0.22)}
-  <path d="${torso}" fill="none" stroke="${LINHA}" stroke-width="27" stroke-linecap="round"/>
-  <path d="${cauda}" fill="none" stroke="${LINHA}" stroke-width="15" stroke-linecap="round"/>
-  <path d="${torso}" fill="none" stroke="${pele}" stroke-width="23" stroke-linecap="round"/>
-  <path d="${cauda}" fill="none" stroke="${pele}" stroke-width="11" stroke-linecap="round"/>
-  <path d="${barrigaD}" fill="none" stroke="${barriga}" stroke-width="14" stroke-linecap="round"/>
-  ${raios(['M 21 52 L 31 50', 'M 19 59 L 30 58', 'M 19 67 L 31 67', 'M 22 74 L 33 72'], 2.2, pele, 0.75)}
-  <circle cx="34" cy="30" r="20.4" fill="${LINHA}"/>
-  <circle cx="34" cy="30" r="18.6" fill="${pele}"/>
-  <path d="M 26 33 L 9 36" fill="none" stroke="${LINHA}" stroke-width="10" stroke-linecap="round"/>
-  <path d="M 26 33 L 9 36" fill="none" stroke="${pele}" stroke-width="7.5" stroke-linecap="round"/>
-  <circle cx="7" cy="36" r="5.4" fill="${LINHA}"/>
-  <circle cx="7" cy="36" r="4" fill="${pele}"/>
-  <path d="M 4.4 37.4 C 6 39 8.4 39 10 37.4" fill="none" stroke="${LINHA}" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
-  <circle cx="46" cy="26" r="3" fill="${barbatana}" opacity="0.75"/>
-  <circle cx="50" cy="34" r="3.4" fill="${barbatana}" opacity="0.7"/>
-  <circle cx="44" cy="40" r="2.6" fill="${barbatana}" opacity="0.65"/>
-  <path d="M 23 40 C 26 44 31 45 35 43" fill="none" stroke="${LINHA}" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
-  ${olho(28, 26, 6.4)}
-  <path d="M 40 70 C 50 62 64 64 66 72 C 68 80 56 86 46 82 C 42 80 40 75 40 70 Z" fill="${barriga}" stroke="${LINHA}" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>
-  ${raios(['M 44 73 L 62 68', 'M 44 76 L 63 76', 'M 45 79 L 58 82'], 1.7, pele, 0.8)}
+  // Vista de 49,7 x 104: o bicho é alto e estreito, e é isso que o decalque
+  // disse — as versões antigas eram-lhe largas de mais.
+  const corpo = 'M 21.2 0 Q 21.1 0 19.9 0.8 Q 18.7 1.5 17.8 3.8 Q 16.9 6 15.1 6.9 Q 13.3 7.7 14 9.7 Q 14.7 11.7 13.1 14.2 Q 11.4 16.6 10.4 21.1 Q 9.4 25.5 7.8 26.9 Q 6.2 28.2 3.7 28.6 Q 1.1 29 0.6 30.6 Q 0 32.2 0.7 34.1 Q 1.3 35.9 2.9 37.1 Q 4.4 38.2 8.6 36.1 Q 12.8 33.9 17.1 34.3 Q 21.3 34.7 15.7 41.5 Q 10 48.2 9 51.3 Q 8 54.3 8 56.8 Q 7.9 59.3 10.1 64 Q 12.3 68.6 18.8 74.1 Q 25.3 79.6 26.4 81.8 Q 27.4 84 27.4 86.1 Q 27.3 88.1 26.6 89.6 Q 25.8 91 24.3 92.1 Q 22.7 93.2 20 93.1 Q 17.2 92.9 16.3 92 Q 15.3 91 17.9 90.6 Q 20.4 90.2 21.2 87.5 Q 21.9 84.8 20.5 82.9 Q 19.2 81 16.9 80.6 Q 14.6 80.2 11.8 82.2 Q 9 84.1 8.1 87.6 Q 7.2 91 7.8 93.1 Q 8.4 95.2 9.9 97.4 Q 11.4 99.5 13.9 101.1 Q 16.4 102.7 19.1 103.3 Q 21.8 103.9 25.8 103.1 Q 29.7 102.3 32.9 99.6 Q 36.1 96.9 38.2 96.3 Q 40.2 95.6 40.8 93.3 Q 41.3 90.9 42.6 89.4 Q 43.9 87.9 43.5 86 Q 43 84 44.1 81.9 Q 45.2 79.7 44.4 78.4 Q 43.5 77 44.4 74.9 Q 45.2 72.8 43.3 70.4 Q 41.4 67.9 43.6 66.5 Q 45.7 65.1 45.8 62.9 Q 45.9 60.7 46.9 58.8 Q 47.9 56.8 47.2 55.2 Q 46.5 53.6 46.7 51 Q 46.9 48.3 45.8 47.2 Q 44.6 46.1 42.9 46.1 Q 41.2 46 41.6 45 Q 41.9 44 41.3 42.4 Q 40.8 40.8 43.2 39.3 Q 45.5 37.8 45 35.6 Q 44.4 33.4 46.4 31.7 Q 48.4 29.9 47.6 27.5 Q 46.7 25 48.2 22.5 Q 49.6 19.9 47.4 18 Q 45.1 16 45.3 12.8 Q 45.4 9.6 42 8.7 Q 38.6 7.7 37.3 5.1 Q 36 2.4 34.7 2.1 Q 33.4 1.8 30.9 2.9 Q 28.4 3.9 26.3 2.2 Q 24.1 0.5 22.7 0.3 Q 21.2 0 21.2 0 Z';
+  // A sombra de si próprio é o próprio desenho uma beatada maior: o corpo todo
+  // em cor de barbatana e, por cima, o mesmo corpo em cor de pele reduzido e
+  // descaído para cima e para a esquerda. Fica uma orla mais escura nas costas
+  // e na barriga — onde a luz não chega — com dois nós e sem gradientes.
+  const dentro = 'translate(24.85 52) scale(0.955) translate(-24.85 -52) translate(-0.5 -0.9)';
+  // A faixa clara da barriga acompanha a frente do bicho, do queixo ao princípio
+  // do caracol.
+  const faixa = 'M 12.4 40 C 8.6 47.5 9.2 56.5 14.8 64.4 C 18.8 70 23.6 74.4 27.4 78.6';
+  // Os gomos vão da frente da barriga até à linha do peito, e encolhem a descer,
+  // como no desenho de origem.
+  const gomos: [number, number, number, number][] = [
+    [8.8, 41.6, 14.2, 43], [7.2, 47, 13.4, 48.6], [7.4, 52.6, 14.2, 54.2],
+    [9.6, 58, 16, 59.6], [13, 63, 19.2, 64.8], [17.2, 67.8, 23, 69.6],
+    [21.2, 72, 26, 73.6]
+  ];
+  const vincos = gomos.map(([fx, fy, ix, iy]) => `M ${fx} ${fy} Q ${(fx + ix) / 2} ${fy + 3.4} ${ix} ${iy}`);
+  // O leque fecha-se num ápice contra o corpo e abre para as costas; os três
+  // raios estão nos lugares onde o desenho de origem os tem.
+  const leque = 'M 33.2 56.6 C 35.6 49 44 46.6 46.8 51.8 C 49.4 56.8 46.6 63.4 40.6 64.8 C 36.6 65.6 33.4 61.6 33.2 56.6 Z';
+  const raiosLeque = ['M 34.6 54.4 L 44.8 49.8', 'M 35.2 56.6 L 46 56.8', 'M 35 59.2 L 43.4 63.2'];
+  // O caracol da cauda: por fora já vem no decalque; esta é a volta de dentro,
+  // a que lhe faz de cauda a enrolar-se.
+  const caracol = 'M 25.4 83.6 C 21.4 87.4 15.4 88 12.2 84.6';
+  const gomosCauda = ['M 27.4 86.6 L 31 84.8', 'M 28.6 91.4 L 32.4 90.2', 'M 27.6 96.4 L 31.4 96', 'M 24 101 L 26.4 98.2'];
+  return `<svg viewBox="0 0 49.7 104" role="img" aria-label="Cavalo-marinho" xmlns="http://www.w3.org/2000/svg">
+  <path d="${corpo}" fill="${barbatana}" stroke="${LINHA}" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="${corpo}" fill="${pele}" transform="${dentro}"/>
+  <path d="${faixa}" fill="none" stroke="${barriga}" stroke-width="10" stroke-linecap="round" opacity="0.95"/>
+  ${raios(vincos, 1.5, TINTA_ESCURA, 0.2)}
+  ${raios(['M 27 34 C 31 36 33 40 33 44'], 1.6, barbatana, 0.5)}
+  <path d="${caracol}" fill="none" stroke="${barbatana}" stroke-width="2.2" stroke-linecap="round" opacity="0.85"/>
+  ${raios(gomosCauda, 1.5, TINTA_ESCURA, 0.18)}
+  <path d="${leque}" fill="${barbatana}" stroke="${LINHA}" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/>
+  ${raios(raiosLeque, 1.5, pele, 0.85)}
+  <path d="M 6 35.4 C 9 39.2 14 39.8 18.2 36.4" fill="none" stroke="${LINHA}" stroke-width="2.2" stroke-linecap="round" opacity="0.7"/>
+  ${olho(20.8, 21.4, 4.6)}
 </svg>`;
 };
 
@@ -389,59 +405,86 @@ export const OSTRA = (cores: { concha?: string; risca?: string; interior?: strin
  *  bicho a passear e não uma figura colada no sítio. As tenazes ficam em
  *  `cang-bracos`: é esse grupo que se levanta quando alguém lhe toca.
  *
- *  Patas e braços são o mesmo `d` desenhado duas vezes — um traço escuro largo
- *  por baixo, um traço da cor por cima. Dá contorno e articulação com dois
- *  caminhos, sem precisar de `<defs>` nem de máscaras, e as pontas ficam
- *  redondas, que é como se desenha para crianças de 2 e 3 anos. */
+ *  A silhueta desta versão vem de um decalque: uma gravura de domínio público de
+ *  um caranguejo vermelho, rasterizada a 1375 px, tinta binarizada, interior
+ *  preenchido e contorno seguido por caminhante de Moore + RDP num descascador
+ *  de teste (`_shots/trace.mjs`, efémero). Daí a carapaça e as tenazes — com a
+ *  frente chata, os ombros redondos e a fenda entre os dedos — serem a forma
+ *  de um caranguejo a sério e não a minha ideia de um. Braços e patas são à
+ *  mão: o decalque não sabe separar peças que se escondem umas atrás das
+ *  outras, e uma pata de caranguejo é só três rectas grossas com o joelho mais
+ *  alto que o pé — é isso que a faz ler como perna dobrada e não como pelo.
+ *
+ *  A pose da referência é de frente, e ficou assim de propósito: de lado, com
+ *  duas tenazes uma atrás da outra, qualquer caranguejo parece um escaravelho.
+ *  O bicho inteiro vive num único sistema de coordenadas (268,8 × 104 = a
+ *  raster × 0,1955), por isso cada peça entra exactamente no sítio onde o
+ *  desenho a cortou. Patas e braços continuam o mesmo traço desenhado duas
+ *  vezes — escuro largo por baixo, cor por cima — que dá contorno e articulação
+ *  sem `<defs>` nem máscaras, com pontas redondas para dedos de dois anos. */
 export const CARANGUEJO = (cores: { casca?: string; escura?: string; clara?: string; iris?: string } = {}) => {
   const casca = cores.casca ?? '#e8452e';
   const escura = cores.escura ?? '#bf2d1c';
   const clara = cores.clara ?? '#ff9070';
   const iris = cores.iris ?? '#d9a441';
 
-  const pata = (d: string, largo = 9, fino = 5.6): string =>
-    `<path d="${d}" fill="none" stroke="${escura}" stroke-width="${largo}" stroke-linecap="round" stroke-linejoin="round"/>`
-    + `<path d="${d}" fill="none" stroke="${casca}" stroke-width="${fino}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  /** Os dois contornos decalcados da referência, já no espaço do bicho. */
+  const CARAPACA = 'M 115.6 32.6 Q 115.5 32.6 115.2 32.7 Q 114.9 32.8 114.9 33.9 Q 114.8 35 112.4 35 Q 109.9 35 109.8 34 Q 109.7 33 109 33 Q 108.3 33 104.8 33.5 Q 101.3 34 98.4 34.8 Q 95.6 35.6 93.8 36.5 Q 91.9 37.3 90.4 38.4 Q 88.8 39.5 86.6 41.8 Q 84.3 44 82.6 46.1 Q 80.9 48.1 79.6 47.8 Q 78.2 47.5 78.2 60.6 Q 78.2 73.7 132.9 73.7 Q 187.5 73.7 187.5 62.7 Q 187.5 51.6 184.7 47.7 Q 181.8 43.8 180.4 42.3 Q 178.9 40.7 177 39.1 Q 175 37.5 171.6 36.1 Q 168.1 34.6 163 33.7 Q 157.8 32.8 157.3 32.8 Q 156.8 32.8 156.7 33.9 Q 156.6 35 154.1 35 Q 151.7 35 151.6 33.8 Q 151.5 32.6 133.6 32.6 Q 115.7 32.6 115.6 32.6 Z';
+  const TENAZ = 'M 229.4 47.9 Q 229.3 47.9 222.8 48.8 Q 216.2 49.7 214.6 50.2 Q 212.9 50.6 210.2 52.1 Q 207.4 53.6 204.9 53.2 Q 202.3 52.8 202.3 53.7 Q 202.3 54.5 203.8 54.7 Q 205.3 54.9 203.8 55.9 Q 202.3 56.9 202.3 64.1 Q 202.3 71.2 208.4 71.2 Q 214.5 71.2 214.6 75.1 Q 214.6 79 216.9 81 Q 219.1 82.9 220.9 82.9 Q 222.7 82.9 222.8 84.5 Q 222.9 86 227.9 90.3 Q 232.8 94.6 232.5 94.7 Q 232.2 94.8 230.5 93.9 Q 228.7 93.1 225.8 91.2 Q 222.9 89.3 223 90.5 Q 223.1 91.7 228.6 94.6 Q 234 97.5 239.8 99.6 Q 245.5 101.7 246.8 101.7 Q 248.1 101.7 248.5 100.9 Q 248.9 100.1 240 93.4 Q 231.1 86.6 228.2 83.4 Q 225.2 80.3 223.6 77.1 Q 221.9 73.9 225 72.1 Q 228.1 70.2 231.8 69.4 Q 235.4 68.6 238.6 68.7 Q 241.8 68.8 245.2 69.4 Q 248.5 70 253 71.3 Q 257.5 72.5 259.9 73.6 Q 262.2 74.7 263.9 74.5 Q 265.5 74.3 266 73.8 Q 266.5 73.3 266.6 72.5 Q 266.6 71.7 266 70.4 Q 265.3 69 261.7 64.4 Q 258 59.8 253.5 56 Q 248.9 52.2 244.3 50.4 Q 239.7 48.5 234.6 48.2 Q 229.5 47.9 229.4 47.9 Z';
 
-  const pernas = pata('M 41 55 L 31 67 L 28 83', 10, 6.4)
-    + pata('M 35 58 L 23 70 L 18 84', 10, 6.4)
-    + pata('M 32 60 L 19 74 L 10 85', 10, 6.4);
+  const traco = (d: string, largo: number, cor: string): string =>
+    `<path d="${d}" fill="none" stroke="${cor}" stroke-width="${largo}" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-  /** Uma tenaz com a dobradiça na origem, aberta para cima e para DENTRO — para
-   *  o lado do outro braço, como na referência: é isso que faz as duas tenazes
-   *  parecerem levantadas em vez de estendidas. Dedos grossos e com ponta
-   *  aparada: um dedo acabados em ponta fechava-se em folha. */
-  const tenaz = `<ellipse cx="-3" cy="-1" rx="7.6" ry="6.4" fill="${casca}" stroke="${escura}" stroke-width="2.4" paint-order="stroke"/>
-    <path d="M -2 -2 Q 2 -14 12 -21 Q 18 -22 17 -16 Q 10 -10 5 -2 Z" fill="${casca}" stroke="${escura}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
-    <path d="M 1 4 Q 12 5 19 -1 Q 20 -6 14 -6 Q 7 -4 3 0 Z" fill="${casca}" stroke="${escura}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
-    <path d="M 0 -4 Q 4 -12 10 -17" fill="none" stroke="${clara}" stroke-width="2.4" stroke-linecap="round" opacity="0.6"/>`;
+  /** Uma perna: coxa a sair de debaixo da carapaça, joelho a arquear para
+   *  fora, tíbia a cair em bico com o pé redondo. Articulação a mais é o que
+   *  faltava à versão anterior, que tinha patas de aranha em bicho de oito
+   *  patas curtas. */
+  const pata = (bx: number, by: number, kx: number, ky: number, tx: number, ty: number): string =>
+    traco(`M ${bx} ${by} Q ${(bx + kx) / 2} ${(by + ky) / 2 - 2} ${kx} ${ky} L ${tx} ${ty}`, 7, escura)
+    + traco(`M ${bx} ${by} Q ${(bx + kx) / 2} ${(by + ky) / 2 - 2} ${kx} ${ky} L ${tx} ${ty}`, 4.2, casca)
+    + `<circle cx="${kx}" cy="${ky}" r="2.9" fill="${casca}" stroke="${escura}" stroke-width="1.9" paint-order="stroke"/>`
+    + `<circle cx="${tx}" cy="${ty}" r="2.6" fill="${casca}" stroke="${escura}" stroke-width="1.9" paint-order="stroke"/>`;
 
-  const braco = pata('M 34 46 L 23 40 L 15 32', 12, 8)
-    + `<g transform="translate(15 32) rotate(-10) scale(1.25)">${tenaz}</g>`;
+  const pernas = pata(182, 72, 201, 84, 197, 97)
+    + pata(187, 74, 217, 87, 213, 98)
+    + pata(192, 72, 231, 85, 227, 96.5);
 
-  const espelho = 'translate(120 0) scale(-1 1)';
+  /** O braço é curto e gordo, acabado num pulso redondo: a tenaz decalcada
+   *  liga-se exactamente aí, no corte por onde ela saía da carapaça. */
+  const braco = traco('M 180 60 C 188 55 195 53.5 202 56', 7.4, escura)
+    + traco('M 180 60 C 188 55 195 53.5 202 56', 4.8, casca)
+    + `<circle cx="192" cy="56.5" r="3.6" fill="${casca}" stroke="${escura}" stroke-width="1.8" paint-order="stroke"/>`
+    + `<circle cx="205.5" cy="57.5" r="4.8" fill="${casca}" stroke="${escura}" stroke-width="2" paint-order="stroke"/>`;
+
+  const bracoComTenaz = braco
+    + `<path d="${TENAZ}" fill="${casca}" stroke="${escura}" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>`
+    + `<path d="M 216 62 C 226 57 240 59 250 66" fill="none" stroke="${clara}" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/>`;
 
   const olhoGrande = (cx: number): string =>
-    `<circle cx="${cx}" cy="30" r="11" fill="${LUZ}" stroke="${LINHA}" stroke-width="3"/>`
-    + `<circle cx="${cx - 2.4}" cy="31" r="5.2" fill="${iris}"/>`
-    + `<circle cx="${cx - 3}" cy="31.4" r="2.7" fill="#22303c"/>`
-    + `<circle cx="${cx + 2.6}" cy="26.6" r="2.2" fill="${LUZ}"/>`;
+    `<circle cx="${cx}" cy="59.5" r="8.4" fill="${LUZ}" stroke="${LINHA}" stroke-width="2.2"/>`
+    + `<circle cx="${cx - 1.6}" cy="61.5" r="3.9" fill="${iris}"/>`
+    + `<circle cx="${cx - 2.1}" cy="62" r="2.5" fill="#22303c"/>`
+    + `<circle cx="${cx + 2.4}" cy="56.6" r="1.8" fill="${LUZ}"/>`;
 
-  return `<svg viewBox="0 0 120 92" role="img" aria-label="Caranguejo" xmlns="http://www.w3.org/2000/svg">
+  const espelho = 'translate(268.8 0) scale(-1 1)';
+
+  return `<svg viewBox="0 0 268.8 104" role="img" aria-label="Caranguejo" xmlns="http://www.w3.org/2000/svg">
   <g class="cang-pernas-e">${pernas}</g>
   <g transform="${espelho}"><g class="cang-pernas-d">${pernas}</g></g>
   <g class="cang-bracos">
-    ${braco}
-    <g transform="${espelho}">${braco}</g>
+    ${bracoComTenaz}
+    <g transform="${espelho}">${bracoComTenaz}</g>
   </g>
-  <path d="M 27 48 C 27 33 41 26 60 26 C 79 26 93 33 93 48 C 93 58 83 64 60 64 C 37 64 27 58 27 48 Z" fill="${casca}" stroke="${escura}" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>
-  <path d="M 28 50 C 32 61 44 64 60 64 C 76 64 88 61 92 50 C 87 60 75 63 60 63 C 45 63 33 60 28 50 Z" fill="${escura}" opacity="0.9"/>
-  <path d="M 33 40 C 41 31 53 28 62 28 C 50 31 41 35 36 42 Z" fill="${clara}" opacity="0.5"/>
-  ${raios(['M 34 46 C 40 42 46 41 52 41', 'M 86 46 C 80 42 74 41 68 41'], 1.5, escura, 0.3)}
-  <path d="M 47 47 C 52 57 68 57 73 47 C 67 52 53 52 47 47 Z" fill="#8c1f14" stroke="${escura}" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/>
-  <path d="M 54 52 C 57 49.5 63 49.5 66 52 C 63 55.5 57 55.5 54 52 Z" fill="#ff9fb2"/>
-  ${olhoGrande(49)}
-  ${olhoGrande(71)}
+  <path d="${CARAPACA}" fill="${casca}" stroke="${LINHA}" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="${CARAPACA}" fill="${casca}" transform="translate(133 54) scale(0.955) translate(-133 -54) translate(-0.4 -0.8)"/>
+  <path d="M 84 66 C 106 73.2 160 73.4 183 61" fill="none" stroke="${escura}" stroke-width="4" stroke-linecap="round" opacity="0.3"/>
+  <path d="M 90 40 C 104 35.5 128 33.8 152 35" fill="none" stroke="${clara}" stroke-width="3.4" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 112 34.5 C 108 24 102 12 99 4" fill="none" stroke="${TINTA_ESCURA}" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 154 34.5 C 158 24 164 12 167 4" fill="none" stroke="${TINTA_ESCURA}" stroke-width="1.5" stroke-linecap="round"/>
+  ${olhoGrande(119)}
+  ${olhoGrande(147.5)}
+  <circle cx="128.5" cy="72.5" r="1.8" fill="${escura}"/>
+  <circle cx="140.5" cy="72.5" r="1.8" fill="${escura}"/>
 </svg>`;
 };
 

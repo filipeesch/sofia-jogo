@@ -717,15 +717,17 @@ canvas {
      descolar do chão. É o `span` que ginga, nunca o contentor. */
   animation: cangAnda 0.66s ease-in-out var(--atraso, 0s) infinite alternate;
 }
-/* Caixa de toque do tamanho do bicho inteiro, patas e tenazes incluídas: a esta
-   altura (64 px) é fácil de dar com um dedo de dois anos. */
+/* Caixa de toque do tamanho do bicho inteiro, patas e tenazes incluídas. O
+   decalque novo é largo — 2,6 larguras por cada altura —, por isso a caixa
+   acompanha a silhueta em vez de ser um quadrado: 150 × 84 px para um bicho
+   de 58 px de alto. A esta altura é fácil de dar com um dedo de dois anos. */
 .bubbles-caranguejo span::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 96px;
-  height: 80px;
+  width: 150px;
+  height: 84px;
   transform: translate(-50%, -50%);
   pointer-events: auto;
 }

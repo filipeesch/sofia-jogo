@@ -7,54 +7,85 @@ import { audioCtx } from './sfx';
 // fim de trinta segundos e não podia encolher quando um estouro precisa do
 // altifalante todo.
 //
-// O mar é feito de três coisas, todas lentas:
+// A primeira versão deste fundo era uma caixinha de música aleatória sobre um
+// tapete de acordes que deslizava. Ficava bonita em amostras de cinco segundos e
+// cansava em cinco minutos, por uma razão simples: não tinha passo. O jogo do
+// avião (`src/systems/AudioManager.ts`) tem, e é por isso que a música dele se
+// canta. Este fundo é agora ESSE motor, com roupa de mar:
 //
-//   1. o MARULHO — ruído castanho em loop, passado por um passa-baixas que sobe
-//      e desce devagaríssimo e por um ganho que respira: é a única camada que
-//      nunca pára, e é ela que diz «estamos debaixo de água»;
-//   2. o DRONE — três senoidais a segurar um acorde, com as notas a deslizarem
-//      de um acorde para o seguinte em ~2,5 s, como um motor de barco longe;
-//   3. A CAIXINHA — uma nota isolada, duas oitavas acima dos estouros, de quando
-//      em quando, com cauda comprida. É o brilho.
+//   * uma `FAIXA` com o mesmo feitio de `MUSIC_TRACKS`: um `beat`, quatro notas
+//     de baixo (uma por compasso), quatro acordes de quatro notas, e uma melodia
+//     de dezasseis passos com pausas;
+//   * o mesmo agulhador: um `setInterval` de 200 ms que agenda 1,2 s à frente,
+//     reacerta quando o contexto esteve suspenso, e avança `passo` de 0 a 15;
+//   * as mesmas três vozes por passo — baixo a cada quatro passos, uma nota do
+//     acorde em cada passo, e a melodia onde o passo não é pausa;
+//   * o mesmo motor grave por baixo de tudo (no avião é o do veículo; aqui é um
+//     bordão a Dó, com o LFO do AudioManager);
+//   * e as mesmas volumetrias: master 0,8, baixo 0,1, acorde 0,045, melodia 0,05.
+//
+// O que muda é só o traje: o passo é 0,95 s em vez de 0,68-0,9 (a água não anda
+// a correr), a melodia toca numa caixinha — fundamental mais uma oitava um
+// quarto acima, ataque de 60 ms — porque um sino abafado soa a longe e um
+// sinusóide soa a sintetizador, e o MARULHO continua debaixo de tudo, que é o
+// que diz «estamos debaixo de água» e o avião não tem.
 //
 // Duas regras que não se podem partir:
 //
 //   * As notas vêm todas da MESMA escala de cinco notas dos estouros (Dó Ré Mi
 //     Sol Lá), em acordes que são subconjuntos dela. Sem semitons na música, uma
 //     bolha rebentada por cima do fundo soa a música e não a dois barulhos a
-//     disputarem-se o altifalante.
-//   * O volume é de fundo, não de acontecimento: barramento a 0,16 e cada nota
-//     a 0,05 de pico, contra 0,26 do «plop» de uma bolha. Sem compressor e sem
-//     filtros com Q alto, que em agudos soa a assobio e num altifalante de
-//     tablet a série de coisas assusta.
-//
-// O fundo vive no AudioContext PARTILHADO de `sfx.ts`, não num contexto seu: é o
-// contexto que o `idleSfx()` sabe adormecer quando se vai para o launcher, e um
-// contexto próprio ficava a tocar lá depois de o brinquedo ter fechado.
+//     disputarem-se o altifalante. Por isso aqui não há Fá nem Si.
+//   * O fundo vive no AudioContext PARTILHADO de `sfx.ts`, não num contexto seu:
+//     é o contexto que o `idleSfx()` sabe adormecer quando se vai para o
+//     launcher, e um contexto próprio ficava a tocar lá depois de o brinquedo
+//     ter fechado.
 
-// Duas oitavas acima dos estouros: a região onde nenhuma bolha anda, por isso
-// música e brinquedo nunca se atropelam na mesma nota.
-const CAIXINHA = [1046.5, 1174.66, 1318.51, 1567.98, 1760.0, 2093.0, 2349.32, 2637.0];
+// A faixa. Mesmo formato, mesma leitura, outra música: um lamento curto de cinco
+// notas que desce, volta a subir e fica em casa. As pausas são tantas como as
+// notas — é o que faz uma melodia poder ser assobiada.
+interface Faixa {
+  beat: number;
+  baixo: number[];
+  acordes: number[][];
+  melodia: number[];
+}
 
-// Acordes que são subconjuntos das cinco notas da escala dos estouros. Não há
-// Fá nem Si: o Fá contra o Mi dos estouros é precisamente o semitom que dói.
-const ACORDES: number[][] = [
-  [130.81, 196.0, 329.63], // Dó - Sol - Mi
-  [110.0, 130.81, 329.63], // Lá - Dó - Mi
-  [98.0, 130.81, 293.66],  // Sol - Dó - Ré
-];
+const FAIXA: Faixa = {
+  // 0,95 s por passo: dezasseis passos são 15,2 s de música antes de repetir, e
+  // o mar não tem pressa nenhuma.
+  beat: 0.95,
+  // Uma nota por compasso, sempre o nome do compasso a dizer.
+  baixo: [130.81, 110.0, 98.0, 73.42], // Dó · Lá · Sol · Ré
+  acordes: [
+    [261.63, 329.63, 392.0, 523.25], // Dó:  Dó Mi Sol Dó
+    [220.0, 261.63, 329.63, 440.0],  // Lá:  Lá Dó Mi Lá
+    [196.0, 293.66, 392.0, 440.0],   // Sol: Sol Ré Sol Lá
+    [146.83, 220.0, 293.66, 440.0],  // Ré:  Ré Lá Ré Lá
+  ],
+  melodia: [
+    659.25, 0, 587.33, 523.25,
+    659.25, 0, 783.99, 659.25,
+    0, 587.33, 523.25, 440.0,
+    0, 523.25, 0, 0,
+  ],
+};
+
+// O bordão: no avião é o motor do veículo, um triângulo a 95 Hz passado por um
+// passa-baixas com um LFO a abanar-lhe a frequência. Aqui é um Dó duas oitavas
+// abaixo do meio Dó da melodia, mais grave e mais mole — é o rumor do fundo do
+// mar, e é a nota que dá nome ao primeiro compasso.
+const BORDAO = 65.41;
 
 let barramento: GainNode | null = null;
 let marulho: AudioBufferSourceNode | null = null;
-let padOsc: OscillatorNode[] = [];
-let padGanho: GainNode | null = null;
+let bordao: OscillatorNode | null = null;
 let lfos: OscillatorNode[] = [];
 let ruido: AudioBuffer | null = null;
 let taxaRuido = 0;
 let temporizador: number | null = null;
-let proximaNota = 0;
-let mudaAcorde = 0;
-let nAcorde = 0;
+let proximoPasso = 0;
+let passo = 0;
 let notasAgendadas = 0;
 
 /** Ruído castanho de 3,2 s, criado UMA vez e posto em loop. Ruído branco puro
@@ -89,17 +120,17 @@ function ruidoDoMar(): AudioBuffer | null {
   return ruido;
 }
 
-/** Uma nota de caixinha: fundamental + oitava um quarto acima, ataque de 60 ms
- *  e cauda de 1,7 s. Ataque lento de propósito — o que assusta uma criança de
- *  três anos num altifalante de tablet é o ataque, não o volume. */
-function sino(t: number, intensidade: number): void {
+/** A voz da melodia: fundamental + uma oitava um quarto acima, ataque de 60 ms e
+ *  cauda comprida. O ataque lento é de propósito — o que assusta uma criança de
+ *  três anos num altifalante de tablet é o ataque, não o volume. A cauda é a
+ *  única licença poética em relação ao avião: um sino não pára de repente. */
+function sino(t: number, f: number, intensidade: number, dur: number): void {
   const c = audioCtx();
   if (!c || !barramento) return;
-  const f = CAIXINHA[Math.floor(Math.random() * CAIXINHA.length)];
   const g = c.createGain();
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(0.05 * intensidade, t + 0.06);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   const o = c.createOscillator();
   o.type = 'sine';
   o.frequency.value = f;
@@ -114,14 +145,35 @@ function sino(t: number, intensidade: number): void {
   g.connect(barramento);
   o.start(t);
   o2.start(t);
-  o.stop(t + 1.8);
-  o2.stop(t + 1.8);
+  o.stop(t + dur + 0.1);
+  o2.stop(t + dur + 0.1);
+  notasAgendadas++;
+}
+
+/** Baixo e acorde, na voz que o avião usa: sinusóide redonda para o grave,
+ *  triângulo para a nota do meio. Mesmo envelope dele — ataque de 20 ms e
+ *  descida exponencial — para que as duas músicas sejam da mesma casa. */
+function nota(t: number, f: number, dur: number, tipo: OscillatorType, vol: number): void {
+  const c = audioCtx();
+  if (!c || !barramento) return;
+  const o = c.createOscillator();
+  o.type = tipo;
+  o.frequency.setValueAtTime(f, t);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g);
+  g.connect(barramento);
+  o.start(t);
+  o.stop(t + dur + 0.05);
   notasAgendadas++;
 }
 
 /** Bolha a subir, muito ao longe: um sinusóide a deslizar para o agudo. É o
  *  gesto do brinquedo devolvido pelo fundo, e é tão baixinho que só se ouve
- *  quando não se está a estourar nada. */
+ *  quando não se está a estourar nada. Não faz parte do compasso: vem depois do
+ *  passo, onde não atrapalha a melodia. */
 function sobeBolha(t: number): void {
   const c = audioCtx();
   if (!c || !barramento) return;
@@ -140,41 +192,32 @@ function sobeBolha(t: number): void {
   notasAgendadas++;
 }
 
-/** O acorde seguinte, alcançado por deslizamento: não há corte nem ataque, as
- *  três notas simplesmente mudam de lugar uma na direção da outra. */
-function trocarAcorde(t: number): void {
-  nAcorde = (nAcorde + 1) % ACORDES.length;
-  ACORDES[nAcorde].forEach((f, i) => {
-    const o = padOsc[i];
-    if (!o) return;
-    o.frequency.cancelScheduledValues(t);
-    o.frequency.setTargetAtTime(f, t, 2.4);
-  });
-  notasAgendadas++;
-}
-
-/** A única agenda do fundo: um temporizador a olhar para 1,2 s à frente. Nada de
- *  `setInterval` por nota — é isso que faz a música picar quando um tablet atrasa
- *  um timer, porque cada nota ficava agendada atrás do atraso das outras. */
+/** O agulhador, copiado do `scheduleMusic()` do avião: um temporizador a olhar
+ *  para 1,2 s à frente, dezasseis passos, baixo a cada quatro, uma nota do
+ *  acorde em cada passo, melodia quando o passo não é pausa. Nada de
+ *  `setInterval` por nota — é isso que faz a música picar quando um tablet
+ *  atrasa um timer, porque cada nota ficava agendada atrás do atraso das
+ *  outras. */
 function agendar(): void {
   const c = audioCtx();
   if (!c || !barramento) return;
   if (document.visibilityState === 'hidden') return;
   const agora = c.currentTime;
-  // Com o contexto suspenso o tempo parou: o plano ficou para trás e, sem este
-  // reacertar, todas as notas em atraso disparariam juntas no primeiro segundo.
-  if (proximaNota < agora) proximaNota = agora + 1.5;
-  if (mudaAcorde < agora) mudaAcorde = agora + 3;
+  if (agora - proximoPasso > 0.25) proximoPasso = agora + 0.2;
   const horizonte = agora + 1.2;
-  while (proximaNota < horizonte) {
-    sino(proximaNota, 1);
-    if (Math.random() < 0.22) sino(proximaNota + 0.42, 0.6);
-    if (Math.random() < 0.3) sobeBolha(proximaNota + 1.1);
-    proximaNota += 7 + Math.random() * 9;
-  }
-  while (mudaAcorde < horizonte) {
-    trocarAcorde(mudaAcorde);
-    mudaAcorde += 17 + Math.random() * 7;
+  while (proximoPasso < horizonte) {
+    const quando = proximoPasso;
+    const p = passo % 16;
+    const barra = Math.floor(p / 4);
+    if (p % 4 === 0) nota(quando, FAIXA.baixo[barra], FAIXA.beat * 3.6, 'sine', 0.1);
+    nota(quando, FAIXA.acordes[barra][p % 4], FAIXA.beat * 0.85, 'triangle', 0.045);
+    const m = FAIXA.melodia[p];
+    if (m > 0) sino(quando, m, 1, FAIXA.beat * 1.8);
+    // Uma bolha a subir a cada oito compassos, fora do passo: é o único
+    // ornamento que a água pede, e não desenha ritmo nenhum por si.
+    if (p === 12 && Math.random() < 0.5) sobeBolha(quando + FAIXA.beat * 0.5);
+    proximoPasso += FAIXA.beat;
+    passo = (passo + 1) % 16;
   }
 }
 
@@ -189,7 +232,11 @@ export function startMar(): void {
   const agora = c.currentTime;
   barramento = c.createGain();
   barramento.gain.setValueAtTime(0.0001, agora);
-  barramento.gain.linearRampToValueAtTime(0.16, agora + 2.5); // o mar entra devagar
+  // O master do avião é 0,8; é esse o volume a que esta família já está
+  // acostumada, por isso o mar entra com o mesmo e as vozes todas com as
+  // volumetrias dele. O marulho é que é mais pequeno do que as outras vozes,
+  // porque ruído à altura de uma nota tapa-lhe os contornos.
+  barramento.gain.linearRampToValueAtTime(0.8, agora + 2.5); // o mar entra devagar
   barramento.connect(c.destination);
   if (medidorLigado()) pendurarMedidor();
 
@@ -202,7 +249,7 @@ export function startMar(): void {
     f.frequency.value = 360;
     f.Q.value = 0.4;
     const g = c.createGain();
-    g.gain.value = 0.08;
+    g.gain.value = 0.022;
     marulho = c.createBufferSource();
     marulho.buffer = buf;
     marulho.loop = true;
@@ -215,7 +262,7 @@ export function startMar(): void {
     const lfoA = c.createOscillator();
     lfoA.frequency.value = 0.045;
     const gA = c.createGain();
-    gA.gain.value = 0.026;
+    gA.gain.value = 0.008;
     lfoA.connect(gA);
     gA.connect(g.gain);
     marulho.connect(f);
@@ -227,33 +274,36 @@ export function startMar(): void {
     lfos.push(lfoF, lfoA);
   }
 
-  // 2 — o drone. Três senoidais com um detune mínimo uma na outra: desafinação
-  // de cinco cents é o que faz um acorde soar a coisa viva e não a um gerador.
-  padGanho = c.createGain();
-  padGanho.gain.value = 0.045;
-  const lfoP = c.createOscillator();
-  lfoP.frequency.value = 0.085;
-  const gP = c.createGain();
-  gP.gain.value = 0.017;
-  lfoP.connect(gP);
-  gP.connect(padGanho.gain);
-  padGanho.connect(barramento);
-  ACORDES[0].forEach((f, i) => {
-    const o = c.createOscillator();
-    o.type = i === 2 ? 'triangle' : 'sine';
-    o.frequency.value = f;
-    o.detune.value = (i - 1) * 5;
-    o.connect(padGanho!);
-    o.start(agora);
-    padOsc.push(o);
-  });
-  lfoP.start(agora);
-  lfos.push(lfoP);
+  // 2 — o bordão, no feitio exacto do motor do avião: um triângulo grave com um
+  // LFO a abanar-lhe a frequência, passado por um passa-baixas, a entrar em um
+  // segundo. Dá corpo aos graves sem tapar a melodia, e é a nota do primeiro
+  // compasso, por isso nunca desafina com o que quer que se toque.
+  const o = c.createOscillator();
+  o.type = 'triangle';
+  o.frequency.value = BORDAO;
+  const lfoO = c.createOscillator();
+  lfoO.frequency.value = 0.4;
+  const gO = c.createGain();
+  gO.gain.value = 3;
+  lfoO.connect(gO);
+  gO.connect(o.frequency);
+  const filtro = c.createBiquadFilter();
+  filtro.type = 'lowpass';
+  filtro.frequency.value = 420;
+  const gB = c.createGain();
+  gB.gain.setValueAtTime(0.0001, agora);
+  gB.gain.linearRampToValueAtTime(0.045, agora + 1);
+  o.connect(filtro);
+  filtro.connect(gB);
+  gB.connect(barramento);
+  o.start(agora);
+  lfoO.start(agora);
+  bordao = o;
+  lfos.push(lfoO);
 
-  nAcorde = 0;
-  proximaNota = agora + 4;
-  mudaAcorde = agora + 18;
-  temporizador = window.setInterval(agendar, 250);
+  passo = 0;
+  proximoPasso = agora + 1.2;
+  temporizador = window.setInterval(agendar, 200);
 }
 
 /** Desligar o mar. O ganho vai a zero em ~25 ms e os nós desligam-se a seguir:
@@ -270,22 +320,26 @@ export function pararMar(): void {
   if (!b) return;
   const c = audioCtx();
   const t = c ? c.currentTime : 0;
+  const o = bordao;
+  bordao = null;
+  const mar = marulho;
+  marulho = null;
+  const l = lfos;
+  lfos = [];
   try {
     b.gain.cancelScheduledValues(t);
     b.gain.setTargetAtTime(0, t, 0.02);
-    [...padOsc, ...lfos].forEach((o) => { try { o.stop(t + 0.12); } catch { /* já parado */ } });
-    if (marulho) { try { marulho.stop(t + 0.12); } catch { /* já parado */ } }
+    if (o) { try { o.stop(t + 0.12); } catch { /* já parado */ } }
+    l.forEach((x) => { try { x.stop(t + 0.12); } catch { /* já parado */ } });
+    if (mar) { try { mar.stop(t + 0.12); } catch { /* já parado */ } }
   } catch {
     // sem contexto não há nada a parar: fica tudo desligado abaixo
   }
-  const osc = padOsc; const l = lfos; const fonte = marulho; const pad = padGanho;
-  padOsc = []; lfos = []; marulho = null; padGanho = null;
   window.setTimeout(() => {
     // Desligar é o que garante o silêncio, por isso não depende do áudio correr.
-    try { pad?.disconnect(); } catch { /* sem ligação */ }
-    osc.forEach((o) => { try { o.disconnect(); } catch { /* sem ligação */ } });
-    l.forEach((o) => { try { o.disconnect(); } catch { /* sem ligação */ } });
-    try { fonte?.disconnect(); } catch { /* sem ligação */ }
+    try { o?.disconnect(); } catch { /* sem ligação */ }
+    try { mar?.disconnect(); } catch { /* sem ligação */ }
+    l.forEach((x) => { try { x.disconnect(); } catch { /* sem ligação */ } });
     try { b.disconnect(); } catch { /* sem ligação */ }
     // O medidor morre com o mar. Com o contexto suspenso ele deixaria de receber
     // amostras novas e continuaria a repetir o último quadro, o que pareceria um
@@ -302,7 +356,7 @@ export function pararMar(): void {
  *  volume está o barramento — é este número que diz se a música é fundo ou se se
  *  pôs a competir com os estouros. */
 export function marEstado(): {
-  tocando: boolean; notas: number; ganho: number; estado: string; fontes: number;
+  tocando: boolean; notas: number; ganho: number; estado: string; fontes: number; passo: number;
 } {
   const c = audioCtx();
   return {
@@ -312,7 +366,8 @@ export function marEstado(): {
     estado: c ? c.state : 'sem contexto',
     // Quantos nós do mar estão ainda ligados ao barramento. Fora do app tem de
     // ser 0: é a prova estrutural de que não sobrou nada para tocar.
-    fontes: padOsc.length + lfos.length + (marulho ? 1 : 0),
+    fontes: (bordao ? 1 : 0) + (marulho ? 1 : 0) + lfos.length,
+    passo,
   };
 }
 

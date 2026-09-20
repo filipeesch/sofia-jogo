@@ -97,9 +97,10 @@ Invariantes de hoje:
    para não andar a acordar a página.
 6. A música do mar das Bolhas (src/ui/seaAmbience.ts) não abre AudioContext
    próprio: usa o mesmo barramento partilhado do ponto 4, e pararMar() corta o
-   marulho, os três osciladores do drone e os LFOs no destroy(). É por isso que
+   marulho, o bordão e os LFOs no destroy() — o sequenciador de 16 passos é um
+   setInterval que ele também limpa. É por isso que
    o passo «depois das Bolhas» de scripts/check-exit-cleanup.mjs continua a ver
-   zero AudioContext em 'running', agora com sete fontes de música a mais em
+   zero AudioContext em 'running', agora com cinco fontes de música a mais em
    jogo enquanto se está dentro da app.
 
 Verificação: node scripts/check-exit-cleanup.mjs abre o jogo num browser real
@@ -121,14 +122,14 @@ canvas antes de afirmar, e o check passa inteiro.
 As apps de brinquedo não têm canvas nem Three.js — são HTML e CSS. Isso não é de
 graça: nas Bolhas há uma cena inteira em movimento permanente, com 17 figuras de
 cenário (algas, conchas, duas ostras, cavalos, um caranguejo e os peixes que
-passam) a somar 457 nós de SVG, mais as bolhas que sobem sozinhas ou do soprar,
+passam) a somar 446 nós de SVG, mais as bolhas que sobem sozinhas ou do soprar,
 e uma música procedural por cima. É exactamente aqui que uma cena «só DOM» se
 desmente num tablet.
 
 Verificação: `npm run check:fps-bolhas` (scripts/check-bubbles-fps.mjs) abre as
 Bolhas com `?debug=1`, conta os intervalos entre `requestAnimationFrame` durante
 6 s em três situações, e confirma que a música estava mesmo a tocar durante a
-medição (7 fontes vivas, RMS ~0,008):
+medição (5 fontes vivas, RMS 0,016 a 0,025 com o barramento no 0,8 do jogo do avião):
 
 | Situação | fps mediano | 10% piores | frames > 20 ms |
 |---|---|---|---|
@@ -136,7 +137,7 @@ medição (7 fontes vivas, RMS ~0,008):
 | soprando sem parar, ecrã cheio (8 bolhas) | **59,9** | 59,9 | 0 / 359 |
 | soprando com o CPU 4× mais lento | **59,9** | 59,9 | 0 / 359 |
 
-O custo real da cena, medido no mesmo instante: **34 a 37 animações CSS a
+O custo real da cena, medido no mesmo instante: **29 a 35 animações CSS a
 decorrer ao mesmo tempo**. É esse o número que um tablet paga, e não os nós
 parados.
 

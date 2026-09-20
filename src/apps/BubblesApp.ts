@@ -129,7 +129,7 @@ const CARANGUEJO_PALETA = [
 ];
 interface Caranguejo { h: number; bottom: string; passeio: string; atraso: string; cor: number }
 const CARANGUEJOS: Caranguejo[] = [
-  { h: 64, bottom: '1vh', passeio: '46s', atraso: '-4s', cor: 0 },
+  { h: 58, bottom: '1vh', passeio: '46s', atraso: '-4s', cor: 0 },
 ];
 
 type Cores = { pele?: string; barriga?: string; barbatana?: string };
