@@ -220,23 +220,41 @@ canvas {
 
 /* ---------- Launcher (kid OS) ---------- */
 
+/* O launcher é a única superfície da página que pode rolar: em telemóvel a
+   grelha de jogos já não cabe no ecrã. Rolável por toque (pan-y: bloqueia
+   pinch e double-tap, mantém o arrasto), com a página destrancada só enquanto
+   ele está visível (classe `launcher-touch` em <html>, gerida por
+   Launcher.show() / clearAll()). O centro-vertical é feito com margens auto e
+   não com justify-content — quando o conteúdo transborda, o flex-centring
+   cortaria o topo e deixaria a primeira fila inalcançável pelo scroll. */
 .launcher {
   position: fixed;
   inset: 0;
   height: 100vh;
   height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 26px;
-  padding: 24px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   background: radial-gradient(130% 130% at 50% 0%, #8fd3f8 0%, #4aa8e8 50%, #2f7fc0 100%);
 }
 
+.launcher::-webkit-scrollbar { display: none; }
+
+html.launcher-touch,
+html.launcher-touch body {
+  touch-action: pan-y;
+}
+
 .launcher-title {
-  margin: 0;
+  margin: auto 0 0; /* margem auto: centra quando cabe, encolhe a 0 quando rola */
   font-size: clamp(30px, 7vw, 56px);
   font-weight: 900;
   color: #fff;
@@ -245,6 +263,7 @@ canvas {
 }
 
 .launcher-grid {
+  margin-bottom: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 22px;

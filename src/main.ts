@@ -78,6 +78,9 @@ function clearAll(): void {
   // por isso é aqui que vai dormir: sem um jogo ou app aberto não pode haver
   // áudio nenhum a segurar o hardware.
   idleSfx();
+  // O launcher ia a sair (ou já saiu): a página volta a trancar o pan para
+  // os gestos dos jogos serem os de sempre. Launcher.show() recompõe a classe.
+  document.documentElement.classList.remove('launcher-touch');
   document.getElementById('ui')!.innerHTML = '';
 }
 
