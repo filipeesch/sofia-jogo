@@ -95,6 +95,12 @@ Invariantes de hoje:
 5. Ecrã bloqueado / app em segundo plano: visibilitychange, freeze e pagehide
    páram o loop, o cronómetro e a música — e o timer da música pára também,
    para não andar a acordar a página.
+6. A música do mar das Bolhas (src/ui/seaAmbience.ts) não abre AudioContext
+   próprio: usa o mesmo barramento partilhado do ponto 4, e pararMar() corta o
+   marulho, os três osciladores do drone e os LFOs no destroy(). É por isso que
+   o passo «depois das Bolhas» de scripts/check-exit-cleanup.mjs continua a ver
+   zero AudioContext em 'running', agora com sete fontes de música a mais em
+   jogo enquanto se está dentro da app.
 
 Verificação: node scripts/check-exit-cleanup.mjs abre o jogo num browser real
 e depois de cada saída (normal, toque duplo, troca rápida de fase, __loadLevel
@@ -103,6 +109,53 @@ da ferramenta MCP, editor → Testar, Pintura/Bolhas/Quebra-Cabeça) confirma qu
 não fica nenhum AudioContext em 'running' e que nenhum canvas continua a
 mudar de pixels. Precisa do dev server (npm run dev); use GAME_URL se a porta
 não for a 5173.
+
+O passo [1] (arranque normal) afirmava logo a seguir a '.btn.hud-home' aparecer,
+mas o canvas do renderer é afixado ~90 ms depois (medido: 90, 91 e 100 ms), por
+isso ele chumbava há muito tempo com três FAIL — canvases=0, musicRunning=0,
+active=0 — que não eram um problema do jogo, eram do teste. Agora espera pelo
+canvas antes de afirmar, e o check passa inteiro.
+
+## As apps de DOM (Bolhas, Pintura): aqui mede-se fps, não draw calls
+
+As apps de brinquedo não têm canvas nem Three.js — são HTML e CSS. Isso não é de
+graça: nas Bolhas há uma cena inteira em movimento permanente, com 17 figuras de
+cenário (algas, conchas, duas ostras, cavalos, um caranguejo e os peixes que
+passam) a somar 457 nós de SVG, mais as bolhas que sobem sozinhas ou do soprar,
+e uma música procedural por cima. É exactamente aqui que uma cena «só DOM» se
+desmente num tablet.
+
+Verificação: `npm run check:fps-bolhas` (scripts/check-bubbles-fps.mjs) abre as
+Bolhas com `?debug=1`, conta os intervalos entre `requestAnimationFrame` durante
+6 s em três situações, e confirma que a música estava mesmo a tocar durante a
+medição (7 fontes vivas, RMS ~0,008):
+
+| Situação | fps mediano | 10% piores | frames > 20 ms |
+|---|---|---|---|
+| a cena sozinha, com a vida própria e a música | **59,9** | 59,9 | 0 / 359 |
+| soprando sem parar, ecrã cheio (8 bolhas) | **59,9** | 59,9 | 0 / 359 |
+| soprando com o CPU 4× mais lento | **59,9** | 59,9 | 0 / 359 |
+
+O custo real da cena, medido no mesmo instante: **34 a 37 animações CSS a
+decorrer ao mesmo tempo**. É esse o número que um tablet paga, e não os nós
+parados.
+
+Porque é que o CPU 4× mais lento não se nota: quase nada corre na *main thread*
+a cada frame. As animações são todas de `transform` e `opacity` — a sombra vai no
+contentor que só translada, o gingado vai no `<span>` interior, e as patas do
+caranguejo são dois `rotate` num grupo — por isso vivem no compositor. Na main
+thread só há cronómetros lentos: o spawner de bolhas (900 ms), o soprar (240 ms)
+e o agendador da música (250 ms). O throttle é por isso um **limite inferior**,
+não uma simulação fiel de tablet.
+
+Daqui fica a regra para as próximas figuras: **sombra no contentor parado,
+movimento no interior**, e nunca um `filter`/`blur` num elemento que se mexe — aí
+o compositor tem de re-rasterizar o desenho a cada frame, e é isso que deita o
+framerate abaixo.
+
+*(Nota honesta: na primeira corrida, com o Vite ainda a transformar módulos,
+apanhou-se um único frame de 133 ms. Nas corridas seguintes, com a cena quente,
+zero frames lentos em três situações.)*
 
 ## Nota
 

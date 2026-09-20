@@ -11,6 +11,7 @@
     "shots": "node scripts/capture-server.mjs",
     "game": "node scripts/launch-game.mjs",
     "check:exit": "node scripts/check-exit-cleanup.mjs",
+    "check:fps-bolhas": "node scripts/check-bubbles-fps.mjs",
     "test:mcp": "node scripts/test-mcp.mjs",
     "test:mcp:live": "node scripts/test-mcp.mjs --live"
   },

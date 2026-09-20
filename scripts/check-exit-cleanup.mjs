@@ -222,6 +222,17 @@ try {
   await page.goto(DEBUG_URL, { waitUntil: 'load' });
   await page.locator('.launcher').waitFor();
   await openGame(page, 'Avião', 'Vale Vivo');
+  // '.btn.hud-home' aparece no instante em que o ecrã do jogo monta, mas o
+  // canvas do renderer é afixado uma beatada depois (~90 ms medidos: 90, 91 e
+  // 100 ms em três arranques). Sem esperar aqui, este passo afirmava cedo de
+  // mais e o check chumbava o arranque normal — os passos seguintes já esperam
+  // (settle de 2 500 ms), era só este passo que estava assimétrico.
+  await page.waitForFunction(
+    function () { return document.querySelectorAll('#app canvas').length > 0; },
+    null,
+    { timeout: 20000 }
+  );
+  await settle(page, 1200);
   let s = await page.evaluate(probeState);
   check(s.canvases === 1, 'jogo aberto tem exactamente 1 canvas', 'canvases=' + s.canvases);
   check(s.musicRunning >= 1, 'jogo aberto tem musica a tocar', 'musicRunning=' + s.musicRunning);
