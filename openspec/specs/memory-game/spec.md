@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Jogo da Memória com pares de animais para crianças pequenas: a criança revela cartas num grid silenciosamente e procura os pares; ao acertar um par, ouve o nome pt-PT do animal e o seu som, com dificuldade (tamanho do grid) escolhida pelo adulto.
+Jogo da Memória com pares de animais para crianças pequenas: a criança revela cartas num grid silenciosamente e procura os pares; ao acertar um par, ouve de imediato o som do animal e, a seguir, o seu nome em pt-PT, com dificuldade (tamanho do grid) escolhida pelo adulto.
 
 ## Requirements
 
@@ -33,7 +33,7 @@ Ao tocar numa carta virada para baixo, a carta SHALL virar mostrando o emoji do 
 - **THEN** nada acontece (a carta não bloqueia o jogo nem produz som)
 
 ### Requirement: Casamento de pares
-Quando duas cartas reveladas mostram o mesmo animal, ambas SHALL ficar viradas para cima de forma definitiva e o jogo SHALL dar uma recompensa positiva (som de acerto, destaque na carta e o par fala o nome e o som do animal conforme a requirement "Acertar o par fala o nome e o som do animal"). Quando as duas cartas forem diferentes, o jogo SHALL tocar um som neutro (nunca um som de "erro"), sem qualquer fala, e ambas SHALL virar para baixo depois de um curto atraso que permita à criança vê-las.
+Quando duas cartas reveladas mostram o mesmo animal, ambas SHALL ficar viradas para cima de forma definitiva e o jogo SHALL dar uma recompensa positiva (som de acerto, destaque na carta e o par fala o nome e o som do animal conforme a requirement "Acertar o par: som do animal imediato, nome a seguir"). Quando as duas cartas forem diferentes, o jogo SHALL dar um sinal visível do "não é este" — as duas cartas SHALL balançar suavemente — enquanto toca um som neutro e macio (nunca um som de "erro"), sem qualquer fala; ambas SHALL virar para baixo depois de um curto atraso que permita à criança vê-las.
 
 #### Scenario: Par encontrado
 - **WHEN** a segunda carta revelada é igual à primeira
@@ -41,7 +41,7 @@ Quando duas cartas reveladas mostram o mesmo animal, ambas SHALL ficar viradas p
 
 #### Scenario: Par errado
 - **WHEN** a segunda carta revelada é diferente da primeira
-- **THEN** toca um som suave e neutro sem fala nenhuma, e as duas cartas fecham-se depois de um atraso visível (~1 s), sem qualquer mensagem de erro
+- **THEN** as duas cartas balançam suavemente enquanto toca um som grave e macio, sem fala nenhuma, e fecham-se depois de um atraso visível (~1 s), sem qualquer mensagem, símbolo ou cor de erro
 
 #### Scenario: Toque durante a pausa do par errado
 - **WHEN** a criança toca numa terceira carta enquanto as duas do par errado ainda estão abertas
@@ -61,16 +61,24 @@ Quando o último par for encontrado, o jogo SHALL celebrar com jingle e fala de 
 - **WHEN** o par final é casado
 - **THEN** toca o jingle de vitória, é falada uma celebração, e aparece o botão "Jogar de novo"
 
-### Requirement: Acertar o par fala o nome e o som do animal
-Quando um par é encontrado, o jogo SHALL falar o nome do animal em pt-PT uma única vez e, quando existir gravação do som do animal, esse som SHALL tocar depois de terminar a fala (comportamento `speak` + `soundAfter` dos quebra-cabeças), como recompensa do acerto.
+### Requirement: Acertar o par: som do animal imediato, nome a seguir
+Quando um par é encontrado, o som do animal SHALL tocar de imediato, no mesmo toque que fecha o par, sem esperar por qualquer fala; quando existir gravação do som do animal, ela SHALL ser a primeira coisa a soar, logo após o som de acerto. O nome do animal SHALL ser falado em pt-PT uma única vez, a seguir ao fim do som; quando não existir gravação, o nome SHALL ser falado de imediato, acompanhado do som procedural do animal quando existir. A celebração do fim de partida SHALL aguardar o fim de tudo do último par.
 
-#### Scenario: Par encontrado fala o nome
-- **WHEN** a segunda carta revelada fecha um par
-- **THEN** o nome do animal é falado uma única vez
+#### Scenario: Som do bicho chega sem espera
+- **WHEN** a criança acerta um par de um animal que tem gravação
+- **THEN** a gravação do animal começa imediatamente após o toque, sem esperar por fala nenhuma
 
-#### Scenario: Som do bicho depois da fala
-- **WHEN** o par casado tem gravação do som do animal
-- **THEN** o som toca imediatamente depois de terminar a fala do nome
+#### Scenario: Nome falado a seguir ao som
+- **WHEN** termina o som do animal recém-acertado
+- **THEN** o nome do animal é falado uma única vez em pt-PT
+
+#### Scenario: Sem gravação, nome na hora
+- **WHEN** o par acertado é de um animal sem ficheiro de som
+- **THEN** o nome é falado de imediato (acompanhado do som procedural do animal, quando existir)
+
+#### Scenario: Celebração espera pelo último animal
+- **WHEN** o último par acertado tem som ou nome em curso
+- **THEN** o jingle e a fala de celebração só começam depois de o nome desse animal terminar
 
 #### Scenario: Voltar ao launcher a meio de uma fala
 - **WHEN** a criança toca no botão 🏠 enquanto um nome está a ser falado
