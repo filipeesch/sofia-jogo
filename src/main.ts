@@ -5,6 +5,8 @@ import { HomeScreen } from './ui/HomeScreen';
 import { PaintApp } from './apps/PaintApp';
 import { BubblesApp } from './apps/BubblesApp';
 import { PuzzleApp } from './apps/PuzzleApp';
+import { MemoryApp } from './apps/MemoryApp';
+import { TicTacToeApp } from './apps/TicTacToeApp';
 import { ANIMALS } from './apps/puzzleAnimals';
 import { VEHICLES } from './apps/puzzleVehicles';
 import { FRUITS } from './apps/puzzleFruits';
@@ -53,6 +55,8 @@ const launcher = new Launcher([
   { id: 'frutas', emoji: '🍎', name: 'Frutas', color: 'linear-gradient(135deg,#aed581,#558b2f)', onOpen: openFruits },
   { id: 'numeros', emoji: '🔢', name: 'Números', color: 'linear-gradient(135deg,#81c784,#2e7d32)', onOpen: openNumbers },
   { id: 'letras', emoji: '🔤', name: 'Letras', color: 'linear-gradient(135deg,#ba68c8,#6a1b9a)', onOpen: openLetters },
+  { id: 'memoria', emoji: '🃏', name: 'Memória', color: 'linear-gradient(135deg,#ffcc80,#f06292)', onOpen: openMemoria },
+  { id: 'galo', emoji: '⭕', name: 'Jogo do Galo', color: 'linear-gradient(135deg,#90caf9,#5c6bc0)', onOpen: openGalo },
   { id: 'editor', emoji: '🛠️', name: 'Editor', color: 'linear-gradient(135deg,#b0bec5,#546e7a)', onOpen: () => void openEditor() }
 ]);
 
@@ -129,6 +133,20 @@ function openNumbers(): void {
 function openLetters(): void {
   clearAll();
   const a = new PuzzleApp({ title: 'Quebra-Cabeça das Letras', items: LETTERS, onBack: () => { clearAll(); launcher.show(); } });
+  currentApp = a;
+  a.mount();
+}
+
+function openMemoria(): void {
+  clearAll();
+  const a = new MemoryApp({ onBack: () => { clearAll(); launcher.show(); } });
+  currentApp = a;
+  a.mount();
+}
+
+function openGalo(): void {
+  clearAll();
+  const a = new TicTacToeApp({ onBack: () => { clearAll(); launcher.show(); } });
   currentApp = a;
   a.mount();
 }
