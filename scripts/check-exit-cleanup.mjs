@@ -117,10 +117,15 @@ const renderProbe = async () => {
 const settle = (page, ms) => page.waitForTimeout(ms === undefined ? 900 : ms);
 
 /**
- * Dispara varios pointerdowns no mesmo tick — e assim que a crianca toca duas
+ * Dispara varios toques no mesmo tick — e assim que a crianca toca duas
  * vezes, e o unico modo deterministico de apanhar a corrida entre dois
  * carregamentos de fase (o clique do Playwright espera que o elemento fique
- * estavel, o que ja deixa o primeiro carregamento terminar).
+ * estavel, o que ja deixa o primeiro carregamento terminar). Os dois eventos,
+ * pointerdown E click, porque os ecras tratam-nos de forma diferente: os
+ * cartoes de fase (.home-card) abrem no pointerdown, e o launcher novo
+ * (.app-card) mudou para click a proposito — para nao abrir por engano
+ * durante um arrasto de scroll. Cada toque dispara os dois; cada ecra ouve o
+ * seu, e o outro e ignorado.
  */
 async function tapAll(page, names) {
   await page.evaluate(function (labels) {
@@ -132,6 +137,7 @@ async function tapAll(page, names) {
           ' | cartões: ' + cards.map(function (n) { return n.getAttribute('aria-label'); }).join(','));
       }
       el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     }
   }, names);
 }
