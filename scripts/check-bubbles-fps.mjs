@@ -90,10 +90,11 @@ async function stopFps(page, etiqueta) {
       piorFrame: Math.round(q(1) * 10) / 10,
       framesLentos: d.filter(function (x) { return x > 20; }).length,
       bolhas: um('.bubble'),
-      nos: um('.bubbles-plant svg *, .bubbles-shell svg *, .bubbles-ostra svg *, .bubbles-horse svg *, .bubbles-caranguejo svg *, .bubbles-fish svg *'),
-      figuras: um('.bubbles-plant, .bubbles-shell, .bubbles-ostra, .bubbles-horse, .bubbles-caranguejo, .bubbles-fish'),
+      nos: um('.bubbles-plant svg *, .bubbles-shell svg *, .bubbles-ostra svg *, .bubbles-horse svg *, .bubbles-caranguejo svg *, .bubbles-baleia svg *, .bubbles-fish svg *'),
+      figuras: um('.bubbles-plant, .bubbles-shell, .bubbles-ostra, .bubbles-horse, .bubbles-caranguejo, .bubbles-baleia, .bubbles-fish'),
       ostras: um('.bubbles-ostra'),
       caranguejos: um('.bubbles-caranguejo'),
+      baleias: um('.bubbles-baleia'),
       // O numero que importa num tablet nao e o dos nos parados, e o das
       // animacoes que estao a decorrer ao mesmo tempo: cada uma e um lugar na
       // composicao. Sao todas de transform/opacity, por isso vivem no
@@ -117,7 +118,7 @@ async function stopFps(page, etiqueta) {
   console.log(
     '  ' + ''.padEnd(22) +
     ' ' + m.bolhas + ' bolhas, ' + m.figuras + ' figuras de cenario (' +
-    m.ostras + ' ostras, ' + m.caranguejos + ' caranguejo), ' +
+    m.ostras + ' ostras, ' + m.caranguejos + ' caranguejo, ' + m.baleias + ' baleia), ' +
     m.animacoes + ' animacoes a decorrer, ' + m.nos + ' nos de svg' +
     '  |  musica ' + m.mar + ' (' + m.fontes + ' fontes, nivel ' + m.nivel + ')'
   );

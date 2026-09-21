@@ -788,6 +788,82 @@ html.launcher-touch body {
   100% { transform: translate(0, 0) rotate(0deg) scale(1); }
 }
 
+/* A baleia: o gigante que passa por cima de tudo, no topo do mar. É levada
+   pela mesma corrente dos peixes (o mesmo `swim`), ao dobro do mais lento —
+   animais grandes andam devagar. O `--h` mede o desenho TODO, incluindo a
+   folga de cima onde o sopro cresce: o corpo visível fica um pouco menor, e é
+   assim que o sopro tem espaço para ser visto antes de a cabeça chegar. */
+.bubbles-baleia {
+  position: absolute;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: swim var(--nada, 75s) linear var(--atraso, 0s) infinite;
+}
+.bubbles-baleia span {
+  display: block;
+  position: relative;
+  transform-origin: 50% 50%;
+  /* A caixa do svg é grande demais para alvo — tocariam-lhe peixes a passar.
+     O dedo só apanha a baleia onde ela está: o corpo, via `::before`. */
+  pointer-events: none;
+  filter: drop-shadow(0 6px 12px rgba(0, 40, 70, 0.35));
+  animation: baleiaBob var(--bob, 6.2s) ease-in-out var(--atraso, 0s) infinite alternate;
+}
+.bubbles-baleia span::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 68%;
+  height: 58%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
+/* A boca fecha em `scaleY` em torno da margem de cima — a maxila de baixo é
+   que sobe, como em qualquer boca a fechar-se — e reabre devagar. */
+.bubbles-baleia .baleia-boca {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: baleiaBoca 5.4s ease-in-out var(--atraso, 0s) infinite;
+}
+/* O sopro: três bolhas que largam do furinho, sobem a crescer e esvaecem-se.
+   Só `transform` e `opacity` — nem aqui, um filtro num nó animado. */
+.bubbles-baleia .baleia-sopro circle {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: baleiaSopro 4.5s ease-out var(--atraso, 0s) infinite;
+}
+.bubbles-baleia .baleia-sopro circle:nth-child(2) { animation-delay: calc(var(--atraso, 0s) + 1.5s); }
+.bubbles-baleia .baleia-sopro circle:nth-child(3) { animation-delay: calc(var(--atraso, 0s) + 3s); }
+/* Tocado: dá uma cavalgada, escancara a boca e deita o sopro todo de uma vez. */
+.bubbles-baleia span.pula { animation: baleiaSalto 0.72s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.bubbles-baleia span.pula .baleia-boca { animation: none; transform: scaleY(1.4); transition: transform 240ms ease-out; }
+.bubbles-baleia span.pula .baleia-sopro circle { animation-duration: 1.3s; }
+
+@keyframes baleiaBob {
+  from { transform: translateY(-8px) rotate(-2deg); }
+  to { transform: translateY(8px) rotate(2deg); }
+}
+@keyframes baleiaSalto {
+  0% { transform: translateY(0) rotate(0deg) scale(1); }
+  30% { transform: translateY(-30px) translateX(calc(var(--dir, 1) * 18px)) rotate(calc(var(--dir, 1) * -7deg)) scale(1.06); }
+  70% { transform: translateY(8px) translateX(calc(var(--dir, 1) * -9px)) rotate(calc(var(--dir, 1) * 4deg)) scale(0.98); }
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+@keyframes baleiaBoca {
+  0%, 46% { transform: scaleY(1); }
+  58%, 72% { transform: scaleY(0.16); }
+  88%, 100% { transform: scaleY(1); }
+}
+@keyframes baleiaSopro {
+  0% { transform: translate(0, 0) scale(0.2); opacity: 0; }
+  18% { opacity: 0.9; }
+  100% { transform: translate(6px, -36px) scale(1.4); opacity: 0; }
+}
+
 .bubbles-fish {
   position: absolute;
   left: 0;
@@ -798,7 +874,7 @@ html.launcher-touch body {
 /* As figuras do fundo medem-se em ALTURA de píxeis (`--h`), não em `font-size`
    dum glifo: um emoji mudava de tamanho conforme a fonte do sistema de quem
    usava o tablet, e um desenho não tem esse problema — mas tem de ser medido. */
-.bubbles-fish span svg, .bubbles-plant span svg, .bubbles-shell span svg, .bubbles-ostra span svg, .bubbles-horse span svg, .bubbles-caranguejo span svg {
+.bubbles-fish span svg, .bubbles-plant span svg, .bubbles-shell span svg, .bubbles-ostra span svg, .bubbles-horse span svg, .bubbles-caranguejo span svg, .bubbles-baleia span svg {
   display: block;
   height: var(--h, 56px);
   width: auto;

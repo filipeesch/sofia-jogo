@@ -1,6 +1,6 @@
 import { abraOstra, bubbleBurst, bubbleTapStep, clique, glup, idleSfx, pinca, puff, resume, sparkle, trill, win } from '../ui/sfx';
 import { pararMar, startMar } from '../ui/seaAmbience';
-import { ALGA, BAIACU, BOLHA_SOPRAR, CAVALO_MARINHO, CARANGUEJO, CONCHA_ESPIRAL, CONCHA_VIEIRA, OSTRA, PEIXE_PRATA, PEIXE_TROPICAL } from './bubblesSprites';
+import { ALGA, BALEIA, BAIACU, BOLHA_SOPRAR, CAVALO_MARINHO, CARANGUEJO, CONCHA_ESPIRAL, CONCHA_VIEIRA, OSTRA, PEIXE_PRATA, PEIXE_TROPICAL } from './bubblesSprites';
 
 // Bolhas: um brinquedo, não um jogo. Cada bolha é só um conjunto de atributos
 // (dimensão, cor, carga) e cada atributo devolve qualquer coisa à criança — o
@@ -102,6 +102,16 @@ const CAVALOS: Cavalo[] = [
   { h: 92, top: '66vh', nada: '36s', atraso: '-21s', bob: '4.4s', pele: '#ff9ec7', barriga: '#ffdbe9', barbatana: '#ff6fa5' },
 ];
 
+// Uma só baleia, e é de propósito: ela é o gigante que passa por cima de tudo.
+// Atravessa o ecrã uma vez por minuto — o dobro do peixe mais lento — porque
+// animais grandes andam devagar, e uma figura grande em câmara lenta é
+// hipnotizante a esta idade. O atraso negativo faz com que, ao abrir o jogo,
+// ela já venha a meio do ecrã a soltar o sopro: o jogo não começa parado.
+interface Baleia { h: number; top: string; nada: string; atraso: string; bob: string }
+const BALEIAS: Baleia[] = [
+  { h: 150, top: '5vh', nada: '75s', atraso: '-30s', bob: '6.2s' },
+];
+
 // As ostras são a única coisa da cena com uma parte que se mexe por dentro do
 // desenho: a valva de cima levanta-se. Vão para os vãos maiores da areia — a
 // primeira entre a alga de 55 % e a concha de 72 %, a segunda no vão dos 33 % —
@@ -185,7 +195,7 @@ export class BubblesApp {
     // O cenário entra ANTES dos peixes no DOM. Com o mesmo z-index, o elemento
     // que vem depois é que pinta por cima e que leva o toque onde os dois se
     // sobrepõem — assim um peixe a passar continua a ser o peixe.
-    this.root.append(this.algas(), this.conchas(), this.ostras(), this.cavalos(), this.caranguejos());
+    this.root.append(this.algas(), this.conchas(), this.ostras(), this.cavalos(), this.caranguejos(), this.baleias());
 
     PEIXES.forEach((peixe) => {
       const f = document.createElement('div');
@@ -778,6 +788,31 @@ export class BubblesApp {
       corpo.innerHTML = CAVALO_MARINHO(h);
       el.append(corpo);
       this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'pula', trill, dir, 4, 40, 0.5));
+      frag.append(el);
+    }
+    return frag;
+  }
+
+  /** A baleia é a única figura grande do fundo e a única que anuncia por onde
+   *  vai: o sopro de bolhas por cima do lombo vê-se antes dela e ainda depois —
+   *  é o aviso de que ela passou. É tocável como o resto: ao dedo ela abre a
+   *  boca de todo (o `.baleia-boca` fecha devagar, o toque abre-a depressa), dá
+   *  uma cavalgada e solta um glup-glup — o mesmo som do peixe, que também é
+   *  boca a mexer com ar dentro. */
+  private baleias(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+    for (const b of BALEIAS) {
+      const el = document.createElement('div');
+      el.className = 'bubbles-baleia';
+      el.style.top = b.top;
+      el.style.setProperty('--nada', b.nada);
+      el.style.setProperty('--atraso', b.atraso);
+      el.style.setProperty('--bob', b.bob);
+      const corpo = document.createElement('span');
+      corpo.style.setProperty('--h', `${b.h}px`);
+      corpo.innerHTML = BALEIA();
+      el.append(corpo);
+      this.tocavel(el, corpo, (dir) => this.tocaCenario(el, corpo, 'pula', glup, dir, 6, 46, 0.75));
       frag.append(el);
     }
     return frag;

@@ -120,11 +120,11 @@ canvas antes de afirmar, e o check passa inteiro.
 ## As apps de DOM (Bolhas, Pintura): aqui mede-se fps, não draw calls
 
 As apps de brinquedo não têm canvas nem Three.js — são HTML e CSS. Isso não é de
-graça: nas Bolhas há uma cena inteira em movimento permanente, com 17 figuras de
-cenário (algas, conchas, duas ostras, cavalos, um caranguejo e os peixes que
-passam) a somar 446 nós de SVG, mais as bolhas que sobem sozinhas ou do soprar,
-e uma música procedural por cima. É exactamente aqui que uma cena «só DOM» se
-desmente num tablet.
+graça: nas Bolhas há uma cena inteira em movimento permanente, com 18 figuras de
+cenário (algas, conchas, duas ostras, cavalos, um caranguejo, uma baleia e os
+peixes que passam) a somar 470 nós de SVG, mais as bolhas que sobem sozinhas ou
+do soprar, e uma música procedural por cima. É exactamente aqui que uma cena
+«só DOM» se desmente num tablet.
 
 Verificação: `npm run check:fps-bolhas` (scripts/check-bubbles-fps.mjs) abre as
 Bolhas com `?debug=1`, conta os intervalos entre `requestAnimationFrame` durante
@@ -137,9 +137,10 @@ medição (5 fontes vivas, RMS 0,016 a 0,025 com o barramento no 0,8 do jogo do 
 | soprando sem parar, ecrã cheio (8 bolhas) | **59,9** | 59,9 | 0 / 359 |
 | soprando com o CPU 4× mais lento | **59,9** | 59,9 | 0 / 359 |
 
-O custo real da cena, medido no mesmo instante: **29 a 35 animações CSS a
-decorrer ao mesmo tempo**. É esse o número que um tablet paga, e não os nós
-parados.
+O custo real da cena, medido no mesmo instante: **40 a 43 animações CSS a
+decorrer ao mesmo tempo** — as três bolhas do sopro da baleia e o abrir e
+fechar da boca incluídos, todas de `transform` e `opacity`. É esse o número que
+um tablet paga, e não os nós parados.
 
 Porque é que o CPU 4× mais lento não se nota: quase nada corre na *main thread*
 a cada frame. As animações são todas de `transform` e `opacity` — a sombra vai no

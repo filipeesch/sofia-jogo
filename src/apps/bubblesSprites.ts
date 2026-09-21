@@ -488,6 +488,56 @@ export const CARANGUEJO = (cores: { casca?: string; escura?: string; clara?: str
 </svg>`;
 };
 
+// ── Baleia ─────────────────────────────────────────────────────────────────
+//
+// A silhueta, a boca aberta e a barbatana ventral são o contorno decalcado de
+// uma ilustração de banco de imagem gratuito — usámos a FORMA como modelo e
+// publicamos só o nosso traço (o ficheiro original não está no repositório).
+// O viewBox abre folga de 20 unidades acima do lombo: é o céu por onde sobem
+// as bolhas do sopro, animadas por CSS nos grupos `.baleia-sopro` e
+// `.baleia-boca` — o sprite em si não sabe animar nada.
+
+/** Contorno do corpo inteiro (decalque), cabeça à esquerda como o resto da casa. */
+const BALEIA_CORPO = 'M 150.5 0 Q 150.3 0 147.4 1.7 Q 144.5 3.4 141.8 4.1 Q 139 4.7 136.5 5.8 Q 134 6.8 132.1 8.3 Q 130.1 9.7 128.4 11.9 Q 126.6 14 123 12.6 Q 119.3 11.1 116.8 9.4 Q 114.3 7.6 113.1 7.6 Q 111.9 7.6 111.3 8.8 Q 110.6 10 111.3 13.3 Q 111.9 16.6 113.1 18.7 Q 114.3 20.8 116.7 23.6 Q 119 26.3 118.1 27.7 Q 117.2 29 115.2 30.6 Q 113.2 32.1 111.9 32.8 Q 110.6 33.4 108.6 33.8 Q 106.6 34.2 104.4 34 Q 102.2 33.7 99.2 32.5 Q 96.1 31.3 79 20.4 Q 61.9 9.5 57.7 7.5 Q 53.4 5.5 49 4.2 Q 44.5 2.9 39 2.7 Q 33.4 2.4 29.4 3.3 Q 25.3 4.2 21.4 6.2 Q 17.4 8.2 14 11.6 Q 10.5 15 8 19.2 Q 5.5 23.4 4 27.8 Q 2.4 32.1 1.3 37.8 Q 0.3 43.4 0.2 48.7 Q 0 54 0.3 56.8 Q 0.5 59.5 1.5 61.4 Q 2.4 63.2 4.8 65.5 Q 7.1 67.7 10.6 69.4 Q 14.2 71.1 13.3 73.4 Q 12.4 75.8 12.4 77.6 Q 12.4 79.3 12.8 80.4 Q 13.2 81.4 14.7 82.9 Q 16.1 84.3 18.6 85.2 Q 21.1 86.1 31.6 87.8 Q 42.1 89.5 45.6 89.8 Q 49 90 51.1 93.1 Q 53.2 96.1 55.1 97.7 Q 56.9 99.3 59.7 100.8 Q 62.4 102.2 65.5 103 Q 68.5 103.7 69.8 103.5 Q 71.1 103.2 72 102 Q 72.9 100.8 72.9 98.3 Q 72.9 95.8 72.2 93.1 Q 71.4 90.3 71.9 89.8 Q 72.4 89.3 73.3 89.2 Q 74.2 89 77.5 91 Q 80.8 92.9 85.2 94 Q 89.5 95 92.7 95.2 Q 95.8 95.3 98.6 95.1 Q 101.4 94.8 103.5 94.4 Q 105.6 94 107.1 93.2 Q 108.5 92.4 108.6 91.4 Q 108.7 90.3 108.5 89.8 Q 108.2 89.3 106.7 87.9 Q 105.1 86.4 101.8 84.3 Q 98.5 82.1 101.7 80.3 Q 104.8 78.5 107.5 76.4 Q 110.1 74.2 113.1 71 Q 116.1 67.7 118.4 64.4 Q 120.6 61.1 122.6 57 Q 124.5 52.9 125.6 49.9 Q 126.6 46.9 127.7 42 Q 128.7 37.1 129 32.5 Q 129.3 27.9 133 26.6 Q 136.6 25.3 139.5 23.6 Q 142.4 21.9 145.5 19.3 Q 148.5 16.6 150 14.6 Q 151.4 12.6 152.5 9.7 Q 153.5 6.8 153.7 4.7 Q 153.8 2.6 153.1 1.5 Q 152.4 0.3 151.5 0.2 Q 150.6 0 150.5 0 Z';
+const BALEIA_BOCA = 'M 39.2 77.2 Q 44.3 67.8 42.8 68.6 Q 41.2 69.4 36.7 70.2 Q 32.2 71 26 70.9 Q 19.8 70.7 17.8 70.3 Q 15.8 69.9 13.7 69 Q 11.6 68.1 11.6 69.2 Q 11.6 70.2 13 70.8 Q 14.3 71.3 13.4 73.7 Q 12.4 76 12.4 77.8 Q 12.4 79.5 12.8 80.6 Q 13.2 81.6 14.3 82.8 Q 15.3 83.9 16.5 84.6 Q 17.7 85.3 20 85.9 Q 22.4 86.6 28.3 86.6 Q 34.1 86.6 39.2 77.2 Z';
+const BALEIA_VENTRAL = 'M 47.2 85.2 Q 50.2 82.9 55.9 83.7 Q 61.5 84.5 65.9 84.6 Q 70.2 84.7 71.4 86.1 Q 72.6 87.4 72.4 87.7 Q 72.3 87.9 70.8 88.2 Q 69.2 88.4 62.1 88.4 Q 54.9 88.4 49.5 87.9 Q 44.1 87.4 47.2 85.2 Z';
+
+/** Baleia de costas azuis e barriga branca pregueada, boca aberta e sopro de
+ *  bolhas por cima. A boca fecha ``scaleY`` em torno da dobradiça do fundo —
+ *  por isso vive num grupo `.baleia-boca` separado, com origem no canto. */
+export const BALEIA = (
+  cores: { pele?: string; barriga?: string; barbatana?: string; escura?: string; boca?: string; lingua?: string } = {},
+) => {
+  const {
+    pele = '#4cb9ef', barriga = '#f1faff', barbatana = '#2f97d4',
+    escura = '#2e7cc0', boca = '#28306b', lingua = '#ff9fb2',
+  } = cores;
+  return `
+<svg viewBox="-3 -20 160.1 127" role="img" aria-label="Baleia" xmlns="http://www.w3.org/2000/svg">
+  <g class="baleia-sopro" fill="${LUZ}" stroke="${LINHA}" stroke-width="0.8" opacity="0.9">
+    <circle cx="87" cy="19" r="2.6"/>
+    <circle cx="91.5" cy="19" r="1.9"/>
+    <circle cx="83.5" cy="19" r="1.3"/>
+  </g>
+  <path d="${BALEIA_CORPO}" fill="${barbatana}" stroke="${LINHA}" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="${BALEIA_CORPO}" fill="${pele}" transform="translate(77 52) scale(0.962) translate(-77 -52) translate(-0.5 -0.9)"/>
+  <path d="M 13.5 74.5 C 22 87.5 42 92.8 62 91.6 C 78.5 90.5 91 85 97 76 C 89 82.5 76 86 62 86.4 C 44 86.8 25.5 82 16 71.5 Z"
+        fill="${barriga}" stroke="${LINHA}" stroke-width="1.4" stroke-linejoin="round" paint-order="stroke"/>
+  ${raios(['M 24 79 L 26.5 85.5', 'M 34 82 L 36 88.2', 'M 46 84 L 47.5 89.8', 'M 58 84.6 L 59.5 90', 'M 70 83.5 L 72 88.8', 'M 82 80.5 L 84.5 86.2'], 1, TINTA_ESCURA, 0.28)}
+  <path d="${BALEIA_VENTRAL}" fill="${escura}" stroke="${LINHA}" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M 61 68 C 71 71.5 83 77.5 91 86 C 94 89.4 91 92.2 86.4 91 C 76.8 88.6 66.6 81 60.4 73.4 Z"
+        fill="${pele}" stroke="${LINHA}" stroke-width="1.8" stroke-linejoin="round" paint-order="stroke"/>
+  <g class="baleia-boca">
+    <path d="${BALEIA_BOCA}" fill="${boca}" stroke="${LINHA}" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke"/>
+    <ellipse cx="26" cy="77.5" rx="6" ry="2.6" transform="rotate(-8 26 77.5)" fill="${lingua}" stroke="${boca}" stroke-width="1"/>
+  </g>
+  ${olho(57, 47.5, 5.4)}
+  <path d="M 83.5 21.5 Q 87 19.2 90.5 21.5" fill="none" stroke="${escura}" stroke-width="1.6" stroke-linecap="round"/>
+  <ellipse cx="30" cy="24" rx="8" ry="4.2" transform="rotate(-14 30 24)" fill="${LUZ}" opacity="0.38"/>
+  <path d="M 44 17 C 62 12.5 84 19 101 30" fill="none" stroke="${LUZ}" stroke-width="2" stroke-linecap="round" opacity="0.22"/>
+</svg>`;
+};
+
 // ── Comando de soprar ──────────────────────────────────────────────────────
 
 /** Bolhas para o botão de soprar: três, com aro e brilho, todas em branco
