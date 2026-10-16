@@ -41,8 +41,6 @@ export class EditorScene {
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly hemi: THREE.HemisphereLight;
-  private readonly clock = new THREE.Clock();
-  private shadowTimer = 0;
   /** ?debug=1 — lets the capture server drive the camera and grab frames. */
   private debug: DebugCapture | null = null;
 
@@ -95,7 +93,10 @@ export class EditorScene {
       powerPreference: 'high-performance',
       preserveDrawingBuffer: debug
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // High-density touch displays (tablets): cap the render scale at 1.5 —
+    // DPR 2-2.6 quadruples fragment work for no editing benefit (design D3).
+    const isTouch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.5 : 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -154,17 +155,17 @@ export class EditorScene {
     }
   }
 
-  /** Advance the world by one frame and render. */
+  /**
+   * Render one editor frame. The editing scene is intentionally STATIC:
+   * `world.update` is never called here, so ambience (sway, ocean, animals,
+   * birds/clouds/balloons) never advances and no instance-matrix buffers are
+   * re-uploaded per frame. The shadow map is refreshed by rebuild() only when
+   * world content changes — never on a timer. Live mode runs the real Game,
+   * which keeps all ambience.
+   */
   tick(): void {
     if (this.disposed) return;
-    const dt = Math.min(this.clock.getDelta(), 0.05);
-    this.world.update(dt, 0);
     this.controls.update();
-    this.shadowTimer += dt;
-    if (this.shadowTimer >= 0.5) {
-      this.shadowTimer = 0;
-      this.sun.shadow.needsUpdate = true;
-    }
     this.renderer.render(this.scene, this.camera);
     this.debug?.postRender();
   }
