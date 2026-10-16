@@ -69,6 +69,36 @@ type DragState =
 const ID_RE = /^[a-z0-9-]{1,40}$/;
 const UNDO_CAP = 60;
 
+// Tap-vs-drag thresholds (change editor-tablet, design D4): a single-pointer
+// gesture released within these bounds is a TAP and performs the tool edit;
+// anything longer is camera navigation. Named constants for on-device tuning.
+export const TAP_MAX_MOVE_PX = 12;
+export const TAP_MAX_MS = 500;
+
+/** A single-pointer gesture on the canvas, decided at pointer-up. */
+type Gesture = {
+  id: number;
+  startX: number;
+  startY: number;
+  startT: number;
+  moved: boolean; // left the tap slop → camera navigation, never an edit
+  multi: boolean; // a second pointer joined → camera-only, never an edit
+};
+
+/** True if a released gesture qualifies as a tap. Pure for unit checks. */
+export function isTapGesture(
+  g: Pick<Gesture, 'startX' | 'startY' | 'startT'> & { moved: boolean; multi: boolean },
+  endX: number,
+  endY: number,
+  endT: number,
+  pointerCount: number
+): boolean {
+  if (pointerCount > 1 || g.multi) return false;
+  if (g.moved) return false;
+  if (Math.hypot(endX - g.startX, endY - g.startY) > TAP_MAX_MOVE_PX) return false;
+  return endT - g.startT <= TAP_MAX_MS;
+}
+
 export class EditorApp {
   private readonly data: LevelData;
   private readonly cb: EditorCallbacks;
@@ -89,6 +119,9 @@ export class EditorApp {
   private undoStack: string[] = [];
   private redoStack: string[] = [];
   private drag: DragState | null = null;
+  // Tap-vs-drag gesture state (change editor-tablet): decided at pointer-up.
+  private gesture: Gesture | null = null;
+  private readonly activePointers = new Set<number>();
 
   private rafId = 0;
   private disposed = false;
@@ -143,6 +176,7 @@ export class EditorApp {
     window.addEventListener('keydown', this.onKey);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerCancel);
     this.scene.canvas.addEventListener('pointerdown', this.onPointerDown);
     this.rafId = requestAnimationFrame(this.tick);
   }
@@ -155,6 +189,7 @@ export class EditorApp {
     window.removeEventListener('keydown', this.onKey);
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerCancel);
     this.scene.canvas.removeEventListener('pointerdown', this.onPointerDown);
     window.clearTimeout(this.toastTimer);
     this.scene.dispose();
@@ -225,11 +260,136 @@ export class EditorApp {
   private onPointerDown = (e: PointerEvent): void => {
     if (this.disposed || (e.button !== 0 && e.button !== 2)) return;
 
+    // Android Chrome can swallow a pointerup; never let a stale gesture block
+    // the next one.
+    if (this.gesture && !this.activePointers.has(this.gesture.id)) {
+      this.gesture = null;
+      if (this.drag) this.cancelDrag();
+    }
+
     // Right-click: commit the draft road (documented in the hints).
     if (e.button === 2) {
       if (this.mode === 'road' && this.draft && this.draft.length >= 2) this.commitDraft();
       return;
     }
+
+    this.activePointers.add(e.pointerId);
+    if (this.activePointers.size > 1) {
+      // A second finger joined: this gesture is camera-only forever. Abort any
+      // drag the first finger started so the camera owns it (spec: multi-touch
+      // never edits).
+      if (this.gesture) this.gesture.multi = true;
+      if (this.drag) this.cancelDrag();
+      return;
+    }
+
+    this.gesture = {
+      id: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startT: performance.now(),
+      moved: false,
+      multi: false
+    };
+
+    // Direct-manipulation grabs take the gesture immediately: the finger
+    // moves the thing, not the camera. Everything else (place, road point,
+    // select, delete, deselect) is decided at pointer-up as tap-vs-drag.
+    const pick = this.scene.pick(e, this.pickOpts());
+    if (pick && pick.kind === 'handle' && this.mode !== 'delete') {
+      this.drag = { kind: 'handle', road: pick.road, point: pick.point, snap: JSON.stringify(this.data), pending: null };
+      this.scene.controls.enabled = false;
+      return;
+    }
+    if (pick && pick.kind === 'object' && this.mode === 'select') {
+      const entry = entryFor(this.data, pick.cat, pick.index);
+      if (entry) {
+        const [ex, ez] = entryPos(pick.cat, entry);
+        this.scene.beginObjectDrag(pick.cat, pick.index, ex, ez);
+        this.drag = {
+          kind: 'object',
+          cat: pick.cat,
+          index: pick.index,
+          lastX: ex,
+          lastZ: ez,
+          snap: JSON.stringify(this.data),
+          moved: false
+        };
+        this.scene.controls.enabled = false;
+      }
+    }
+  };
+
+  private onPointerMove = (e: PointerEvent): void => {
+    const g = this.gesture;
+    const d = this.drag;
+    if (!g || e.pointerId !== g.id || e.buttons === 0) return;
+
+    if (!d) {
+      // Camera gesture: past the tap slop it can never become an edit.
+      if (!g.moved && Math.hypot(e.clientX - g.startX, e.clientY - g.startY) > TAP_MAX_MOVE_PX) {
+        g.moved = true;
+      }
+      return;
+    }
+
+    const pick = this.scene.pick(e, { ground: true });
+    if (!pick || pick.kind !== 'ground' || !this.scene.placeable(pick.x, pick.z)) return;
+    const x = Math.round(pick.x * 10) / 10;
+    const z = Math.round(pick.z * 10) / 10;
+    if (d.kind === 'handle') {
+      this.scene.moveHandlePreview(d.road, d.point, x, z);
+      d.pending = [x, z];
+    } else {
+      if (!d.moved) {
+        if (Math.hypot(x - d.lastX, z - d.lastZ) < 0.1) return;
+        d.moved = true;
+      }
+      d.lastX = x;
+      d.lastZ = z;
+      this.scene.moveObjectDrag(x, z);
+    }
+  };
+
+  private onPointerUp = (e: PointerEvent): void => {
+    this.activePointers.delete(e.pointerId);
+    const g = this.gesture;
+    if (!g || e.pointerId !== g.id) return; // only the leading finger decides
+    this.gesture = null;
+
+    // A grab (object or road handle) commits on release.
+    if (this.drag) {
+      const d = this.drag;
+      this.drag = null;
+      this.scene.controls.enabled = true;
+      if (d.kind === 'object') {
+        this.scene.endObjectDrag();
+        if (d.moved) {
+          setPos(this.data, d.cat, d.index, d.lastX, d.lastZ);
+          this.recordUndo();
+          this.rebuild();
+        }
+        // Tap or move — either way the object ends up selected (no position
+        // change and no undo entry for a plain tap).
+        this.sel = { kind: 'object', cat: d.cat, index: d.index };
+        this.refreshUI();
+        return;
+      }
+      const road = this.data.roads[d.road];
+      if (d.pending && road) {
+        road[d.point] = d.pending;
+        this.recordUndo();
+        this.rebuild();
+      } else {
+        this.sel = { kind: 'road', index: d.road };
+        this.scene.refreshRoadOverlays(this.overlayOpts());
+        this.refreshUI();
+      }
+      return;
+    }
+
+    // Tap-vs-drag decision: drags and multi-touch were consumed by the camera.
+    if (!isTapGesture(g, e.clientX, e.clientY, performance.now(), this.activePointers.size)) return;
 
     const pick = this.scene.pick(e, this.pickOpts());
     if (!pick) {
@@ -243,8 +403,6 @@ export class EditorApp {
           return;
         }
         this.sel = { kind: 'road', index: pick.road };
-        this.drag = { kind: 'handle', road: pick.road, point: pick.point, snap: JSON.stringify(this.data), pending: null };
-        this.scene.controls.enabled = false;
         this.scene.refreshRoadOverlays(this.overlayOpts());
         this.refreshUI();
         return;
@@ -254,23 +412,6 @@ export class EditorApp {
           return;
         }
         this.sel = { kind: 'object', cat: pick.cat, index: pick.index };
-        {
-          const entry = entryFor(this.data, pick.cat, pick.index);
-          if (entry) {
-            const [ex, ez] = entryPos(pick.cat, entry);
-            this.scene.beginObjectDrag(pick.cat, pick.index, ex, ez);
-            this.drag = {
-              kind: 'object',
-              cat: pick.cat,
-              index: pick.index,
-              lastX: ex,
-              lastZ: ez,
-              snap: JSON.stringify(this.data),
-              moved: false
-            };
-          }
-        }
-        this.scene.controls.enabled = false;
         this.refreshUI();
         return;
       case 'roadLine':
@@ -296,48 +437,18 @@ export class EditorApp {
     }
   };
 
-  private onPointerMove = (e: PointerEvent): void => {
-    const d = this.drag;
-    if (!d || e.buttons === 0) return;
-    const pick = this.scene.pick(e, { ground: true });
-    if (!pick || pick.kind !== 'ground' || !this.scene.placeable(pick.x, pick.z)) return;
-    const x = Math.round(pick.x * 10) / 10;
-    const z = Math.round(pick.z * 10) / 10;
-    if (d.kind === 'handle') {
-      this.scene.moveHandlePreview(d.road, d.point, x, z);
-      d.pending = [x, z];
-    } else {
-      if (!d.moved) {
-        if (Math.hypot(x - d.lastX, z - d.lastZ) < 0.1) return;
-        d.moved = true;
-      }
-      d.lastX = x;
-      d.lastZ = z;
-      this.scene.moveObjectDrag(x, z);
-    }
+  private onPointerCancel = (e: PointerEvent): void => {
+    this.activePointers.delete(e.pointerId);
+    if (this.gesture?.id === e.pointerId) this.gesture = null;
+    if (this.drag) this.cancelDrag();
   };
 
-  private onPointerUp = (): void => {
-    const d = this.drag;
-    if (!d) return;
+  /** Abandon an in-progress grab without mutating anything. */
+  private cancelDrag(): void {
+    if (this.drag?.kind === 'object') this.scene.endObjectDrag();
     this.drag = null;
     this.scene.controls.enabled = true;
-    if (d.kind === 'object') {
-      this.scene.endObjectDrag();
-      if (d.moved) {
-        setPos(this.data, d.cat, d.index, d.lastX, d.lastZ);
-        this.recordUndo();
-        this.rebuild();
-      }
-    } else if (d.pending) {
-      const road = this.data.roads[d.road];
-      if (road) {
-        road[d.point] = d.pending;
-        this.recordUndo();
-        this.rebuild();
-      }
-    }
-  };
+  }
 
   // ------------------------------------------------------------------
   // Mutations

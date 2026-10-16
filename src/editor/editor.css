@@ -32,6 +32,9 @@
   gap: 8px;
   padding: 8px 10px;
   flex-wrap: wrap;
+  /* At narrow widths (and with the 44px touch sizing) the top bar wraps to a
+     second row; it must stay visible and clickable above the side panels. */
+  z-index: 6;
 }
 
 .ed-top .ed-group {
@@ -331,4 +334,41 @@
   gap: 6px;
   cursor: pointer;
   margin-bottom: 4px;
+}
+
+/* ---------- Touch targets (change editor-tablet) ----------
+   On touch devices every interactive editor control gets a finger-sized
+   target (≥ 44 px). Layout structure is unchanged; on mouse-only
+   (fine-pointer) machines the compact desktop sizing stays. */
+@media (pointer: coarse) {
+  .ed-root button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .ed-root .ed-pal {
+    min-height: 52px;
+  }
+
+  .ed-root select,
+  .ed-root input[type='text'],
+  .ed-root input[type='number'] {
+    min-height: 44px;
+  }
+
+  .ed-root .ed-item {
+    min-height: 44px;
+    padding: 10px 8px;
+  }
+
+  .ed-root .ed-item .ed-del {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0;
+    flex: none;
+  }
+
+  .ed-root .ed-tour-line {
+    min-height: 44px;
+  }
 }
