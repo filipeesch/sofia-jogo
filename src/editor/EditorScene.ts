@@ -371,14 +371,20 @@ export class EditorScene {
       return this.tmpA.y - this.terrainHeight(this.tmpA.x, this.tmpA.z);
     };
     if (f(0.5) <= 0) return null; // camera at/below the terrain
+    // D5 (editor-tablet): coarse 0.5 m steps that double up to 8 m as the ray
+    // descends, cutting terrainHeight() calls on shallow tablet drags; the
+    // bisection below restores the pre-change sub-centimetre precision.
     let lo = 0.5;
     let hi = -1;
-    for (let t = 1; t <= 400; t += 0.5) {
+    let step = 0.5;
+    for (let t = 1; t <= 400; ) {
       if (f(t) <= 0) { hi = t; break; }
       lo = t;
+      step = Math.min(step * 2, 8);
+      t += step;
     }
     if (hi < 0) return null;
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 30; i++) {
       const mid = (lo + hi) / 2;
       if (f(mid) <= 0) hi = mid;
       else lo = mid;

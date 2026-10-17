@@ -7,7 +7,7 @@ Defines how the map editor canvas interprets finger (and mouse) gestures so that
 ## ADDED Requirements
 
 ### Requirement: Camera navigation and editing are disambiguated by gesture
-The editor SHALL decide, at the end of a single-pointer gesture, whether it was a tap or a drag. A gesture whose pointer stayed within a small movement threshold and completed within a short time threshold is a **tap** and performs the current tool's edit (place, select, deselect, delete, add road point). Any longer single-pointer gesture is a **drag** and is consumed by the camera (orbit) alone, producing no edit. The decision MUST NOT fire any edit at the moment the pointer goes down.
+The editor SHALL decide, at the end of a single-pointer gesture, whether it was a tap or a drag. A gesture whose pointer stayed within a small movement threshold and completed within a short time threshold is a **tap** and performs the current tool's edit (place, select, deselect, delete, add road point). Any longer single-pointer gesture is a **drag** and is consumed by the camera (orbit) alone, producing no edit. The decision MUST NOT fire any edit at the moment the pointer goes down; the only pointer-down action permitted is the mouse-only right-click draft-road commit, which performs no camera navigation.
 
 #### Scenario: Orbit never places an object
 - **WHEN** the Place tool is active and the user touches empty ground and drags their finger across the screen before releasing
@@ -19,7 +19,7 @@ The editor SHALL decide, at the end of a single-pointer gesture, whether it was 
 
 #### Scenario: Road drafting by taps
 - **WHEN** the Road tool is active and the user taps several ground points
-- **THEN** each tap adds one draft road point and camera orientation is unchanged by those taps
+- **THEN** each tap adds one draft road point and the camera performs no deliberate action in response to those taps (a residual sub-threshold nudge from orbit damping is acceptable)
 
 #### Scenario: Orbit never deselects or grabs
 - **WHEN** an object is selected and the user drags a finger starting on empty ground

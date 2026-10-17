@@ -40,10 +40,10 @@ The editor MUST refresh the shadow map only when the world content or the light 
 - **THEN** the shadow map is not re-rendered and no periodic hitch is observable
 
 ### Requirement: Render resolution is bounded on high-density touch displays
-On devices with a reported device pixel ratio of 2 or higher, the editor MUST render at an effective pixel ratio no greater than 1.5. Devices with device pixel ratio below 2 (typical desktop) SHALL keep the current behavior (capped at 2).
+On coarse-pointer (touch) devices reporting a device pixel ratio of 2 or higher, the editor MUST render at an effective pixel ratio no greater than 1.5. All other devices (typical desktop, fine pointer) SHALL keep the current behavior (capped at 2).
 
 #### Scenario: Tablet renders below the full native density
-- **WHEN** the editor opens on a device reporting devicePixelRatio 2 or 2.6
+- **WHEN** the editor opens on a device reporting a coarse pointer and devicePixelRatio 2 or 2.6
 - **THEN** the framebuffer scale used by the editor is at most 1.5
 
 #### Scenario: Desktop unchanged

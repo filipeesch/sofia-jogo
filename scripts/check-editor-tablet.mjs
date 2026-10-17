@@ -133,17 +133,19 @@ for (const level of ['vale', 'ilha', 'deserto', 'neve', 'montanhas']) {
   const r2 = await sectionCount(page, 'Estradas');
   check(r2 === r1 + 1, 'Enter conclui a rascunhada', `${r1} -> ${r2}`);
 
-  // apagar: toque no objeto remove
-  await page.getByRole('button', { name: '👆 Selecionar', exact: true }).click();
-  await page.getByRole('button', { name: '🗑️ Apagar', exact: true }).click();
-  let removed = false;
-  for (const [dx, dy] of [[0, 0], [0, -10], [0, 10], [10, 0], [-10, 0]]) {
-    const nb = await sectionCount(page, 'Casas');
-    await page.mouse.click(cx + dx, cy + dy);
-    await sleep(800);
-    if ((await sectionCount(page, 'Casas')) === nb - 1) { removed = true; break; }
-  }
-  check(removed, 'toque em modo apagar remove o objeto');
+  // apagar: colocamos uma casa NOVA sob o cursor e a apagamos ali mesmo — com a
+  // câmera parada entre os dois cliques, o toque só pode acertar o objeto recém-posto
+  await page.getByRole('button', { name: '🏠 Casa', exact: true }).click();
+  await page.mouse.click(cx, cy);
+  await sleep(700);
+  const hDel = await sectionCount(page, 'Casas');
+  // a colocação seleciona a casa nova: o painel de propriedades abre com um
+  // segundo "🗑️ Apagar" — clicar o da barra de ferramentas
+  await page.locator('.ed-top').getByRole('button', { name: '🗑️ Apagar', exact: true }).click();
+  await page.mouse.click(cx, cy);
+  await sleep(800);
+  const hDelAfter = await sectionCount(page, 'Casas');
+  check(hDelAfter === hDel - 1, 'toque em modo apagar remove o objeto recém-colocado', `${hDel} -> ${hDelAfter}`);
 
   // mover objeto: drag move, UM undo repõe; tap-seleção não cria undo
   await page.getByRole('button', { name: '👆 Selecionar', exact: true }).click();
@@ -156,10 +158,11 @@ for (const level of ['vale', 'ilha', 'deserto', 'neve', 'montanhas']) {
   const propsSel = '.ed-props input[type=number]';
   check((await page.locator(propsSel).count()) >= 2, 'toque em objeto abre as propriedades');
   const btnUndo = page.locator('.ed-btn[title*="Desfazer"]');
-  const undoBefore = await btnUndo.isDisabled();
+  const depth0 = await page.evaluate(() => window.__debug.undoDepth());
   await page.mouse.click(cx, cy); // tap-seleção outra vez
   await sleep(400);
-  check((await btnUndo.isDisabled()) === undoBefore, 'tap-seleção não cria entrada de undo');
+  const depth1 = await page.evaluate(() => window.__debug.undoDepth());
+  check(depth1 === depth0, 'tap-seleção não cria entrada de undo', `${depth0} -> ${depth1}`);
   const posBefore = await page.locator(propsSel).evaluateAll((els) => els.map((e) => e.value).join(','));
   await page.mouse.move(cx, cy);
   await page.mouse.down();
@@ -184,6 +187,37 @@ for (const level of ['vale', 'ilha', 'deserto', 'neve', 'montanhas']) {
   check(!(await shotA.equals(await cv.screenshot())), 'roda do mouse continua dando zoom');
   check((await sectionCount(page, 'Casas')) === hc, 'roda do mouse não edita');
 
+  await ctx.close();
+}
+
+// ---------- 2b) fora dos limites: soltar o arrasto devolve + avisa ----------
+// página limpa: sem estradas desenhadas, para o ponteiro--down pegar a casa e
+// não uma alça de estrada que porventura cruze o mesmo pixel
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  const page = await ctx.newPage();
+  await openEditor(page, 'vale');
+  const box = await page.locator('canvas').first().boundingBox();
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.getByRole('button', { name: '🏠 Casa', exact: true }).click();
+  await page.mouse.click(cx, cy);
+  await sleep(900);
+  await page.getByRole('button', { name: '👆 Selecionar', exact: true }).click();
+  await page.mouse.click(cx, cy);
+  await sleep(500);
+  const propsSel = '.ed-props input[type=number]';
+  const pos0 = await page.locator(propsSel).evaluateAll((els) => els.map((e) => e.value).join(','));
+  const d0 = await page.evaluate(() => window.__debug.undoDepth());
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) await page.mouse.move(cx - i * 10, Math.max(box.y + 6, cy - i * 55));
+  await page.mouse.up();
+  await sleep(700);
+  const toastTxt = (await page.locator('.ed-status').textContent()) ?? '';
+  check(/Não dá para colocar aqui/.test(toastTxt), 'soltar fora dos limites mostra o aviso de limite', JSON.stringify(toastTxt));
+  const pos1 = await page.locator(propsSel).evaluateAll((els) => els.map((e) => e.value).join(','));
+  check(pos1 === pos0, 'soltar fora dos limites devolve o objeto (sem mover)', `${pos0} -> ${pos1}`);
+  check((await page.evaluate(() => window.__debug.undoDepth())) === d0, 'revert fora dos limites não cria undo');
   await ctx.close();
 }
 

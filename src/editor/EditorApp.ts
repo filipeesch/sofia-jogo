@@ -55,14 +55,12 @@ type DragState =
       index: number;
       lastX: number;
       lastZ: number;
-      snap: string;
       moved: boolean;
     }
   | {
       kind: 'handle';
       road: number;
       point: number;
-      snap: string;
       pending: [number, number] | null;
     };
 
@@ -178,6 +176,16 @@ export class EditorApp {
     window.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('pointercancel', this.onPointerCancel);
     this.scene.canvas.addEventListener('pointerdown', this.onPointerDown);
+    // OrbitControls captures each pointer on the canvas; Android Chrome can
+    // swallow pointerup but still dispatches lostpointercapture on the
+    // implicit release — the safety net that keeps activePointers clean.
+    this.scene.canvas.addEventListener('lostpointercapture', this.onLostPointerCapture);
+    if (new URLSearchParams(window.location.search).has('debug')) {
+      // Merge into DebugCapture's __debug (?debug=1) so checks can assert
+      // undo-atomicity (tap-select must not grow the stack).
+      const g = window as unknown as { __debug?: Record<string, unknown> };
+      g.__debug = Object.assign(g.__debug ?? {}, { undoDepth: () => this.undoStack.length });
+    }
     this.rafId = requestAnimationFrame(this.tick);
   }
 
@@ -191,6 +199,7 @@ export class EditorApp {
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerCancel);
     this.scene.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.scene.canvas.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     window.clearTimeout(this.toastTimer);
     this.scene.dispose();
     this.uiRoot.remove();
@@ -297,7 +306,7 @@ export class EditorApp {
     // select, delete, deselect) is decided at pointer-up as tap-vs-drag.
     const pick = this.scene.pick(e, this.pickOpts());
     if (pick && pick.kind === 'handle' && this.mode !== 'delete') {
-      this.drag = { kind: 'handle', road: pick.road, point: pick.point, snap: JSON.stringify(this.data), pending: null };
+      this.drag = { kind: 'handle', road: pick.road, point: pick.point, pending: null };
       this.scene.controls.enabled = false;
       return;
     }
@@ -312,7 +321,6 @@ export class EditorApp {
           index: pick.index,
           lastX: ex,
           lastZ: ez,
-          snap: JSON.stringify(this.data),
           moved: false
         };
         this.scene.controls.enabled = false;
@@ -365,9 +373,16 @@ export class EditorApp {
       if (d.kind === 'object') {
         this.scene.endObjectDrag();
         if (d.moved) {
-          setPos(this.data, d.cat, d.index, d.lastX, d.lastZ);
-          this.recordUndo();
-          this.rebuild();
+          // Spec (editor-tablet): release outside the placeable bounds reverts
+          // to the original position and warns. Re-pick at the release point.
+          const up = this.scene.pick(e, { ground: true });
+          if (!up || up.kind !== 'ground' || !this.scene.placeable(up.x, up.z)) {
+            this.toast('Não dá para colocar aqui (fora dos limites)', false);
+          } else {
+            setPos(this.data, d.cat, d.index, d.lastX, d.lastZ);
+            this.recordUndo();
+            this.rebuild();
+          }
         }
         // Tap or move — either way the object ends up selected (no position
         // change and no undo entry for a plain tap).
@@ -381,7 +396,9 @@ export class EditorApp {
         this.recordUndo();
         this.rebuild();
       } else {
-        this.sel = { kind: 'road', index: d.road };
+        // Draft handles (road === -1) select nothing: the pending move of a
+        // draft point was already applied live to the draft array.
+        if (d.road >= 0) this.sel = { kind: 'road', index: d.road };
         this.scene.refreshRoadOverlays(this.overlayOpts());
         this.refreshUI();
       }
@@ -390,6 +407,11 @@ export class EditorApp {
 
     // Tap-vs-drag decision: drags and multi-touch were consumed by the camera.
     if (!isTapGesture(g, e.clientX, e.clientY, performance.now(), this.activePointers.size)) return;
+
+    // Release over an editor panel (capture retargets events here when a drag
+    // started on the canvas): never edit at a point the UI visibly covers.
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    if (under && under !== this.scene.canvas && under.closest('.ed-root')) return;
 
     const pick = this.scene.pick(e, this.pickOpts());
     if (!pick) {
@@ -402,9 +424,11 @@ export class EditorApp {
           this.removeRoadPoint(pick.road, pick.point);
           return;
         }
-        this.sel = { kind: 'road', index: pick.road };
-        this.scene.refreshRoadOverlays(this.overlayOpts());
-        this.refreshUI();
+        if (pick.road >= 0) {
+          this.sel = { kind: 'road', index: pick.road };
+          this.scene.refreshRoadOverlays(this.overlayOpts());
+          this.refreshUI();
+        }
         return;
       case 'object':
         if (this.mode === 'delete') {
@@ -443,9 +467,22 @@ export class EditorApp {
     if (this.drag) this.cancelDrag();
   };
 
+  private onLostPointerCapture = (e: PointerEvent): void => {
+    if (!this.activePointers.delete(e.pointerId)) return;
+    if (this.gesture?.id === e.pointerId) {
+      this.gesture = null;
+      if (this.drag) this.cancelDrag();
+    }
+  };
+
   /** Abandon an in-progress grab without mutating anything. */
   private cancelDrag(): void {
     if (this.drag?.kind === 'object') this.scene.endObjectDrag();
+    else if (this.drag?.kind === 'handle') {
+      // The preview mesh was displaced by moveHandlePreview; repaint from data
+      // so the handles always reflect the actual road points.
+      this.scene.refreshRoadOverlays(this.overlayOpts());
+    }
     this.drag = null;
     this.scene.controls.enabled = true;
   }

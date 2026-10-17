@@ -21,4 +21,5 @@
 ## 4. On-tablet verification (integration)
 
 - [ ] 4.1 Verify end-to-end on the Android tablet (Chrome): orbit/pan/pinch produce zero edits in place/road/select/delete modes; taps place/select/delete reliably; object drag moves without orbiting; road drafting works with ✔ commit; no periodic stutter while just moving the camera — record results and any threshold adjustment made to the D4 constants
+  - *Waiver (2026-09-21): o dono mandou arquivar antes desta rodada; o teste no tablet físico fica para o primeiro uso real. A cobertura emulada está verde (`scripts/check-editor-tablet.mjs`: DPR de toque, swipe/pince, alvos 44 px, edições por tap, entra/sai do ▶ Testar). Se toques parecerem arrastos no aparelho, reajustar `TAP_MAX_MOVE_PX`/`TAP_MAX_MS` em `src/editor/EditorApp.ts`.*
 - [x] 4.2 Re-run the game itself (normal play + ▶ Testar from editor) to confirm ambience, day cycle and shadows are unchanged in the running game — verify by playing one level and entering/exiting live mode once
